@@ -8,10 +8,10 @@ from app.db.base import Base
 
 
 class ChatSession(Base):
-    __tablename__ = "chat_sessions"
+    __tablename__ = "bergmann_chat_sessions"
 
     id: Mapped[str] = mapped_column(String(36), primary_key=True, default=lambda: str(uuid4()))
-    user_id: Mapped[str] = mapped_column(ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
+    user_id: Mapped[str] = mapped_column(ForeignKey("bergmann_users.id", ondelete="CASCADE"), nullable=False)
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), default=lambda: datetime.now(UTC), nullable=False
     )
@@ -21,11 +21,11 @@ class ChatSession(Base):
 
 
 class ChatMessage(Base):
-    __tablename__ = "chat_messages"
+    __tablename__ = "bergmann_chat_messages"
 
     id: Mapped[str] = mapped_column(String(36), primary_key=True, default=lambda: str(uuid4()))
     session_id: Mapped[str] = mapped_column(
-        ForeignKey("chat_sessions.id", ondelete="CASCADE"), nullable=False
+        ForeignKey("bergmann_chat_sessions.id", ondelete="CASCADE"), nullable=False
     )
     sender: Mapped[str] = mapped_column(String(24), nullable=False)
     content: Mapped[str] = mapped_column(Text, nullable=False)

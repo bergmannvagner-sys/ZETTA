@@ -13,10 +13,10 @@ class ConsentType(str, enum.Enum):
 
 
 class ConsentRecord(Base):
-    __tablename__ = "consent_records"
+    __tablename__ = "bergmann_consent_records"
 
     id: Mapped[str] = mapped_column(String(36), primary_key=True, default=lambda: str(uuid4()))
-    user_id: Mapped[str] = mapped_column(ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
+    user_id: Mapped[str] = mapped_column(ForeignKey("bergmann_users.id", ondelete="CASCADE"), nullable=False)
     consent_type: Mapped[ConsentType] = mapped_column(Enum(ConsentType), nullable=False)
     policy_version: Mapped[str] = mapped_column(String(32), nullable=False)
     accepted_at: Mapped[datetime] = mapped_column(
@@ -39,14 +39,14 @@ class AuditAction(str, enum.Enum):
 
 
 class AuditLog(Base):
-    __tablename__ = "audit_logs"
+    __tablename__ = "bergmann_audit_logs"
 
     id: Mapped[str] = mapped_column(String(36), primary_key=True, default=lambda: str(uuid4()))
     actor_user_id: Mapped[str | None] = mapped_column(
-        ForeignKey("users.id", ondelete="SET NULL"), nullable=True
+        ForeignKey("bergmann_users.id", ondelete="SET NULL"), nullable=True
     )
     target_user_id: Mapped[str | None] = mapped_column(
-        ForeignKey("users.id", ondelete="SET NULL"), nullable=True
+        ForeignKey("bergmann_users.id", ondelete="SET NULL"), nullable=True
     )
     action: Mapped[AuditAction] = mapped_column(Enum(AuditAction), nullable=False)
     resource_type: Mapped[str] = mapped_column(String(80), nullable=False)
