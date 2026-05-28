@@ -40,6 +40,11 @@ mas o backend correto e o deste repositorio.
 
 Use este caminho para manter a URL atual `https://zetta-bergmann.onrender.com`.
 
+O banco antigo do Render nao deve ser reaproveitado se ja contiver tabelas ou ENUMs de outro contrato
+(`users`, `userrole`, `/chat`, `/sos/events/opened`). Para este MVP limpo, crie um PostgreSQL novo e
+aponte `DATABASE_URL` para ele. Nao use `alembic stamp` nem migrations tolerantes a tabelas legadas
+sem antes auditar o schema, porque isso pode deixar o backend novo rodando sobre tabelas incompativeis.
+
 1. Publique este repositorio em GitHub, GitLab ou Bitbucket.
 2. No Render, abra o servico existente `zetta-bergmann`.
 3. Em **Settings**, ajuste:
@@ -51,7 +56,7 @@ Use este caminho para manter a URL atual `https://zetta-bergmann.onrender.com`.
    - Health Check Path: `/health`
 4. Configure as variaveis:
    - `APP_ENV=production`
-   - `DATABASE_URL`
+   - `DATABASE_URL` apontando para um PostgreSQL novo/limpo
    - `REDIS_URL`
    - `JWT_SECRET_KEY`
    - `CORS_ORIGINS`
@@ -68,7 +73,7 @@ Use este caminho para manter a URL atual `https://zetta-bergmann.onrender.com`.
 O `render.yaml` deste repositorio cria:
 
 - Web service Docker `zetta-bergmann`
-- PostgreSQL `zetta-bergmann-postgres`
+- PostgreSQL `zetta-bergmann-postgres-mvp`
 - Redis `zetta-bergmann-redis`
 
 Abra:
