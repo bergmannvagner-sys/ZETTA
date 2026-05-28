@@ -23,6 +23,13 @@ class Settings(BaseSettings):
     ai_timeout_seconds: int = 30
     super_admin_email: str = "admin@bergmann.local"
     super_admin_password: str | None = None
+    smtp_host: str | None = None
+    smtp_port: int = 587
+    smtp_username: str | None = None
+    smtp_password: str | None = None
+    smtp_from_email: str | None = None
+    smtp_use_tls: bool = True
+    password_reset_url: str = "bergmann://reset-password"
 
     @property
     def cors_origin_list(self) -> list[str]:
@@ -37,6 +44,10 @@ class Settings(BaseSettings):
     @property
     def is_production(self) -> bool:
         return self.app_env.lower() == "production"
+
+    @property
+    def smtp_configured(self) -> bool:
+        return bool(self.smtp_host and self.smtp_from_email)
 
 
 @lru_cache

@@ -27,6 +27,7 @@ from app.services.identity import (
     normalize_document,
     validate_document,
 )
+from app.services.email import send_password_reset_email
 from app.services.audit import write_audit_log
 from app.services.tokens import (
     issue_password_reset_token,
@@ -138,6 +139,8 @@ def request_password_reset(
 ) -> PasswordResetRequestResponse:
     user = db.query(User).filter(User.email == payload.email.lower()).first()
     reset_token = issue_password_reset_token(db, user) if user else None
+    if user and reset_token:
+        send_password_reset_email(user.email, reset_token)
     message = "Se o email existir, enviaremos instrucoes para recuperar sua senha."
     if reset_token and os.getenv("APP_ENV", "").lower() == "test":
         return PasswordResetRequestResponse(message=message, reset_token=reset_token)

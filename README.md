@@ -50,6 +50,8 @@ npx expo start
 - `POST /auth/register`
 - `POST /auth/login`
 - `POST /auth/refresh`
+- `POST /auth/password-reset/request`
+- `POST /auth/password-reset/confirm`
 - `GET /users/me`
 - `POST /chat/message`
 - `POST /sos/event`
@@ -64,6 +66,8 @@ npx expo start
 - `SUPER_ADMIN` não é aceito no cadastro público.
 - Senhas usam hash bcrypt.
 - Refresh tokens são persistidos apenas como hash.
+- Recuperacao de senha usa token de uso unico, hash no banco e envio por SMTP configuravel.
+- Cadastro publico exige CPF, CRP ou CNPJ conforme o perfil e nasce pendente de validacao.
 - Todas as rotas sensíveis exigem JWT e RBAC no backend.
 - Chat e SOS exigem consentimento LGPD ativo.
 - Eventos sensíveis geram trilha em `audit_logs` sem tokens, senhas ou chaves.

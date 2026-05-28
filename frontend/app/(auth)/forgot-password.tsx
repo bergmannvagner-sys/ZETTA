@@ -28,6 +28,9 @@ export default function ForgotPassword() {
       {mutation.data ? (
         <View className="gap-3 rounded-xl border border-mint/20 bg-mint/10 px-4 py-3">
           <Text className="text-sm leading-5 text-white">{mutation.data.message}</Text>
+          <Text className="text-xs leading-5 text-muted">
+            Verifique tambem spam ou lixo eletronico. O codigo expira em 30 minutos.
+          </Text>
           {mutation.data.reset_token ? (
             <Text selectable className="text-xs leading-5 text-muted">
               Codigo de desenvolvimento: {mutation.data.reset_token}

@@ -17,8 +17,22 @@ Recomendadas:
 - `AI_TIMEOUT_SECONDS=30`
 - `SUPER_ADMIN_EMAIL`
 - `SUPER_ADMIN_PASSWORD`
+- `SMTP_HOST`
+- `SMTP_PORT=587`
+- `SMTP_USERNAME`
+- `SMTP_PASSWORD`
+- `SMTP_FROM_EMAIL`
+- `SMTP_USE_TLS=true`
+- `PASSWORD_RESET_URL=bergmann://reset-password`
 
 Nunca versionar `.env`. Use `backend/.env.example` como referência.
+
+## Recuperacao de senha
+
+O backend gera token de uso unico com expiracao de 30 minutos e revoga refresh tokens antigos
+apos a troca de senha. Em producao, o token nao e retornado pela API; ele precisa ser enviado
+por SMTP usando as variaveis acima. Provedores compativeis incluem Resend SMTP, SendGrid,
+Brevo, AWS SES ou outro SMTP autenticado.
 
 ## Frontend
 

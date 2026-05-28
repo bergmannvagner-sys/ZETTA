@@ -1,6 +1,6 @@
 import { useMutation } from "@tanstack/react-query";
-import { Href, Link, router } from "expo-router";
-import { useState } from "react";
+import { Href, Link, router, useLocalSearchParams } from "expo-router";
+import { useEffect, useState } from "react";
 import { Text, View } from "react-native";
 
 import { Screen } from "@/components/screen";
@@ -8,8 +8,15 @@ import { Button, ErrorText, Field } from "@/components/ui";
 import { confirmPasswordReset } from "@/lib/auth";
 
 export default function ResetPassword() {
+  const params = useLocalSearchParams<{ token?: string }>();
   const [token, setToken] = useState("");
   const [newPassword, setNewPassword] = useState("");
+
+  useEffect(() => {
+    if (params.token && !token) {
+      setToken(params.token);
+    }
+  }, [params.token, token]);
 
   const mutation = useMutation({
     mutationFn: confirmPasswordReset,

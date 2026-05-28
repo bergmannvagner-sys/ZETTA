@@ -8,17 +8,31 @@ import { useAuthStore } from "@/store/auth-store";
 export default function Verification() {
   const user = useAuthStore((state) => state.user);
   const clearSession = useAuthStore((state) => state.clearSession);
+  const documentLabel =
+    user?.document_type && user?.document_last4
+      ? `${user.document_type} final ${user.document_last4}`
+      : "Documento recebido";
 
   return (
     <Screen>
       <Text className="text-3xl font-semibold text-white">Conta em analise</Text>
       <Card>
         <Text className="text-base leading-6 text-white">
-          Recebemos seu cadastro. Contas profissionais e institucionais passam por verificacao antes
-          de acessar areas sensiveis.
+          Recebemos seu cadastro. Todas as contas passam por validacao para proteger os usuarios,
+          reduzir perfis falsos e manter os dados sensiveis seguros.
         </Text>
         <Text selectable className="text-sm text-muted">
           Status atual: {user?.status ?? "PENDING_VERIFICATION"}
+        </Text>
+        <Text selectable className="text-sm text-muted">
+          {documentLabel}
+        </Text>
+      </Card>
+      <Card>
+        <Text className="text-base font-semibold text-white">Proximos passos</Text>
+        <Text className="text-sm leading-5 text-muted">
+          A equipe revisa seu perfil e libera o acesso quando os dados forem consistentes.
+          Se houver divergencia, a conta pode ser recusada e voce podera corrigir as informacoes.
         </Text>
       </Card>
       <View className="gap-3">

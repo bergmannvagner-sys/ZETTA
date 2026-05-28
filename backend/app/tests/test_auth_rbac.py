@@ -245,6 +245,15 @@ def test_e2e_user_consent_chat_sos_and_audit() -> None:
     assert off_topic_chat.json()["in_scope"] is False
     assert "suporte emocional" in off_topic_chat.json()["answer"]
 
+    crisis_chat = client.post(
+        "/chat/message",
+        json={"message": "quero morrer e estou sem saida"},
+        headers=headers,
+    )
+    assert crisis_chat.status_code == 200
+    assert crisis_chat.json()["risk_level"] == "CRISIS"
+    assert "188" in crisis_chat.json()["answer"]
+
     sos = client.post(
         "/sos/event",
         json={"intensity": "HIGH", "message": "Preciso de ajuda"},

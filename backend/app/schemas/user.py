@@ -26,3 +26,4 @@ class PendingAccountResponse(BaseModel):
 
 class ModerationAccountRequest(BaseModel):
     user_id: str
+    reason: str | None = None

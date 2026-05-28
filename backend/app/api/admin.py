@@ -1,6 +1,6 @@
 from typing import Annotated
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy.orm import Session
 
 from app.api.deps import require_roles
@@ -16,14 +16,17 @@ router = APIRouter(prefix="/admin", tags=["admin"])
 @router.get("/pending-accounts", response_model=list[PendingAccountResponse])
 def pending_accounts(
     _: Annotated[User, Depends(require_roles(UserRole.SUPER_ADMIN))],
+    q: str | None = Query(default=None, max_length=120),
+    role: UserRole | None = Query(default=None),
     db: Session = Depends(get_db),
 ) -> list[PendingAccountResponse]:
-    users = (
-        db.query(User)
-        .filter(User.status == AccountStatus.PENDING_VERIFICATION)
-        .order_by(User.created_at.asc())
-        .all()
-    )
+    query = db.query(User).filter(User.status == AccountStatus.PENDING_VERIFICATION)
+    if role:
+        query = query.filter(User.role == role)
+    if q:
+        like = f"%{q.strip().lower()}%"
+        query = query.filter((User.email.ilike(like)) | (User.full_name.ilike(like)))
+    users = query.order_by(User.created_at.asc()).all()
     return [
         PendingAccountResponse(
             id=user.id,
@@ -56,7 +59,7 @@ def approve_account(
         target_user_id=user.id,
         resource_type="user",
         resource_id=user.id,
-        metadata={"role": user.role.value},
+        metadata={"role": user.role.value, "reason": payload.reason},
     )
     db.commit()
     return {"status": "approved"}
@@ -79,7 +82,7 @@ def reject_account(
         target_user_id=user.id,
         resource_type="user",
         resource_id=user.id,
-        metadata={"role": user.role.value},
+        metadata={"role": user.role.value, "reason": payload.reason},
     )
     db.commit()
     return {"status": "rejected"}

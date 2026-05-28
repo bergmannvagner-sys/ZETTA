@@ -16,6 +16,13 @@ SAFE_FALLBACK = (
     "objetos perigosos e tente ficar perto de outra pessoa."
 )
 
+CRISIS_RESPONSE = (
+    "Sinto muito que voce esteja passando por isso. Se houver risco imediato, ligue para a "
+    "emergencia local agora ou peca ajuda a alguem perto de voce. No Brasil, o CVV atende "
+    "pelo 188. Afaste objetos que possam te machucar e fique perto de uma pessoa de confianca. "
+    "Se puder, me diga apenas onde voce esta e se esta em seguranca neste momento."
+)
+
 SYSTEM_PROMPT = (
     "Você é Bergmann, uma IA de suporte emocional. Responda em português do Brasil com "
     "empatia, baixa carga cognitiva e orientação segura. Use no máximo 5 frases curtas. "
@@ -43,6 +50,8 @@ async def ask_bergmann(message: str) -> tuple[str, str, bool, bool]:
     risk_level = classify_risk(message)
     if not is_in_emotional_scope(message):
         return OFF_SCOPE_RESPONSE, risk_level, False, False
+    if risk_level == "CRISIS":
+        return CRISIS_RESPONSE, risk_level, False, True
     if not settings.groq_api_key:
         logger.error("Groq unavailable: GROQ_API_KEY is not configured")
         return SAFE_FALLBACK, risk_level, True, True
