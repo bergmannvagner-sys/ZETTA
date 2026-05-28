@@ -31,6 +31,7 @@ from app.schemas.emotional import (
     SharingConsentResponse,
 )
 from app.services.audit import write_audit_log
+from app.services.connection_codes import generate_connection_code, normalize_connection_code
 
 router = APIRouter(tags=["emotional"])
 
@@ -98,6 +99,15 @@ def _serialize_consent(consent: UserSharingConsent) -> SharingConsentResponse:
         granted_at=consent.granted_at,
         revoked_at=consent.revoked_at,
     )
+
+
+def _find_share_target(db: Session, payload: SharingConsentCreate) -> User | None:
+    identifier = str(payload.target_email or payload.target_identifier or "").strip()
+    if not identifier:
+        return None
+    if "@" in identifier:
+        return db.query(User).filter(User.email == identifier.lower()).first()
+    return db.query(User).filter(User.connection_code == normalize_connection_code(identifier)).first()
 
 
 def _active_consents_for_target(db: Session, target: User) -> list[UserSharingConsent]:
@@ -200,11 +210,13 @@ def grant_sharing_consent(
 ) -> SharingConsentResponse:
     if user.role != UserRole.USER:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Only common users can grant sharing consent")
-    target = db.query(User).filter(User.email == str(payload.target_email).lower()).first()
+    target = _find_share_target(db, payload)
     if not target or target.role not in SHARE_TARGET_ROLES:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Professional or company account not found")
     if target.status.value != "ACTIVE":
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Target account is not active")
+    if not target.connection_code:
+        target.connection_code = generate_connection_code(db)
     if payload.period_start and payload.period_end and payload.period_start > payload.period_end:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid sharing period")
 

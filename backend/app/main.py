@@ -3,7 +3,7 @@ import logging
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-from app.api import admin, assistant, auth, chat, emotional, privacy, sos, users
+from app.api import admin, assistant, auth, chat, connections, emotional, privacy, sos, users
 from app.core.config import get_settings
 
 logging.basicConfig(
@@ -32,6 +32,7 @@ app.include_router(auth.router)
 app.include_router(assistant.router)
 app.include_router(users.router)
 app.include_router(chat.router)
+app.include_router(connections.router)
 app.include_router(emotional.router)
 app.include_router(sos.router)
 app.include_router(privacy.router)

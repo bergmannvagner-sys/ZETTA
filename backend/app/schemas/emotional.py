@@ -57,7 +57,8 @@ class EmotionLogResponse(BaseModel):
 
 
 class SharingConsentCreate(BaseModel):
-    target_email: EmailStr
+    target_email: EmailStr | None = None
+    target_identifier: str | None = Field(default=None, min_length=3, max_length=320)
     categories: list[SharingCategory] = Field(min_length=1, max_length=6)
     summary_only: bool = True
     period_start: datetime | None = None

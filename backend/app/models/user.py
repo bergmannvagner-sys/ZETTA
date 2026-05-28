@@ -38,6 +38,7 @@ class User(Base):
     document_type: Mapped[str | None] = mapped_column(String(24), nullable=True)
     document_value_hash: Mapped[str | None] = mapped_column(String(64), unique=True, index=True, nullable=True)
     document_last4: Mapped[str | None] = mapped_column(String(8), nullable=True)
+    connection_code: Mapped[str | None] = mapped_column(String(16), unique=True, index=True, nullable=True)
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), default=lambda: datetime.now(UTC), nullable=False
     )

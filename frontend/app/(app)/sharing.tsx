@@ -8,6 +8,8 @@ import {
   createSharingConsent,
   listSharingConsents,
   revokeSharingConsent,
+  searchConnectionTarget,
+  ConnectionSearchResult,
   SharingConsent,
   SharingCategory
 } from "@/lib/emotional";
@@ -29,14 +31,20 @@ function toggleCategory(current: SharingCategory[], category: SharingCategory): 
 
 export default function Sharing() {
   const queryClient = useQueryClient();
-  const [targetEmail, setTargetEmail] = useState("");
+  const [targetIdentifier, setTargetIdentifier] = useState("");
+  const [selectedTarget, setSelectedTarget] = useState<ConnectionSearchResult | null>(null);
   const [categories, setCategories] = useState<SharingCategory[]>(["AI_SUMMARY", "TRENDS"]);
   const [summaryOnly, setSummaryOnly] = useState(true);
   const consents = useQuery({ queryKey: ["sharing-consents"], queryFn: listSharingConsents });
+  const search = useMutation({
+    mutationFn: searchConnectionTarget,
+    onSuccess: (target) => setSelectedTarget(target)
+  });
   const grant = useMutation({
     mutationFn: createSharingConsent,
     onSuccess: async () => {
-      setTargetEmail("");
+      setTargetIdentifier("");
+      setSelectedTarget(null);
       await queryClient.invalidateQueries({ queryKey: ["sharing-consents"] });
     }
   });
@@ -58,12 +66,32 @@ export default function Sharing() {
       </View>
 
       <Field
-        label="Email do psicologo ou empresa"
-        value={targetEmail}
-        onChangeText={setTargetEmail}
+        label="Email ou codigo de conexao"
+        value={targetIdentifier}
+        onChangeText={(value) => {
+          setTargetIdentifier(value);
+          setSelectedTarget(null);
+        }}
         keyboardType="email-address"
         maxLength={320}
       />
+      <ErrorText message={search.error?.message} />
+      <Button
+        label="Buscar conta"
+        tone="soft"
+        loading={search.isPending}
+        disabled={targetIdentifier.trim().length < 3}
+        onPress={() => search.mutate(targetIdentifier.trim())}
+      />
+
+      {selectedTarget ? (
+        <Card>
+          <Text selectable className="text-base font-semibold text-white">{selectedTarget.full_name}</Text>
+          <Text selectable className="text-sm text-muted">{selectedTarget.email}</Text>
+          <Text selectable className="text-sm text-muted">Perfil: {selectedTarget.role}</Text>
+          <Text selectable className="text-sm text-muted">Codigo: {selectedTarget.connection_code}</Text>
+        </Card>
+      ) : null}
 
       <View className="gap-3">
         <Text className="text-sm font-medium text-muted">Categorias autorizadas</Text>
@@ -104,7 +132,16 @@ export default function Sharing() {
       <Button
         label="Autorizar compartilhamento"
         loading={grant.isPending}
-        onPress={() => grant.mutate({ target_email: targetEmail, categories, summary_only: summaryOnly })}
+        disabled={!selectedTarget || categories.length === 0}
+        onPress={() =>
+          selectedTarget
+            ? grant.mutate({
+                target_identifier: selectedTarget.connection_code || selectedTarget.email,
+                categories,
+                summary_only: summaryOnly
+              })
+            : undefined
+        }
       />
 
       <View className="gap-3">

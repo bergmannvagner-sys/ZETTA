@@ -373,6 +373,42 @@ def test_emotional_journal_sharing_and_nr1_privacy_boundaries() -> None:
     psychologist_headers = {"Authorization": f"Bearer {psychologist_login.json()['access_token']}"}
     company_headers = {"Authorization": f"Bearer {company_login.json()['access_token']}"}
 
+    for headers in (psychologist_headers, company_headers):
+        target_consent_status = client.get("/privacy/consent", headers=headers)
+        client.post(
+            "/privacy/consent",
+            json={"policy_version": target_consent_status.json()["policy_version"]},
+            headers=headers,
+        )
+
+    psychologist_code = client.get("/connections/me", headers=psychologist_headers)
+    assert psychologist_code.status_code == 200
+    assert psychologist_code.json()["connection_code"].startswith("BG")
+
+    search_by_code = client.get(
+        "/connections/search",
+        params={"query": psychologist_code.json()["connection_code"]},
+        headers=user_headers,
+    )
+    assert search_by_code.status_code == 200
+    assert search_by_code.json()["email"] == "sharing-psi@example.com"
+    assert search_by_code.json()["role"] == "PSYCHOLOGIST"
+
+    search_by_email = client.get(
+        "/connections/search",
+        params={"query": "sharing-company@example.com"},
+        headers=user_headers,
+    )
+    assert search_by_email.status_code == 200
+    assert search_by_email.json()["role"] == "COMPANY"
+
+    company_cannot_search = client.get(
+        "/connections/search",
+        params={"query": "sharing-psi@example.com"},
+        headers=company_headers,
+    )
+    assert company_cannot_search.status_code == 403
+
     journal = client.post(
         "/journal/entries",
         json={"content": "Hoje fiquei ansioso, mas consegui pedir ajuda.", "tags": ["ansiedade", "vitoria"]},
@@ -398,7 +434,7 @@ def test_emotional_journal_sharing_and_nr1_privacy_boundaries() -> None:
     professional_consent = client.post(
         "/sharing/consents",
         json={
-            "target_email": "sharing-psi@example.com",
+            "target_identifier": psychologist_code.json()["connection_code"],
             "categories": ["MOOD", "TRENDS"],
             "summary_only": True,
         },

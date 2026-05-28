@@ -38,6 +38,19 @@ export type SharingConsent = {
   revoked_at: string | null;
 };
 
+export type ConnectionSearchResult = {
+  id: string;
+  full_name: string;
+  email: string;
+  role: "PSYCHOLOGIST" | "COMPANY";
+  status: string;
+  connection_code: string;
+};
+
+export type MyConnectionCode = {
+  connection_code: string;
+};
+
 export type EmotionalReport = {
   id: string;
   summary: string;
@@ -112,7 +125,8 @@ export async function createEmotionLog(input: {
 }
 
 export async function createSharingConsent(input: {
-  target_email: string;
+  target_email?: string;
+  target_identifier?: string;
   categories: SharingCategory[];
   summary_only: boolean;
 }): Promise<SharingConsent> {
@@ -120,6 +134,14 @@ export async function createSharingConsent(input: {
     method: "POST",
     body: JSON.stringify(input)
   });
+}
+
+export async function searchConnectionTarget(query: string): Promise<ConnectionSearchResult> {
+  return apiRequest<ConnectionSearchResult>(`/connections/search?query=${encodeURIComponent(query)}`);
+}
+
+export async function getMyConnectionCode(): Promise<MyConnectionCode> {
+  return apiRequest<MyConnectionCode>("/connections/me");
 }
 
 export async function listSharingConsents(): Promise<SharingConsent[]> {
