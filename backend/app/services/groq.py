@@ -5,6 +5,7 @@ import httpx
 
 from app.core.config import get_settings
 from app.services.risk import classify_risk
+from app.services.scope import OFF_SCOPE_RESPONSE, is_in_emotional_scope
 
 logger = logging.getLogger(__name__)
 
@@ -37,12 +38,14 @@ def _clean_answer(answer: str) -> str:
     return limited or SAFE_FALLBACK
 
 
-async def ask_bergmann(message: str) -> tuple[str, str, bool]:
+async def ask_bergmann(message: str) -> tuple[str, str, bool, bool]:
     settings = get_settings()
     risk_level = classify_risk(message)
+    if not is_in_emotional_scope(message):
+        return OFF_SCOPE_RESPONSE, risk_level, False, False
     if not settings.groq_api_key:
         logger.error("Groq unavailable: GROQ_API_KEY is not configured")
-        return SAFE_FALLBACK, risk_level, True
+        return SAFE_FALLBACK, risk_level, True, True
 
     try:
         async with httpx.AsyncClient(timeout=settings.ai_timeout_seconds) as client:
@@ -62,7 +65,7 @@ async def ask_bergmann(message: str) -> tuple[str, str, bool]:
             response.raise_for_status()
             data = response.json()
             answer = _clean_answer(data["choices"][0]["message"]["content"].strip())
-            return answer, risk_level, False
+            return answer, risk_level, False, True
     except Exception as exc:
         logger.error("Groq request failed: %s", exc.__class__.__name__)
-        return SAFE_FALLBACK, risk_level, True
+        return SAFE_FALLBACK, risk_level, True, True

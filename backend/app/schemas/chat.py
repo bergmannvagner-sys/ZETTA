@@ -11,3 +11,4 @@ class ChatMessageResponse(BaseModel):
     answer: str
     risk_level: str
     fallback: bool = False
+    in_scope: bool = True

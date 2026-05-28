@@ -37,7 +37,7 @@ async def message(
         db.flush()
 
     db.add(ChatMessage(session_id=session.id, sender="USER", content=payload.message))
-    answer, risk_level, fallback = await ask_bergmann(payload.message)
+    answer, risk_level, fallback, in_scope = await ask_bergmann(payload.message)
     db.add(ChatMessage(session_id=session.id, sender="BERGMANN", content=answer, risk_level=risk_level))
     write_audit_log(
         db,
@@ -46,7 +46,7 @@ async def message(
         target_user_id=user.id,
         resource_type="chat_session",
         resource_id=session.id,
-        metadata={"risk_level": risk_level, "fallback": fallback},
+        metadata={"risk_level": risk_level, "fallback": fallback, "in_scope": in_scope},
     )
     db.commit()
     return ChatMessageResponse(
@@ -54,4 +54,5 @@ async def message(
         answer=answer,
         risk_level=risk_level,
         fallback=fallback,
+        in_scope=in_scope,
     )

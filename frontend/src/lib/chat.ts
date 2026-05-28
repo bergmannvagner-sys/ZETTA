@@ -5,6 +5,7 @@ export type ChatResponse = {
   answer: string;
   risk_level: string;
   fallback: boolean;
+  in_scope: boolean;
 };
 
 type ChatMessageResponse = {
@@ -12,6 +13,7 @@ type ChatMessageResponse = {
   answer: string;
   risk_level: string;
   fallback: boolean;
+  in_scope?: boolean;
 };
 
 export async function sendChatMessage(message: string, sessionId: string | null): Promise<ChatResponse> {
@@ -24,6 +26,7 @@ export async function sendChatMessage(message: string, sessionId: string | null)
     session_id: data.session_id,
     answer: data.answer,
     risk_level: data.risk_level,
-    fallback: data.fallback
+    fallback: data.fallback,
+    in_scope: data.in_scope ?? true
   };
 }

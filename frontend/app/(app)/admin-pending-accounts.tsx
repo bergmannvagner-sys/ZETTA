@@ -1,16 +1,20 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { Redirect } from "expo-router";
 import { Text, View } from "react-native";
 
 import { Screen } from "@/components/screen";
 import { Button, Card, ErrorText } from "@/components/ui";
 import { apiRequest } from "@/lib/api";
+import { useAuthStore } from "@/store/auth-store";
 import { PendingAccount } from "@/types/auth";
 
 export default function AdminPendingAccounts() {
+  const user = useAuthStore((state) => state.user);
   const queryClient = useQueryClient();
   const pending = useQuery({
     queryKey: ["pending-accounts"],
-    queryFn: () => apiRequest<PendingAccount[]>("/admin/pending-accounts")
+    queryFn: () => apiRequest<PendingAccount[]>("/admin/pending-accounts"),
+    enabled: user?.role === "SUPER_ADMIN"
   });
   const moderation = useMutation({
     mutationFn: ({ path, userId }: { path: string; userId: string }) =>
@@ -18,6 +22,10 @@ export default function AdminPendingAccounts() {
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ["pending-accounts"] })
   });
   const accounts: PendingAccount[] = pending.data ?? [];
+
+  if (user?.role !== "SUPER_ADMIN") {
+    return <Redirect href="/(app)/home" />;
+  }
 
   return (
     <Screen>

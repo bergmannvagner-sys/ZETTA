@@ -10,6 +10,7 @@ from app.db.base import Base
 from app.db.session import SessionLocal, engine
 from app.main import app
 from app.models.privacy import AuditAction, AuditLog
+from app.models.user import AccountStatus, User
 
 Base.metadata.create_all(bind=engine)
 client = TestClient(app)
@@ -23,9 +24,25 @@ def test_public_registration_blocks_super_admin() -> None:
             "full_name": "Admin",
             "password": "strongpass123",
             "role": "SUPER_ADMIN",
+            "lgpdConsent": True,
         },
     )
     assert response.status_code == 400
+
+
+def test_public_registration_requires_lgpd_consent() -> None:
+    response = client.post(
+        "/auth/register",
+        json={
+            "email": "no-consent@example.com",
+            "full_name": "Pessoa Sem Consentimento",
+            "password": "strongpass123",
+            "role": "USER",
+            "lgpdConsent": False,
+        },
+    )
+    assert response.status_code == 400
+    assert response.json()["detail"] == "LGPD consent required"
 
 
 def test_user_register_login_and_access_common_area() -> None:
@@ -36,6 +53,7 @@ def test_user_register_login_and_access_common_area() -> None:
             "full_name": "Pessoa User",
             "password": "strongpass123",
             "role": "USER",
+            "lgpdConsent": True,
         },
     )
     assert register.status_code == 201
@@ -55,7 +73,7 @@ def test_registration_accepts_deployed_client_field_aliases() -> None:
             "name": "Pessoa Alias",
             "password": "strongpass123",
             "accountType": "USER",
-            "lgpdConsent": False,
+            "lgpdConsent": True,
         },
     )
     assert response.status_code == 201
@@ -73,6 +91,7 @@ def test_non_user_registration_is_pending_and_blocked_from_active_routes() -> No
             "full_name": "Psicologa",
             "password": "strongpass123",
             "role": "PSYCHOLOGIST",
+            "lgpdConsent": True,
         },
     )
     assert register.status_code == 201
@@ -87,6 +106,42 @@ def test_non_user_registration_is_pending_and_blocked_from_active_routes() -> No
     assert sos.status_code == 403
 
 
+def test_approved_non_user_is_blocked_from_common_sos() -> None:
+    register = client.post(
+        "/auth/register",
+        json={
+            "email": "company@example.com",
+            "full_name": "Empresa Teste",
+            "password": "strongpass123",
+            "role": "COMPANY",
+            "lgpdConsent": True,
+        },
+    )
+    assert register.status_code == 201
+    data = register.json()
+    db = SessionLocal()
+    try:
+        user = db.get(User, data["user"]["id"])
+        assert user is not None
+        user.status = AccountStatus.ACTIVE
+        db.commit()
+    finally:
+        db.close()
+
+    headers = {"Authorization": f"Bearer {data['access_token']}"}
+    consent_status = client.get("/privacy/consent", headers=headers)
+    accept_consent = client.post(
+        "/privacy/consent",
+        json={"policy_version": consent_status.json()["policy_version"]},
+        headers=headers,
+    )
+    assert accept_consent.status_code == 200
+
+    sos = client.post("/sos/event", json={"intensity": "HIGH"}, headers=headers)
+    assert sos.status_code == 403
+    assert sos.json()["detail"] == "Only common area allowed"
+
+
 def test_e2e_user_consent_chat_sos_and_audit() -> None:
     register = client.post(
         "/auth/register",
@@ -95,6 +150,7 @@ def test_e2e_user_consent_chat_sos_and_audit() -> None:
             "full_name": "Pessoa E2E",
             "password": "strongpass123",
             "role": "USER",
+            "lgpdConsent": True,
         },
     )
     assert register.status_code == 201
@@ -128,7 +184,17 @@ def test_e2e_user_consent_chat_sos_and_audit() -> None:
     )
     assert chat.status_code == 200
     assert chat.json()["fallback"] is True
+    assert chat.json()["in_scope"] is True
     assert chat.json()["risk_level"] == "ELEVATED"
+
+    off_topic_chat = client.post(
+        "/chat/message",
+        json={"message": "Hacker sistemas"},
+        headers=headers,
+    )
+    assert off_topic_chat.status_code == 200
+    assert off_topic_chat.json()["in_scope"] is False
+    assert "suporte emocional" in off_topic_chat.json()["answer"]
 
     sos = client.post(
         "/sos/event",

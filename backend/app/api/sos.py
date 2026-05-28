@@ -1,13 +1,13 @@
 from typing import Annotated
 
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 
 from app.api.deps import require_lgpd_consent
 from app.db.session import get_db
 from app.models.sos import SOSEvent
 from app.models.privacy import AuditAction
-from app.models.user import User
+from app.models.user import User, UserRole
 from app.schemas.sos import SOSEventRequest, SOSEventResponse
 from app.services.audit import write_audit_log
 
@@ -26,6 +26,8 @@ def create_sos_event(
     user: Annotated[User, Depends(require_lgpd_consent)],
     db: Session = Depends(get_db),
 ) -> SOSEventResponse:
+    if user.role not in {UserRole.USER, UserRole.SUPER_ADMIN}:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Only common area allowed")
     event = SOSEvent(user_id=user.id, intensity=payload.intensity, message=payload.message)
     db.add(event)
     db.flush()

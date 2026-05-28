@@ -34,6 +34,8 @@ def _auth_user(user: User) -> AuthUserResponse:
 def register(payload: RegisterRequest, db: Session = Depends(get_db)) -> AuthResponse:
     if payload.role not in PUBLIC_REGISTER_ROLES or payload.role == UserRole.SUPER_ADMIN:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Role not allowed")
+    if not payload.lgpdConsent:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="LGPD consent required")
     existing = db.query(User).filter(User.email == payload.email.lower()).first()
     if existing:
         raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="Email already registered")
