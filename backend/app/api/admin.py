@@ -7,12 +7,27 @@ from app.api.deps import require_roles
 from app.db.session import get_db
 from app.models.user import AccountStatus, SubscriptionStatus, User, UserRole
 from app.models.privacy import AuditAction
-from app.schemas.user import ModerationAccountRequest, PendingAccountResponse
+from app.schemas.user import (
+    ModerationAccountRequest,
+    PendingAccountResponse,
+    SubscriptionAccountResponse,
+    SubscriptionStatusUpdateRequest,
+)
 from app.services.audit import write_audit_log
 from app.services.billing import approval_subscription_status_for_role
 from app.services.verification import build_verification_triage
 
 router = APIRouter(prefix="/admin", tags=["admin"])
+
+PAID_ADMIN_ROLES = {
+    UserRole.PSYCHOLOGIST,
+    UserRole.COMPANY,
+    UserRole.NGO,
+    UserRole.HOSPITAL,
+    UserRole.CLINIC,
+    UserRole.SPONSOR,
+    UserRole.PUBLIC_INSTITUTION,
+}
 
 
 @router.get("/pending-accounts", response_model=list[PendingAccountResponse])
@@ -51,6 +66,78 @@ def pending_accounts(
             )
         )
     return responses
+
+
+@router.get("/subscriptions", response_model=list[SubscriptionAccountResponse])
+def subscriptions(
+    _: Annotated[User, Depends(require_roles(UserRole.SUPER_ADMIN))],
+    q: str | None = Query(default=None, max_length=120),
+    role: UserRole | None = Query(default=None),
+    subscription_status: SubscriptionStatus | None = Query(default=None),
+    db: Session = Depends(get_db),
+) -> list[SubscriptionAccountResponse]:
+    query = db.query(User).filter(User.role.in_(PAID_ADMIN_ROLES))
+    if role:
+        if role not in PAID_ADMIN_ROLES:
+            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Role has no paid subscription")
+        query = query.filter(User.role == role)
+    if subscription_status:
+        query = query.filter(User.subscription_status == subscription_status)
+    if q:
+        like = f"%{q.strip().lower()}%"
+        query = query.filter((User.email.ilike(like)) | (User.full_name.ilike(like)))
+    users = query.order_by(User.created_at.desc()).all()
+    return [
+        SubscriptionAccountResponse(
+            id=user.id,
+            email=user.email,
+            full_name=user.full_name,
+            role=user.role,
+            status=user.status,
+            document_type=user.document_type,
+            document_last4=user.document_last4,
+            subscription_plan=user.subscription_plan,
+            subscription_status=user.subscription_status,
+            created_at=user.created_at.isoformat(),
+        )
+        for user in users
+    ]
+
+
+@router.post("/subscription-status")
+def update_subscription_status(
+    payload: SubscriptionStatusUpdateRequest,
+    admin: Annotated[User, Depends(require_roles(UserRole.SUPER_ADMIN))],
+    db: Session = Depends(get_db),
+) -> dict[str, str]:
+    user = db.get(User, payload.user_id)
+    if not user or user.role not in PAID_ADMIN_ROLES:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Paid account not found")
+    if payload.subscription_status == SubscriptionStatus.FREE:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Paid account cannot use free status")
+    if payload.subscription_status in {SubscriptionStatus.TRIAL, SubscriptionStatus.ACTIVE}:
+        if user.status != AccountStatus.ACTIVE:
+            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Account must be approved first")
+
+    previous_status = user.subscription_status
+    user.subscription_status = payload.subscription_status
+    write_audit_log(
+        db,
+        action=AuditAction.SUBSCRIPTION_STATUS_UPDATED,
+        actor_user_id=admin.id,
+        target_user_id=user.id,
+        resource_type="subscription",
+        resource_id=user.id,
+        metadata={
+            "role": user.role.value,
+            "reason": payload.reason,
+            "previous_status": previous_status.value,
+            "subscription_status": user.subscription_status.value,
+            "subscription_plan": user.subscription_plan.value,
+        },
+    )
+    db.commit()
+    return {"status": user.subscription_status.value}
 
 
 @router.post("/approve-account")

@@ -46,3 +46,7 @@ export type PendingAccount = AuthUser & {
   verification_signals: string[];
   verification_warnings: string[];
 };
+
+export type SubscriptionAccount = AuthUser & {
+  created_at: string;
+};

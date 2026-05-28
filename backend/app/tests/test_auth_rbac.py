@@ -11,7 +11,8 @@ from app.db.base import Base
 from app.db.session import SessionLocal, engine
 from app.main import app
 from app.models.privacy import AuditAction, AuditLog
-from app.models.user import AccountStatus, SubscriptionStatus, User
+from app.core.security import hash_password
+from app.models.user import AccountStatus, SubscriptionStatus, User, UserRole
 
 Base.metadata.create_all(bind=engine)
 client = TestClient(app)
@@ -653,3 +654,70 @@ def test_non_user_cannot_use_personal_care_reminders_after_approval() -> None:
     )
     assert response.status_code == 403
     assert response.json()["detail"] == "Only common users can create reminders"
+
+
+def test_super_admin_can_manage_paid_subscription_status() -> None:
+    register = client.post(
+        "/auth/register",
+        json={
+            "email": "billing-company@example.com",
+            "full_name": "Empresa Billing",
+            "password": "strongpass123",
+            "role": "COMPANY",
+            "document": "12345678000195",
+            "lgpdConsent": True,
+        },
+    )
+    assert register.status_code == 201
+    company_id = register.json()["user"]["id"]
+
+    db = SessionLocal()
+    try:
+        admin = User(
+            email="billing-admin@example.com",
+            full_name="Admin Billing",
+            password_hash=hash_password("strongpass123"),
+            role=UserRole.SUPER_ADMIN,
+            status=AccountStatus.ACTIVE,
+            subscription_plan="INTERNAL",
+            subscription_status=SubscriptionStatus.ACTIVE,
+        )
+        db.add(admin)
+        company = db.get(User, company_id)
+        assert company is not None
+        company.status = AccountStatus.ACTIVE
+        company.subscription_status = SubscriptionStatus.TRIAL
+        db.commit()
+    finally:
+        db.close()
+
+    admin_login = client.post(
+        "/auth/login",
+        json={"email": "billing-admin@example.com", "password": "strongpass123"},
+    )
+    assert admin_login.status_code == 200
+    admin_headers = {"Authorization": f"Bearer {admin_login.json()['access_token']}"}
+
+    listed = client.get("/admin/subscriptions", headers=admin_headers)
+    assert listed.status_code == 200
+    assert any(account["email"] == "billing-company@example.com" for account in listed.json())
+
+    past_due = client.post(
+        "/admin/subscription-status",
+        json={"user_id": company_id, "subscription_status": "PAST_DUE", "reason": "manual billing check"},
+        headers=admin_headers,
+    )
+    assert past_due.status_code == 200
+    assert past_due.json()["status"] == "PAST_DUE"
+
+    company_headers = {"Authorization": f"Bearer {register.json()['access_token']}"}
+    blocked = client.get("/nr1/report", headers=company_headers)
+    assert blocked.status_code == 402
+
+    active = client.post(
+        "/admin/subscription-status",
+        json={"user_id": company_id, "subscription_status": "ACTIVE", "reason": "manual payment confirmed"},
+        headers=admin_headers,
+    )
+    assert active.status_code == 200
+    assert active.json()["status"] == "ACTIVE"

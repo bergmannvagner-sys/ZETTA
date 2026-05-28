@@ -38,11 +38,18 @@ export default function Profile() {
         ) : null}
       </Card>
       {user?.role === "SUPER_ADMIN" ? (
-        <Button
-          label="Contas pendentes"
-          tone="soft"
-          onPress={() => router.push("/(app)/admin-pending-accounts")}
-        />
+        <>
+          <Button
+            label="Contas pendentes"
+            tone="soft"
+            onPress={() => router.push("/(app)/admin-pending-accounts")}
+          />
+          <Button
+            label="Assinaturas"
+            tone="soft"
+            onPress={() => router.push("/(app)/admin-subscriptions" as never)}
+          />
+        </>
       ) : null}
       <Button
         label="Plano e acesso"
