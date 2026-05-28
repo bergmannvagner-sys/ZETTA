@@ -72,7 +72,7 @@ export function ErrorText({ message }: { message?: string }) {
   if (!message) return null;
   const friendlyMessage =
     message === "Network request failed"
-      ? "Não foi possível conectar ao servidor. Verifique sua internet ou a configuração da API."
+      ? "Nao foi possivel conectar ao servidor. Verifique sua internet ou a configuracao da API."
       : message;
   return (
     <View className="rounded-xl border border-rose/20 bg-rose/10 px-4 py-3">

@@ -42,3 +42,69 @@ export function hasPaidAccess(user?: AuthUser | null): boolean {
   if (!paidRoles.has(user.role)) return true;
   return user.subscription_status === "TRIAL" || user.subscription_status === "ACTIVE";
 }
+
+export function isPaidRole(role?: UserRole): boolean {
+  return role ? paidRoles.has(role) : false;
+}
+
+export function roleAccessDescription(role?: UserRole): string {
+  switch (role) {
+    case "PSYCHOLOGIST":
+      return "Acesso profissional para acompanhar usuarios que autorizaram compartilhamento emocional.";
+    case "COMPANY":
+      return "Acesso corporativo para indicadores agregados, NR-1 e saude emocional organizacional.";
+    case "CLINIC":
+      return "Acesso institucional para clinicas, com validacao antes de recursos clinicos.";
+    case "HOSPITAL":
+      return "Acesso institucional para operacao clinica, triagem e dados autorizados.";
+    case "NGO":
+      return "Acesso social para acolhimento e projetos com dados autorizados.";
+    case "SPONSOR":
+      return "Acesso de patrocinador para apoiar iniciativas sem acesso indevido a dados sensiveis.";
+    case "PUBLIC_INSTITUTION":
+      return "Acesso institucional para SUS, UBS, CAPS e governo com governanca de dados.";
+    case "SUPER_ADMIN":
+      return "Acesso interno de administracao da plataforma.";
+    default:
+      return "Acesso gratuito para cuidado emocional pessoal.";
+  }
+}
+
+export function roleIncludedFeatures(role?: UserRole): string[] {
+  switch (role) {
+    case "PSYCHOLOGIST":
+      return [
+        "Pacientes autorizados por consentimento",
+        "Resumos emocionais autorizados",
+        "Evolucao emocional autorizada",
+        "Alertas clinicos dentro do escopo do MVP"
+      ];
+    case "COMPANY":
+      return [
+        "Painel NR-1",
+        "Indicadores agregados",
+        "Tendencias organizacionais",
+        "Alertas coletivos sem vigilancia individual"
+      ];
+    case "USER":
+      return [
+        "Orb central e presenca emocional",
+        "Conversar com Bergmann",
+        "Diario, humor, rotina leve e SOS",
+        "Compartilhamento controlado pelo usuario"
+      ];
+    case "SUPER_ADMIN":
+      return [
+        "Analise de contas pendentes",
+        "Aprovacao e rejeicao de perfis",
+        "Administracao interna sem acesso emocional indevido"
+      ];
+    default:
+      return [
+        "Conta validada antes do acesso sensivel",
+        "Vinculos e compartilhamento por consentimento",
+        "Base institucional preparada para proximos blocos",
+        "Sem acesso automatico a dados individuais"
+      ];
+  }
+}

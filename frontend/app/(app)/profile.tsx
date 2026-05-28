@@ -45,6 +45,11 @@ export default function Profile() {
         />
       ) : null}
       <Button
+        label="Plano e acesso"
+        tone="soft"
+        onPress={() => router.push("/(app)/plans" as never)}
+      />
+      <Button
         label="Sair"
         tone="soft"
         onPress={async () => {

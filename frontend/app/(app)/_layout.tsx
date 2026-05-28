@@ -30,6 +30,7 @@ export default function AppLayout() {
       <Stack.Screen name="professional-user-detail" options={{ title: "Detalhe autorizado" }} />
       <Stack.Screen name="nr1" options={{ title: "NR-1" }} />
       <Stack.Screen name="sos" options={{ title: "SOS emocional" }} />
+      <Stack.Screen name="plans" options={{ title: "Plano e acesso" }} />
       <Stack.Screen name="profile" options={{ title: "Perfil" }} />
       <Stack.Screen name="privacy" options={{ title: "Privacidade" }} />
       <Stack.Screen name="verification" options={{ title: "Conta em analise" }} />

@@ -50,6 +50,11 @@ export default function Verification() {
           onPress={() => router.push("/(app)/profile")}
         />
         <Button
+          label="Plano e acesso"
+          tone="soft"
+          onPress={() => router.push("/(app)/plans" as never)}
+        />
+        <Button
           label="Sair"
           tone="soft"
           onPress={async () => {
