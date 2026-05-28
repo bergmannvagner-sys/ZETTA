@@ -70,6 +70,12 @@ export type AuthorizedUserSummary = {
   journal_entries_visible: number;
 };
 
+export type AuthorizedUserDetail = AuthorizedUserSummary & {
+  latest_report: EmotionalReport | null;
+  recent_emotions: EmotionLog[];
+  journal_entries: JournalEntry[];
+};
+
 export type NR1Report = {
   participant_count: number;
   suppressed: boolean;
@@ -162,6 +168,10 @@ export async function createMyEmotionalReport(): Promise<EmotionalReport> {
 
 export async function listAuthorizedUsers(): Promise<AuthorizedUserSummary[]> {
   return apiRequest<AuthorizedUserSummary[]>("/professional/authorized-users");
+}
+
+export async function getAuthorizedUserDetail(userId: string): Promise<AuthorizedUserDetail> {
+  return apiRequest<AuthorizedUserDetail>(`/professional/authorized-users/${userId}`);
 }
 
 export async function getNR1Report(): Promise<NR1Report> {

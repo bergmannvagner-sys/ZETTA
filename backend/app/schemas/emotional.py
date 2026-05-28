@@ -97,6 +97,12 @@ class AuthorizedUserSummary(BaseModel):
     journal_entries_visible: int
 
 
+class AuthorizedUserDetail(AuthorizedUserSummary):
+    latest_report: EmotionalReportResponse | None = None
+    recent_emotions: list[EmotionLogResponse] = Field(default_factory=list)
+    journal_entries: list[JournalEntryResponse] = Field(default_factory=list)
+
+
 class NR1ReportResponse(BaseModel):
     participant_count: int
     suppressed: bool

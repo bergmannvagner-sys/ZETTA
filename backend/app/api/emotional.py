@@ -20,6 +20,7 @@ from app.models.emotional import (
 from app.models.privacy import AuditAction
 from app.models.user import User, UserRole
 from app.schemas.emotional import (
+    AuthorizedUserDetail,
     AuthorizedUserSummary,
     EmotionLogCreate,
     EmotionLogResponse,
@@ -118,6 +119,18 @@ def _active_consents_for_target(db: Session, target: User) -> list[UserSharingCo
             UserSharingConsent.revoked_at.is_(None),
         )
         .all()
+    )
+
+
+def _active_consent_for_target_owner(db: Session, target: User, owner_user_id: str) -> UserSharingConsent | None:
+    return (
+        db.query(UserSharingConsent)
+        .filter(
+            UserSharingConsent.target_user_id == target.id,
+            UserSharingConsent.owner_user_id == owner_user_id,
+            UserSharingConsent.revoked_at.is_(None),
+        )
+        .first()
     )
 
 
@@ -403,6 +416,79 @@ def list_authorized_users_for_professional(
             )
         )
     return result
+
+
+@router.get("/professional/authorized-users/{owner_user_id}", response_model=AuthorizedUserDetail)
+def get_authorized_user_detail_for_professional(
+    owner_user_id: str,
+    user: Annotated[User, Depends(require_roles(UserRole.PSYCHOLOGIST))],
+    db: Session = Depends(get_db),
+) -> AuthorizedUserDetail:
+    consent = _active_consent_for_target_owner(db, user, owner_user_id)
+    if not consent:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Authorized user not found")
+    categories = _categories(consent)
+    logs = (
+        db.query(EmotionLog)
+        .filter(EmotionLog.user_id == consent.owner_user_id)
+        .order_by(EmotionLog.created_at.desc())
+        .limit(14)
+        .all()
+    )
+    latest_mood = logs[0].mood if logs and SharingCategory.MOOD in categories else None
+    average_intensity = (
+        round(mean(log.intensity for log in logs), 2)
+        if logs and SharingCategory.TRENDS in categories
+        else None
+    )
+    latest_report = None
+    if SharingCategory.AI_SUMMARY in categories:
+        report = (
+            db.query(EmotionalReport)
+            .filter(EmotionalReport.user_id == consent.owner_user_id)
+            .order_by(EmotionalReport.created_at.desc())
+            .first()
+        )
+        if report:
+            latest_report = EmotionalReportResponse(
+                id=report.id,
+                summary=report.summary,
+                risk_level=report.risk_level,
+                metadata=_json_dict(report.metadata_json),
+                created_at=report.created_at,
+            )
+    recent_emotions = (
+        [_serialize_emotion(log) for log in logs[:10]]
+        if not consent.summary_only and (SharingCategory.MOOD in categories or SharingCategory.TRENDS in categories)
+        else []
+    )
+    journal_entries = (
+        [
+            _serialize_journal(entry)
+            for entry in (
+                db.query(JournalEntry)
+                .filter(JournalEntry.user_id == consent.owner_user_id)
+                .order_by(JournalEntry.created_at.desc())
+                .limit(10)
+                .all()
+            )
+        ]
+        if not consent.summary_only and SharingCategory.JOURNAL in categories
+        else []
+    )
+    return AuthorizedUserDetail(
+        user_id=consent.owner.id,
+        full_name=consent.owner.full_name,
+        email=consent.owner.email,
+        categories=categories,
+        summary_only=consent.summary_only,
+        latest_mood=latest_mood,
+        average_intensity=average_intensity,
+        journal_entries_visible=len(journal_entries),
+        latest_report=latest_report,
+        recent_emotions=recent_emotions,
+        journal_entries=journal_entries,
+    )
 
 
 @router.get("/nr1/report", response_model=NR1ReportResponse)

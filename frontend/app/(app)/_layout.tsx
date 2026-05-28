@@ -26,6 +26,7 @@ export default function AppLayout() {
       <Stack.Screen name="sharing" options={{ title: "Compartilhamento" }} />
       <Stack.Screen name="emotional-report" options={{ title: "Relatorio emocional" }} />
       <Stack.Screen name="professional-users" options={{ title: "Acompanhamento" }} />
+      <Stack.Screen name="professional-user-detail" options={{ title: "Detalhe autorizado" }} />
       <Stack.Screen name="nr1" options={{ title: "NR-1" }} />
       <Stack.Screen name="sos" options={{ title: "SOS emocional" }} />
       <Stack.Screen name="profile" options={{ title: "Perfil" }} />

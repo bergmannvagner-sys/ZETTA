@@ -1,8 +1,9 @@
+import { router } from "expo-router";
 import { useQuery } from "@tanstack/react-query";
 import { Text, View } from "react-native";
 
 import { Screen } from "@/components/screen";
-import { Card, ErrorText } from "@/components/ui";
+import { Button, Card, ErrorText } from "@/components/ui";
 import { AuthorizedUserSummary, listAuthorizedUsers } from "@/lib/emotional";
 
 export default function ProfessionalUsers() {
@@ -43,6 +44,16 @@ export default function ProfessionalUsers() {
                 Entradas de diario autorizadas: {item.journal_entries_visible}
               </Text>
             ) : null}
+            <Button
+              label="Ver acompanhamento"
+              tone="soft"
+              onPress={() =>
+                router.push({
+                  pathname: "/(app)/professional-user-detail" as never,
+                  params: { userId: item.user_id }
+                })
+              }
+            />
           </Card>
         ))}
         {users.data?.length === 0 ? (

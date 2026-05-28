@@ -450,6 +450,40 @@ def test_emotional_journal_sharing_and_nr1_privacy_boundaries() -> None:
     assert authorized_payload[0]["average_intensity"] == 8.0
     assert authorized_payload[0]["journal_entries_visible"] == 0
 
+    summary_detail = client.get(
+        f"/professional/authorized-users/{authorized_payload[0]['user_id']}",
+        headers=psychologist_headers,
+    )
+    assert summary_detail.status_code == 200
+    assert summary_detail.json()["latest_mood"] == "ansioso"
+    assert summary_detail.json()["average_intensity"] == 8.0
+    assert summary_detail.json()["journal_entries"] == []
+    assert summary_detail.json()["recent_emotions"] == []
+    assert summary_detail.json()["latest_report"] is None
+
+    detailed_professional_consent = client.post(
+        "/sharing/consents",
+        json={
+            "target_identifier": psychologist_code.json()["connection_code"],
+            "categories": ["MOOD", "TRENDS", "JOURNAL", "AI_SUMMARY"],
+            "summary_only": False,
+        },
+        headers=user_headers,
+    )
+    assert detailed_professional_consent.status_code == 201
+
+    detailed_view = client.get(
+        f"/professional/authorized-users/{authorized_payload[0]['user_id']}",
+        headers=psychologist_headers,
+    )
+    assert detailed_view.status_code == 200
+    detailed_payload = detailed_view.json()
+    assert detailed_payload["latest_report"]["risk_level"] == "ELEVATED"
+    assert len(detailed_payload["journal_entries"]) == 1
+    assert detailed_payload["journal_entries"][0]["content"] == "Hoje fiquei ansioso, mas consegui pedir ajuda."
+    assert len(detailed_payload["recent_emotions"]) == 1
+    assert detailed_payload["recent_emotions"][0]["mood"] == "ansioso"
+
     company_consent = client.post(
         "/sharing/consents",
         json={
