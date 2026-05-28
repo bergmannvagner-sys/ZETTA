@@ -30,6 +30,8 @@ class Settings(BaseSettings):
     smtp_from_email: str | None = None
     smtp_use_tls: bool = True
     password_reset_url: str = "bergmann://reset-password"
+    billing_webhooks_enabled: bool = False
+    billing_webhook_secret: str | None = None
 
     @property
     def cors_origin_list(self) -> list[str]:

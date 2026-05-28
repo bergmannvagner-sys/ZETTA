@@ -22,6 +22,7 @@ def test_public_openapi_contract_matches_mobile_mvp() -> None:
     assert "/auth/refresh" in paths
     assert "/auth/password-reset/request" in paths
     assert "/auth/password-reset/confirm" in paths
+    assert "/billing/webhook" in paths
     assert "/users/me" in paths
     assert "/privacy/consent" in paths
     assert "/chat/message" in paths

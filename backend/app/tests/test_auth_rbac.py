@@ -1,4 +1,5 @@
 import os
+import json
 
 os.environ.setdefault("DATABASE_URL", "sqlite+pysqlite:///:memory:")
 os.environ.setdefault("JWT_SECRET_KEY", "test-secret-key-with-more-than-thirty-two-chars")
@@ -12,7 +13,9 @@ from app.db.session import SessionLocal, engine
 from app.main import app
 from app.models.privacy import AuditAction, AuditLog
 from app.core.security import hash_password
+from app.core.config import get_settings
 from app.models.user import AccountStatus, SubscriptionStatus, User, UserRole
+from app.services.billing_webhooks import build_signature
 
 Base.metadata.create_all(bind=engine)
 client = TestClient(app)
@@ -747,3 +750,96 @@ def test_super_admin_can_manage_paid_subscription_status() -> None:
     assert company_payload["billing_provider"] == "STRIPE"
     assert company_payload["billing_customer_id"] == "cus_test_company"
     assert company_payload["billing_subscription_id"] == "sub_test_company"
+
+
+def test_billing_webhook_is_disabled_by_default() -> None:
+    settings = get_settings()
+    previous_enabled = settings.billing_webhooks_enabled
+    previous_secret = settings.billing_webhook_secret
+    settings.billing_webhooks_enabled = False
+    settings.billing_webhook_secret = "test-billing-secret"
+    try:
+        response = client.post("/billing/webhook", json={"event_id": "evt_disabled"})
+        assert response.status_code == 404
+        assert response.json()["detail"] == "Billing webhooks disabled"
+    finally:
+        settings.billing_webhooks_enabled = previous_enabled
+        settings.billing_webhook_secret = previous_secret
+
+
+def test_billing_webhook_requires_valid_signature_and_is_idempotent() -> None:
+    settings = get_settings()
+    previous_enabled = settings.billing_webhooks_enabled
+    previous_secret = settings.billing_webhook_secret
+    settings.billing_webhooks_enabled = True
+    settings.billing_webhook_secret = "test-billing-secret"
+    try:
+        db = SessionLocal()
+        try:
+            company = User(
+                email="webhook-company@example.com",
+                full_name="Empresa Webhook",
+                password_hash=hash_password("strongpass123"),
+                role=UserRole.COMPANY,
+                status=AccountStatus.ACTIVE,
+                subscription_plan="COMPANY_NR1",
+                subscription_status=SubscriptionStatus.PAST_DUE,
+                billing_provider="STRIPE",
+                billing_customer_id="cus_webhook_company",
+                billing_subscription_id="sub_webhook_company",
+            )
+            db.add(company)
+            db.commit()
+            company_id = company.id
+        finally:
+            db.close()
+
+        payload = {
+            "provider": "STRIPE",
+            "event_id": "evt_webhook_paid",
+            "external_status": "active",
+            "customer_id": "cus_webhook_company",
+            "subscription_id": "sub_webhook_company",
+        }
+        body = json.dumps(payload, separators=(",", ":")).encode("utf-8")
+
+        invalid = client.post(
+            "/billing/webhook",
+            content=body,
+            headers={"Content-Type": "application/json", "X-Bergmann-Billing-Signature": "invalid"},
+        )
+        assert invalid.status_code == 401
+
+        signature = build_signature(body, settings.billing_webhook_secret)
+        processed = client.post(
+            "/billing/webhook",
+            content=body,
+            headers={"Content-Type": "application/json", "X-Bergmann-Billing-Signature": signature},
+        )
+        assert processed.status_code == 200
+        assert processed.json()["status"] == "processed"
+        assert processed.json()["user_id"] == company_id
+        assert processed.json()["subscription_status"] == "ACTIVE"
+
+        duplicate = client.post(
+            "/billing/webhook",
+            content=body,
+            headers={"Content-Type": "application/json", "X-Bergmann-Billing-Signature": signature},
+        )
+        assert duplicate.status_code == 200
+        assert duplicate.json()["status"] == "duplicate"
+        assert duplicate.json()["duplicate"] is True
+
+        db = SessionLocal()
+        try:
+            company = db.get(User, company_id)
+            assert company is not None
+            assert company.subscription_status == SubscriptionStatus.ACTIVE
+            assert company.billing_last_event_id == "evt_webhook_paid"
+            actions = {entry.action for entry in db.query(AuditLog).all()}
+        finally:
+            db.close()
+        assert AuditAction.BILLING_WEBHOOK_PROCESSED in actions
+    finally:
+        settings.billing_webhooks_enabled = previous_enabled
+        settings.billing_webhook_secret = previous_secret
