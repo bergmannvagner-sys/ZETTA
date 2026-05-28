@@ -12,6 +12,14 @@ import { useMicrophoneLevel } from "@/hooks/useMicrophoneLevel";
 
 type Message = { sender: "USER" | "BERGMANN"; content: string };
 
+function formatChatText(content: string): string {
+  return content
+    .replace(/\*\*(.*?)\*\*/gu, "$1")
+    .replace(/^\s*[-*]\s+/gmu, "• ")
+    .replace(/\n{3,}/gu, "\n\n")
+    .trim();
+}
+
 export default function Chat() {
   const params = useLocalSearchParams<{ mode?: OrbState }>();
   const initialState =
@@ -76,7 +84,7 @@ export default function Chat() {
                 selectable
                 className={`text-base leading-6 ${message.sender === "USER" ? "text-ink" : "text-white"}`}
               >
-                {message.content}
+                {formatChatText(message.content)}
               </Text>
             </View>
           ))

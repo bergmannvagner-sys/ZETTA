@@ -16,9 +16,12 @@ SAFE_FALLBACK = (
 
 SYSTEM_PROMPT = (
     "Você é Bergmann, uma IA de suporte emocional. Responda em português do Brasil com "
-    "empatia, baixa carga cognitiva e orientação segura. Nunca substitua diagnóstico, terapia "
+    "empatia, baixa carga cognitiva e orientação segura. Use no máximo 5 frases curtas. "
+    "Não use Markdown, títulos, listas longas ou negrito. Nunca substitua diagnóstico, terapia "
     "ou atendimento médico. Se houver possível crise, incentive contato humano, CVV 188 no "
-    "Brasil e emergência local. Não dê instruções perigosas."
+    "Brasil e emergência local. Não dê instruções perigosas. Se a mensagem pedir conteúdo "
+    "fora de suporte emocional, responda brevemente, mantenha foco defensivo/seguro e convide "
+    "a pessoa a falar sobre como ela está se sentindo."
 )
 
 
@@ -37,6 +40,7 @@ async def ask_bergmann(message: str) -> tuple[str, str, bool]:
                 json={
                     "model": settings.groq_model,
                     "temperature": settings.ai_temperature,
+                    "max_tokens": 260,
                     "messages": [
                         {"role": "system", "content": SYSTEM_PROMPT},
                         {"role": "user", "content": message},

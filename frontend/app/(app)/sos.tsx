@@ -9,10 +9,14 @@ import { registerSOSEvent, SOS_OFFLINE_MESSAGE } from "@/lib/sos";
 
 export default function SOS() {
   const [confirmed, setConfirmed] = useState(false);
+  const [registered, setRegistered] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
   const mutation = useMutation({
     mutationFn: registerSOSEvent,
-    onSuccess: (data) => setMessage(data.safety_message),
+    onSuccess: (data) => {
+      setRegistered(true);
+      setMessage(data.safety_message);
+    },
     onError: () => setMessage(SOS_OFFLINE_MESSAGE)
   });
 
@@ -29,8 +33,22 @@ export default function SOS() {
         <Button label="Confirmar SOS" tone="danger" onPress={() => setConfirmed(true)} />
       ) : (
         <View className="gap-3">
-          <Button label="Registrar evento SOS" tone="danger" loading={mutation.isPending} onPress={() => mutation.mutate()} />
-          <Button label="Cancelar" tone="soft" onPress={() => setConfirmed(false)} />
+          <Button
+            label={registered ? "Evento SOS registrado" : "Registrar evento SOS"}
+            tone="danger"
+            loading={mutation.isPending}
+            disabled={registered}
+            onPress={() => mutation.mutate()}
+          />
+          <Button
+            label={registered ? "Voltar" : "Cancelar"}
+            tone="soft"
+            onPress={() => {
+              setConfirmed(false);
+              setRegistered(false);
+              setMessage(null);
+            }}
+          />
         </View>
       )}
       <ErrorText message={mutation.error?.message} />

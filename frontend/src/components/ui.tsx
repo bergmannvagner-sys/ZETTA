@@ -6,9 +6,11 @@ type ButtonProps = {
   onPress?: () => void;
   tone?: "primary" | "soft" | "danger";
   loading?: boolean;
+  disabled?: boolean;
 };
 
-export function Button({ label, onPress, tone = "primary", loading }: ButtonProps) {
+export function Button({ label, onPress, tone = "primary", loading, disabled }: ButtonProps) {
+  const isDisabled = loading || disabled;
   const color =
     tone === "danger"
       ? "border border-violet/40 bg-violet/25"
@@ -20,8 +22,8 @@ export function Button({ label, onPress, tone = "primary", loading }: ButtonProp
     <Pressable
       accessibilityRole="button"
       onPress={onPress}
-      disabled={loading}
-      className={`${color} min-h-14 items-center justify-center rounded-2xl px-5 ${loading ? "opacity-70" : ""}`}
+      disabled={isDisabled}
+      className={`${color} min-h-14 items-center justify-center rounded-2xl px-5 ${isDisabled ? "opacity-70" : ""}`}
     >
       {loading ? <ActivityIndicator /> : <Text className={`${text} text-base font-semibold`}>{label}</Text>}
     </Pressable>
