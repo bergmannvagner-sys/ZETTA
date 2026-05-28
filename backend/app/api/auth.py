@@ -76,7 +76,7 @@ def register(payload: RegisterRequest, db: Session = Depends(get_db)) -> AuthRes
         full_name=payload.full_name,
         password_hash=hash_password(payload.password),
         role=payload.role,
-        status=AccountStatus.PENDING_VERIFICATION,
+        status=AccountStatus.ACTIVE if payload.role == UserRole.USER else AccountStatus.PENDING_VERIFICATION,
         document_type=document_type,
         document_value_hash=document_hash,
         document_last4=document_last4(normalized_document),

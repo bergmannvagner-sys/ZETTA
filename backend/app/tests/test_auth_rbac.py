@@ -62,7 +62,7 @@ def test_user_register_login_and_access_common_area() -> None:
     )
     assert register.status_code == 201
     data = register.json()
-    assert data["user"]["status"] == "PENDING_VERIFICATION"
+    assert data["user"]["status"] == "ACTIVE"
     assert data["user"]["document_type"] == "CPF"
     assert data["user"]["document_last4"] == "4725"
 
@@ -87,7 +87,7 @@ def test_registration_accepts_deployed_client_field_aliases() -> None:
     data = response.json()
     assert data["user"]["full_name"] == "Pessoa Alias"
     assert data["user"]["role"] == "USER"
-    assert data["user"]["status"] == "PENDING_VERIFICATION"
+    assert data["user"]["status"] == "ACTIVE"
 
 
 def test_registration_blocks_duplicate_document() -> None:
@@ -194,15 +194,6 @@ def test_e2e_user_consent_chat_sos_and_audit() -> None:
     )
     assert register.status_code == 201
     data = register.json()
-    db = SessionLocal()
-    try:
-        user = db.get(User, data["user"]["id"])
-        assert user is not None
-        user.status = AccountStatus.ACTIVE
-        db.commit()
-    finally:
-        db.close()
-
     access_token = data["access_token"]
     headers = {"Authorization": f"Bearer {access_token}"}
 

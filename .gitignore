@@ -11,8 +11,11 @@ node_modules/
 .expo/
 dist/
 build/
+.next/
 coverage/
 *.log
+*.apk
+*.aab
 .DS_Store
 android/
 ios/
