@@ -3,14 +3,21 @@ import { Pressable, Text, View } from "react-native";
 
 import { AnimatedOrb } from "@/components/orb/AnimatedOrb";
 import { Screen } from "@/components/screen";
-import { Button } from "@/components/ui";
-import { hasPaidAccess } from "@/lib/billing";
+import { Button, Card } from "@/components/ui";
+import {
+  hasPaidAccess,
+  isPaidRole,
+  paidAccessActionLabel,
+  paidAccessBlockMessage,
+  paidAccessBlockTitle
+} from "@/lib/billing";
 import { useAuthStore } from "@/store/auth-store";
 
 export default function Home() {
   const user = useAuthStore((state) => state.user);
   const firstName = user?.full_name.split(" ")[0] ?? "voce";
   const paidAccess = hasPaidAccess(user);
+  const paidRoleBlocked = isPaidRole(user?.role) && !paidAccess;
   const careLinks = [
     { label: "Humor", route: "/(app)/mood" },
     { label: "Diario", route: "/(app)/journal" },
@@ -57,6 +64,18 @@ export default function Home() {
           Respire por um minuto. Beba agua. Escolha uma pequena tarefa possivel.
         </Text>
       </View>
+      {paidRoleBlocked ? (
+        <Card>
+          <Text className="text-sm font-semibold tracking-[3px] text-mint">ACESSO COMERCIAL</Text>
+          <Text className="text-base font-semibold text-white">{paidAccessBlockTitle(user)}</Text>
+          <Text className="text-sm leading-5 text-muted">{paidAccessBlockMessage(user)}</Text>
+          <Button
+            label={paidAccessActionLabel(user)}
+            tone="soft"
+            onPress={() => router.push("/(app)/plans" as never)}
+          />
+        </Card>
+      ) : null}
       {user?.role === "USER" ? (
         <View className="gap-3">
           <Text className="text-sm font-semibold text-muted">Cuidado continuo</Text>

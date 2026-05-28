@@ -2,17 +2,22 @@ import { useQuery } from "@tanstack/react-query";
 import { useLocalSearchParams } from "expo-router";
 import { Text, View } from "react-native";
 
+import { PaidAccessGate } from "@/components/paid-access-gate";
 import { Screen } from "@/components/screen";
 import { Card, ErrorText } from "@/components/ui";
+import { hasPaidAccess } from "@/lib/billing";
 import { EmotionLog, getAuthorizedUserDetail, JournalEntry } from "@/lib/emotional";
+import { useAuthStore } from "@/store/auth-store";
 
 export default function ProfessionalUserDetail() {
+  const user = useAuthStore((state) => state.user);
+  const paidAccess = hasPaidAccess(user);
   const params = useLocalSearchParams<{ userId?: string }>();
   const userId = typeof params.userId === "string" ? params.userId : "";
   const detail = useQuery({
     queryKey: ["professional-authorized-user", userId],
     queryFn: () => getAuthorizedUserDetail(userId),
-    enabled: Boolean(userId)
+    enabled: Boolean(userId) && user?.role === "PSYCHOLOGIST" && paidAccess
   });
 
   const data = detail.data;
@@ -27,11 +32,15 @@ export default function ProfessionalUserDetail() {
         </Text>
       </View>
 
-      {detail.isLoading ? <Text className="text-muted">Carregando acompanhamento...</Text> : null}
-      <ErrorText message={detail.error?.message} />
+      {user?.role !== "PSYCHOLOGIST" || !paidAccess ? (
+        <PaidAccessGate user={user} resourceLabel="Detalhe de acompanhamento autorizado" />
+      ) : (
+        <>
+          {detail.isLoading ? <Text className="text-muted">Carregando acompanhamento...</Text> : null}
+          <ErrorText message={detail.error?.message} />
 
-      {data ? (
-        <View className="gap-3">
+          {data ? (
+            <View className="gap-3">
           <Card>
             <Text selectable className="text-base font-semibold text-white">{data.full_name}</Text>
             <Text selectable className="text-sm text-muted">{data.email}</Text>
@@ -87,8 +96,10 @@ export default function ProfessionalUserDetail() {
               ))}
             </View>
           ) : null}
-        </View>
-      ) : null}
+            </View>
+          ) : null}
+        </>
+      )}
     </Screen>
   );
 }

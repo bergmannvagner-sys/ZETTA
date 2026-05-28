@@ -47,6 +47,49 @@ export function isPaidRole(role?: UserRole): boolean {
   return role ? paidRoles.has(role) : false;
 }
 
+export function paidAccessBlockTitle(user?: AuthUser | null): string {
+  if (!user) return "Acesso nao carregado";
+  if (!isPaidRole(user.role) || hasPaidAccess(user)) return "Acesso liberado";
+  if (user.status === "REJECTED" || user.subscription_status === "CANCELED") {
+    return "Acesso comercial indisponivel";
+  }
+  if (user.subscription_status === "PAST_DUE") {
+    return "Pagamento pendente";
+  }
+  if (user.status === "PENDING_VERIFICATION" || user.subscription_status === "PENDING") {
+    return "Conta em analise";
+  }
+  return "Plano comercial necessario";
+}
+
+export function paidAccessBlockMessage(user?: AuthUser | null): string {
+  if (!user) return "Entre novamente para carregar seu plano e status.";
+  if (!isPaidRole(user.role)) {
+    return "O usuario comum usa o Bergmann gratuitamente.";
+  }
+  if (hasPaidAccess(user)) {
+    return "Seu acesso comercial esta liberado, sempre limitado por consentimento e permissao.";
+  }
+  if (user.status === "PENDING_VERIFICATION" || user.subscription_status === "PENDING") {
+    return "Seu perfil precisa passar por validacao antes de liberar recursos comerciais. Isso protege usuarios, empresas e profissionais contra perfis falsos.";
+  }
+  if (user.subscription_status === "PAST_DUE") {
+    return "Os recursos comerciais ficam pausados enquanto o pagamento estiver pendente. Os dados autorizados seguem protegidos.";
+  }
+  if (user.status === "REJECTED" || user.subscription_status === "CANCELED") {
+    return "Este perfil comercial nao esta liberado para acessar recursos pagos. Fale com a administracao para revisar a situacao.";
+  }
+  return "Este recurso exige perfil validado e assinatura em teste ou ativa.";
+}
+
+export function paidAccessActionLabel(user?: AuthUser | null): string {
+  if (!user) return "Ver acesso";
+  if (user.status === "PENDING_VERIFICATION" || user.subscription_status === "PENDING") return "Acompanhar analise";
+  if (user.subscription_status === "PAST_DUE") return "Ver pendencia";
+  if (user.subscription_status === "CANCELED" || user.status === "REJECTED") return "Revisar acesso";
+  return "Ver plano";
+}
+
 export function roleAccessDescription(role?: UserRole): string {
   switch (role) {
     case "PSYCHOLOGIST":

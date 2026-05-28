@@ -1,9 +1,12 @@
 import { useQuery } from "@tanstack/react-query";
 import { Text, View } from "react-native";
 
+import { PaidAccessGate } from "@/components/paid-access-gate";
 import { Screen } from "@/components/screen";
 import { Card, ErrorText } from "@/components/ui";
+import { hasPaidAccess } from "@/lib/billing";
 import { getNR1Report } from "@/lib/emotional";
+import { useAuthStore } from "@/store/auth-store";
 
 function Indicator({ label, value }: { label: string; value: unknown }) {
   if (value === null || value === undefined) return null;
@@ -16,7 +19,13 @@ function Indicator({ label, value }: { label: string; value: unknown }) {
 }
 
 export default function NR1() {
-  const report = useQuery({ queryKey: ["nr1-report"], queryFn: getNR1Report });
+  const user = useAuthStore((state) => state.user);
+  const paidAccess = hasPaidAccess(user);
+  const report = useQuery({
+    queryKey: ["nr1-report"],
+    queryFn: getNR1Report,
+    enabled: user?.role === "COMPANY" && paidAccess
+  });
   const indicators = report.data?.indicators ?? {};
 
   return (
@@ -29,11 +38,15 @@ export default function NR1() {
         </Text>
       </View>
 
-      {report.isLoading ? <Text className="text-muted">Gerando visao agregada...</Text> : null}
-      <ErrorText message={report.error?.message} />
-
-      {report.data ? (
+      {user?.role !== "COMPANY" || !paidAccess ? (
+        <PaidAccessGate user={user} resourceLabel="Painel NR-1 e indicadores organizacionais" />
+      ) : (
         <>
+          {report.isLoading ? <Text className="text-muted">Gerando visao agregada...</Text> : null}
+          <ErrorText message={report.error?.message} />
+
+          {report.data ? (
+            <>
           <Card>
             <Text selectable className="text-base leading-6 text-white">{report.data.summary}</Text>
             <Text selectable className="text-sm text-muted">
@@ -52,13 +65,15 @@ export default function NR1() {
             <Indicator label="Registros considerados" value={indicators.logs_count} />
             <Indicator label="Minimo para exibir" value={indicators.minimum_participants} />
           </View>
+            </>
+          ) : (
+            <Card>
+              <Text className="text-base leading-6 text-muted">
+                A visao NR-1 aparece quando houver autorizacoes suficientes para preservar anonimato.
+              </Text>
+            </Card>
+          )}
         </>
-      ) : (
-        <Card>
-          <Text className="text-base leading-6 text-muted">
-            A visao NR-1 aparece quando houver autorizacoes suficientes para preservar anonimato.
-          </Text>
-        </Card>
       )}
     </Screen>
   );
