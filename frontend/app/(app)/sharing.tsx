@@ -1,4 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { router } from "expo-router";
 import { useState } from "react";
 import { Pressable, Text, View } from "react-native";
 
@@ -64,6 +65,7 @@ export default function Sharing() {
           Voce decide o que compartilhar, com quem e pode revogar quando quiser.
         </Text>
       </View>
+      <Button label="Meus vinculos" tone="soft" onPress={() => router.push("/(app)/my-connections" as never)} />
 
       <Field
         label="Email ou codigo de conexao"
@@ -145,7 +147,7 @@ export default function Sharing() {
       />
 
       <View className="gap-3">
-        <Text className="text-base font-semibold text-white">Autorizacoes</Text>
+        <Text className="text-base font-semibold text-white">Autorizacoes recentes</Text>
         {consents.isLoading ? <Text className="text-muted">Carregando...</Text> : null}
         <ErrorText message={consents.error?.message ?? revoke.error?.message} />
         {consents.data?.map((consent: SharingConsent) => (
