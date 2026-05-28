@@ -53,13 +53,17 @@ export function getDocumentRequirement(role: UserRole): {
   label: string;
   helper: string;
   maxLength: number;
+  maxDigits?: number;
+  example: string;
 } {
   if (organizationRoles.has(role)) {
     return {
       type: "CNPJ",
       label: "CNPJ",
       helper: "Usado para reduzir contas falsas e liberar a conta apos validacao.",
-      maxLength: 18
+      maxLength: 18,
+      maxDigits: 14,
+      example: "00.000.000/0000-00"
     };
   }
   if (role === "PSYCHOLOGIST") {
@@ -67,14 +71,17 @@ export function getDocumentRequirement(role: UserRole): {
       type: "CRP",
       label: "CRP",
       helper: "O registro profissional sera validado antes de liberar recursos clinicos.",
-      maxLength: 32
+      maxLength: 32,
+      example: "06/123456"
     };
   }
   return {
     type: "CPF",
     label: "CPF",
     helper: "Usado apenas para validacao da conta e prevencao de duplicidade.",
-    maxLength: 14
+    maxLength: 14,
+    maxDigits: 11,
+    example: "000.000.000-00"
   };
 }
 
@@ -127,6 +134,14 @@ export function formatDocumentInput(role: UserRole, value: string): string {
   if (requirement.type === "CPF") return formatCpf(value);
   if (requirement.type === "CNPJ") return formatCnpj(value);
   return value.trimStart().replace(/\s+/gu, "").toUpperCase().slice(0, requirement.maxLength);
+}
+
+export function getDocumentProgress(role: UserRole, value: string): string {
+  const requirement = getDocumentRequirement(role);
+  if (requirement.type === "CRP") {
+    return `${normalizeDocumentForValidation(role, value).length}/${requirement.maxLength} caracteres`;
+  }
+  return `${onlyDigits(value, requirement.maxDigits ?? 0).length}/${requirement.maxDigits} numeros`;
 }
 
 export function validateRegisterInput(input: RegisterInput): string | null {

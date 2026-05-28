@@ -5,7 +5,7 @@ import { Pressable, Text, View } from "react-native";
 
 import { Screen } from "@/components/screen";
 import { Button, ErrorText, Field } from "@/components/ui";
-import { formatDocumentInput, getDocumentRequirement, register } from "@/lib/auth";
+import { formatDocumentInput, getDocumentProgress, getDocumentRequirement, register } from "@/lib/auth";
 import { useAuthStore } from "@/store/auth-store";
 import { UserRole } from "@/types/auth";
 
@@ -61,7 +61,12 @@ export default function Register() {
           keyboardType={documentRequirement.type === "CRP" ? "default" : "number-pad"}
           maxLength={documentRequirement.maxLength}
         />
-        <Text className="text-xs leading-5 text-muted">{documentRequirement.helper}</Text>
+        <View className="gap-1">
+          <Text className="text-xs leading-5 text-muted">{documentRequirement.helper}</Text>
+          <Text className="text-xs leading-5 text-muted">
+            Formato: {documentRequirement.example} - {getDocumentProgress(role, document)}
+          </Text>
+        </View>
       </View>
       <Pressable
         accessibilityRole="checkbox"
