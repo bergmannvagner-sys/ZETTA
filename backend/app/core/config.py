@@ -1,0 +1,38 @@
+from functools import lru_cache
+
+from pydantic import Field
+from pydantic_settings import BaseSettings, SettingsConfigDict
+
+
+class Settings(BaseSettings):
+    model_config = SettingsConfigDict(env_file=".env", env_file_encoding="utf-8", extra="ignore")
+
+    app_env: str = "development"
+    app_name: str = "ZETTA Bergmann API"
+    api_v1_prefix: str = ""
+    database_url: str
+    redis_url: str = "redis://localhost:6379/0"
+    jwt_secret_key: str = Field(min_length=32)
+    jwt_algorithm: str = "HS256"
+    access_token_expire_minutes: int = 15
+    refresh_token_expire_days: int = 30
+    cors_origins: str = ""
+    groq_api_key: str | None = None
+    groq_model: str = "llama-3.3-70b-versatile"
+    ai_temperature: float = 0.7
+    ai_timeout_seconds: int = 30
+    super_admin_email: str = "admin@bergmann.local"
+    super_admin_password: str | None = None
+
+    @property
+    def cors_origin_list(self) -> list[str]:
+        return [origin.strip() for origin in self.cors_origins.split(",") if origin.strip()]
+
+    @property
+    def is_production(self) -> bool:
+        return self.app_env.lower() == "production"
+
+
+@lru_cache
+def get_settings() -> Settings:
+    return Settings()

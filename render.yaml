@@ -1,0 +1,47 @@
+services:
+  - type: web
+    name: zetta-bergmann
+    runtime: docker
+    plan: free
+    rootDir: backend
+    healthCheckPath: /health
+    autoDeploy: true
+    envVars:
+      - key: APP_ENV
+        value: production
+      - key: DATABASE_URL
+        fromDatabase:
+          name: zetta-bergmann-postgres
+          property: connectionString
+      - key: REDIS_URL
+        fromService:
+          type: redis
+          name: zetta-bergmann-redis
+          property: connectionString
+      - key: JWT_SECRET_KEY
+        sync: false
+      - key: CORS_ORIGINS
+        sync: false
+      - key: GROQ_API_KEY
+        sync: false
+      - key: GROQ_MODEL
+        value: llama-3.3-70b-versatile
+      - key: AI_TEMPERATURE
+        value: "0.7"
+      - key: AI_TIMEOUT_SECONDS
+        value: "30"
+      - key: SUPER_ADMIN_EMAIL
+        sync: false
+      - key: SUPER_ADMIN_PASSWORD
+        sync: false
+
+  - type: redis
+    name: zetta-bergmann-redis
+    plan: free
+    ipAllowList: []
+
+databases:
+  - name: zetta-bergmann-postgres
+    databaseName: bergmann
+    user: bergmann
+    plan: free
