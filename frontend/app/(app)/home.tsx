@@ -1,5 +1,5 @@
 import { Link, router } from "expo-router";
-import { Text, View } from "react-native";
+import { Pressable, Text, View } from "react-native";
 
 import { AnimatedOrb } from "@/components/orb/AnimatedOrb";
 import { Screen } from "@/components/screen";
@@ -9,6 +9,12 @@ import { useAuthStore } from "@/store/auth-store";
 export default function Home() {
   const user = useAuthStore((state) => state.user);
   const firstName = user?.full_name.split(" ")[0] ?? "voce";
+  const careLinks = [
+    { label: "Humor", route: "/(app)/mood" },
+    { label: "Diario", route: "/(app)/journal" },
+    { label: "Compartilhar", route: "/(app)/sharing" },
+    { label: "Resumo", route: "/(app)/emotional-report" }
+  ];
 
   return (
     <Screen>
@@ -43,6 +49,23 @@ export default function Home() {
           Respire por um minuto. Beba agua. Escolha uma pequena tarefa possivel.
         </Text>
       </View>
+      {user?.role === "USER" ? (
+        <View className="gap-3">
+          <Text className="text-sm font-semibold text-muted">Cuidado continuo</Text>
+          <View className="flex-row flex-wrap justify-center gap-3">
+            {careLinks.map((item) => (
+              <Pressable
+                key={item.route}
+                accessibilityRole="button"
+                onPress={() => router.push(item.route as never)}
+                className="rounded-full border border-white/10 bg-surface/55 px-4 py-3"
+              >
+                <Text className="text-mint">{item.label}</Text>
+              </Pressable>
+            ))}
+          </View>
+        </View>
+      ) : null}
       <View className="flex-row justify-center gap-8 pt-2">
         <Link href="/(app)/privacy" className="text-mint">Privacidade</Link>
         <Link href="/(app)/profile" className="text-mint">Perfil</Link>

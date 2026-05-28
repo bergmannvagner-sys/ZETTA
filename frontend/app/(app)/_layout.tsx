@@ -20,6 +20,10 @@ export default function AppLayout() {
     >
       <Stack.Screen name="home" options={{ title: "Bergmann" }} />
       <Stack.Screen name="chat" options={{ title: "Conversar" }} />
+      <Stack.Screen name="journal" options={{ title: "Diario emocional" }} />
+      <Stack.Screen name="mood" options={{ title: "Humor" }} />
+      <Stack.Screen name="sharing" options={{ title: "Compartilhamento" }} />
+      <Stack.Screen name="emotional-report" options={{ title: "Relatorio emocional" }} />
       <Stack.Screen name="sos" options={{ title: "SOS emocional" }} />
       <Stack.Screen name="profile" options={{ title: "Perfil" }} />
       <Stack.Screen name="privacy" options={{ title: "Privacidade" }} />

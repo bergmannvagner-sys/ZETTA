@@ -32,7 +32,15 @@ export function Button({ label, onPress, tone = "primary", loading, disabled }: 
 
 type FieldProps = Pick<
   TextInputProps,
-  "autoCapitalize" | "keyboardType" | "maxLength" | "placeholder" | "secureTextEntry" | "textContentType"
+  | "autoCapitalize"
+  | "keyboardType"
+  | "maxLength"
+  | "multiline"
+  | "numberOfLines"
+  | "placeholder"
+  | "secureTextEntry"
+  | "textAlignVertical"
+  | "textContentType"
 > & {
   label: string;
   value: string;
@@ -48,7 +56,9 @@ export function Field(props: FieldProps) {
         autoCapitalize="none"
         autoCorrect={false}
         placeholderTextColor="#6F8281"
-        className="min-h-14 rounded-2xl border border-white/10 bg-surface/85 px-4 text-base text-white"
+        className={`rounded-2xl border border-white/10 bg-surface/85 px-4 text-base text-white ${
+          props.multiline ? "min-h-32 py-4" : "min-h-14"
+        }`}
       />
     </View>
   );
