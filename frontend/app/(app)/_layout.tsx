@@ -1,9 +1,25 @@
 import { Redirect, Stack } from "expo-router";
+import { useEffect } from "react";
+import { useQuery } from "@tanstack/react-query";
 
+import { getMe } from "@/lib/auth";
 import { useAuthStore } from "@/store/auth-store";
 
 export default function AppLayout() {
-  const { hydrated, user } = useAuthStore();
+  const { accessToken, hydrated, updateUser, user } = useAuthStore();
+  const me = useQuery({
+    queryKey: ["users-me"],
+    queryFn: getMe,
+    enabled: hydrated && Boolean(accessToken) && Boolean(user),
+    retry: false,
+    staleTime: 30000
+  });
+
+  useEffect(() => {
+    if (me.data && JSON.stringify(me.data) !== JSON.stringify(user)) {
+      void updateUser(me.data);
+    }
+  }, [me.data, updateUser, user]);
 
   if (hydrated && !user) {
     return <Redirect href="/(auth)/login" />;

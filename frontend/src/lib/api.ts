@@ -8,6 +8,8 @@ const NETWORK_ERROR_MESSAGE =
   "Nao foi possivel conectar ao servidor. Verifique sua internet ou a configuracao da API.";
 const MISSING_API_URL_MESSAGE = "API nao configurada. Defina EXPO_PUBLIC_API_URL no frontend/.env";
 const EXPIRED_SESSION_MESSAGE = "Sessao expirada. Entre novamente.";
+const PAID_PLAN_REQUIRED_MESSAGE =
+  "Plano pago pendente. Verifique Plano e acesso ou fale com o administrador para liberar o recurso.";
 
 export class ApiError extends Error {
   status: number;
@@ -172,6 +174,9 @@ export async function apiRequest<T>(path: string, options: ApiOptions = {}): Pro
       if (response.status === 401 && shouldUseAuth && token && isInvalidTokenMessage(data)) {
         await useAuthStore.getState().clearSession();
         throw new ApiError(EXPIRED_SESSION_MESSAGE, response.status, validation);
+      }
+      if (response.status === 402) {
+        throw new ApiError(PAID_PLAN_REQUIRED_MESSAGE, response.status, validation);
       }
       throw new ApiError(getApiErrorMessage(data), response.status, validation);
     }

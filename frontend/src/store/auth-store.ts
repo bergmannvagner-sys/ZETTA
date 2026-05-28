@@ -9,6 +9,7 @@ type AuthState = {
   user: AuthUser | null;
   hydrated: boolean;
   setSession: (accessToken: string, refreshToken: string, user: AuthUser) => Promise<void>;
+  updateUser: (user: AuthUser) => Promise<void>;
   clearSession: () => Promise<void>;
   hydrate: () => Promise<void>;
 };
@@ -27,6 +28,10 @@ export const useAuthStore = create<AuthState>((set) => ({
     await SecureStore.setItemAsync(REFRESH_KEY, refreshToken);
     await SecureStore.setItemAsync(USER_KEY, JSON.stringify(user));
     set({ accessToken, refreshToken, user });
+  },
+  updateUser: async (user) => {
+    await SecureStore.setItemAsync(USER_KEY, JSON.stringify(user));
+    set({ user });
   },
   clearSession: async () => {
     await SecureStore.deleteItemAsync(ACCESS_KEY);
