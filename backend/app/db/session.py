@@ -13,7 +13,7 @@ if settings.database_url.startswith("sqlite") and ":memory:" in settings.databas
         "connect_args": {"check_same_thread": False},
         "poolclass": StaticPool,
     }
-engine = create_engine(settings.database_url, **engine_kwargs)
+engine = create_engine(settings.sqlalchemy_database_url, **engine_kwargs)
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 
 
