@@ -1,5 +1,5 @@
 import { useMutation } from "@tanstack/react-query";
-import { Href, Link } from "expo-router";
+import { Href, Link, router } from "expo-router";
 import { useState } from "react";
 import { Text, View } from "react-native";
 
@@ -32,13 +32,30 @@ export default function ForgotPassword() {
             Verifique tambem spam ou lixo eletronico. O codigo expira em 30 minutos.
           </Text>
           {mutation.data.reset_token ? (
-            <Text selectable className="text-xs leading-5 text-muted">
-              Codigo de desenvolvimento: {mutation.data.reset_token}
-            </Text>
+            <View className="gap-3">
+              <Text selectable className="text-xs leading-5 text-muted">
+                Codigo de desenvolvimento: {mutation.data.reset_token}
+              </Text>
+              <Button
+                label="Usar este codigo"
+                tone="soft"
+                onPress={() =>
+                  router.push({
+                    pathname: "/(auth)/reset-password",
+                    params: { token: mutation.data?.reset_token ?? "" }
+                  })
+                }
+              />
+            </View>
           ) : null}
         </View>
       ) : null}
-      <Button label="Enviar instrucoes" loading={mutation.isPending} onPress={() => mutation.mutate(email)} />
+      <Button
+        label="Enviar instrucoes"
+        loading={mutation.isPending}
+        disabled={email.trim().length < 5}
+        onPress={() => mutation.mutate(email)}
+      />
       <Link href={"/(auth)/reset-password" as Href} className="text-center text-sm font-semibold text-mint">
         Ja tenho um codigo
       </Link>

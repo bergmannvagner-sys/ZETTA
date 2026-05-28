@@ -11,6 +11,8 @@ export default function ResetPassword() {
   const params = useLocalSearchParams<{ token?: string }>();
   const [token, setToken] = useState("");
   const [newPassword, setNewPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
+  const [localError, setLocalError] = useState<string | null>(null);
 
   useEffect(() => {
     if (params.token && !token) {
@@ -36,11 +38,28 @@ export default function ResetPassword() {
       </View>
       <Field label="Codigo" value={token} onChangeText={setToken} />
       <Field label="Nova senha" value={newPassword} onChangeText={setNewPassword} secureTextEntry />
-      <ErrorText message={mutation.error?.message} />
+      <Field
+        label="Confirmar nova senha"
+        value={confirmPassword}
+        onChangeText={setConfirmPassword}
+        secureTextEntry
+      />
+      <Text className="text-xs leading-5 text-muted">
+        A senha deve ter pelo menos 8 caracteres. Ao confirmar, sessoes antigas serao encerradas.
+      </Text>
+      <ErrorText message={localError ?? mutation.error?.message} />
       <Button
         label="Atualizar senha"
         loading={mutation.isPending}
-        onPress={() => mutation.mutate({ token, newPassword })}
+        disabled={token.trim().length < 32 || newPassword.length < 8 || confirmPassword.length < 8}
+        onPress={() => {
+          setLocalError(null);
+          if (newPassword !== confirmPassword) {
+            setLocalError("As senhas nao conferem.");
+            return;
+          }
+          mutation.mutate({ token, newPassword });
+        }}
       />
       <Link href={"/(auth)/forgot-password" as Href} className="text-center text-sm font-semibold text-mint">
         Solicitar novo codigo
