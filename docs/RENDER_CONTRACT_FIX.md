@@ -40,10 +40,9 @@ mas o backend correto e o deste repositorio.
 
 Use este caminho para manter a URL atual `https://zetta-bergmann.onrender.com`.
 
-O banco antigo do Render nao deve ser reaproveitado se ja contiver tabelas ou ENUMs de outro contrato
-(`users`, `userrole`, `/chat`, `/sos/events/opened`). Para este MVP limpo, crie um PostgreSQL novo e
-aponte `DATABASE_URL` para ele. Nao use `alembic stamp` nem migrations tolerantes a tabelas legadas
-sem antes auditar o schema, porque isso pode deixar o backend novo rodando sobre tabelas incompativeis.
+Se a decisao operacional for reaproveitar um banco existente, as migrations de bootstrap verificam
+tabelas, indices e tipos antes de criar. Isso evita falha por objetos ja existentes, mas ainda exige
+validacao funcional apos o deploy, porque colunas antigas podem ter contratos diferentes.
 
 1. Publique este repositorio em GitHub, GitLab ou Bitbucket.
 2. No Render, abra o servico existente `zetta-bergmann`.
@@ -56,7 +55,7 @@ sem antes auditar o schema, porque isso pode deixar o backend novo rodando sobre
    - Health Check Path: `/health`
 4. Configure as variaveis:
    - `APP_ENV=production`
-   - `DATABASE_URL` apontando para um PostgreSQL novo/limpo
+   - `DATABASE_URL` apontando para o PostgreSQL escolhido
    - `REDIS_URL`
    - `JWT_SECRET_KEY`
    - `CORS_ORIGINS`
