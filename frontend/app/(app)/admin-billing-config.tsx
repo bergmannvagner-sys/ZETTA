@@ -6,7 +6,7 @@ import { Screen } from "@/components/screen";
 import { Card, ErrorText } from "@/components/ui";
 import { apiRequest } from "@/lib/api";
 import { useAuthStore } from "@/store/auth-store";
-import { BillingConfig } from "@/types/auth";
+import { BillingConfig, PaymentAdapterCapability } from "@/types/auth";
 
 const checklist = [
   "Criar conta real no Stripe ou Mercado Pago.",
@@ -81,6 +81,37 @@ export default function AdminBillingConfig() {
                 </View>
               ))}
             </View>
+          </Card>
+
+          <Card>
+            <Text className="text-base font-semibold text-white">Adapters locais</Text>
+            <Text className="text-sm leading-5 text-muted">
+              Checkout real ainda desativado. Estes pontos ficam prontos para ligar o provider com
+              validacao de assinatura, cliente e evento.
+            </Text>
+            {data.provider_capabilities.map((capability: PaymentAdapterCapability) => (
+              <View key={capability.provider} className="gap-2 rounded-2xl border border-white/10 bg-ink/60 p-4">
+                <View className="flex-row flex-wrap items-center gap-2">
+                  <Text className="text-base font-semibold text-white">{capability.provider}</Text>
+                  <StatusPill
+                    active={capability.checkout_enabled}
+                    label={capability.checkout_enabled ? "Checkout ativo" : "Sem checkout real"}
+                  />
+                </View>
+                <Text selectable className="text-xs leading-5 text-muted">
+                  Assinatura: {capability.webhook_signature_headers.join(", ") || "nao configurada"}
+                </Text>
+                <Text selectable className="text-xs leading-5 text-muted">
+                  Cliente: {capability.customer_reference_fields.join(", ")}
+                </Text>
+                <Text selectable className="text-xs leading-5 text-muted">
+                  Evento: {capability.event_reference_fields.join(", ")}
+                </Text>
+                {capability.activation_checkpoints.map((item: string) => (
+                  <Text key={item} className="text-xs leading-5 text-muted">- {item}</Text>
+                ))}
+              </View>
+            ))}
           </Card>
 
           <Card>

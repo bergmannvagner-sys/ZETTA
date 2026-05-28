@@ -21,6 +21,7 @@ from app.schemas.user import (
 from app.services.audit import write_audit_log
 from app.services.billing import approval_subscription_status_for_role
 from app.services.billing_webhooks import STATUS_MAP
+from app.services.payment_adapters import list_payment_adapter_capabilities
 from app.services.verification import build_verification_triage
 
 router = APIRouter(prefix="/admin", tags=["admin"])
@@ -146,6 +147,17 @@ def billing_config(
         status_mapping={external: internal.value for external, internal in sorted(STATUS_MAP.items())},
         secret_env_name="BILLING_WEBHOOK_SECRET",
         enabled_env_name="BILLING_WEBHOOKS_ENABLED",
+        provider_capabilities=[
+            {
+                "provider": capability.provider,
+                "checkout_enabled": capability.checkout_enabled,
+                "webhook_signature_headers": list(capability.webhook_signature_headers),
+                "customer_reference_fields": list(capability.customer_reference_fields),
+                "event_reference_fields": list(capability.event_reference_fields),
+                "activation_checkpoints": list(capability.activation_checkpoints),
+            }
+            for capability in list_payment_adapter_capabilities()
+        ],
     )
 
 

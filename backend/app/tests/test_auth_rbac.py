@@ -16,6 +16,7 @@ from app.core.security import hash_password
 from app.core.config import get_settings
 from app.models.user import AccountStatus, SubscriptionStatus, User, UserRole
 from app.services.billing_webhooks import build_signature
+from app.services.payment_adapters import PaymentProviderNotConfigured, get_payment_adapter
 
 Base.metadata.create_all(bind=engine)
 client = TestClient(app)
@@ -760,6 +761,50 @@ def test_super_admin_can_manage_paid_subscription_status() -> None:
     assert "STRIPE" in config_payload["supported_providers"]
     assert "MERCADO_PAGO" in config_payload["supported_providers"]
     assert "billing_webhook_secret" not in config_payload
+    stripe_config = next(
+        capability
+        for capability in config_payload["provider_capabilities"]
+        if capability["provider"] == "STRIPE"
+    )
+    mercado_pago_config = next(
+        capability
+        for capability in config_payload["provider_capabilities"]
+        if capability["provider"] == "MERCADO_PAGO"
+    )
+    assert stripe_config["checkout_enabled"] is False
+    assert "Stripe-Signature" in stripe_config["webhook_signature_headers"]
+    assert "customer" in stripe_config["customer_reference_fields"]
+    assert mercado_pago_config["checkout_enabled"] is False
+    assert "x-signature" in mercado_pago_config["webhook_signature_headers"]
+    assert "external_reference" in mercado_pago_config["customer_reference_fields"]
+
+
+def test_payment_provider_adapters_are_local_only_contracts() -> None:
+    stripe = get_payment_adapter("stripe")
+    assert stripe.extract_event_reference({"id": "evt_123"}) == "evt_123"
+    assert (
+        stripe.extract_customer_reference(
+            {"data": {"object": {"customer": "cus_123", "subscription": "sub_123"}}}
+        )
+        == "cus_123"
+    )
+    assert (
+        stripe.extract_subscription_reference(
+            {"data": {"object": {"customer": "cus_123", "subscription": "sub_123"}}}
+        )
+        == "sub_123"
+    )
+
+    mercado_pago = get_payment_adapter("MERCADO_PAGO")
+    assert mercado_pago.extract_event_reference({"data": {"id": "mp_evt_123"}}) == "mp_evt_123"
+    assert mercado_pago.extract_customer_reference({"external_reference": "user_123"}) == "user_123"
+
+    try:
+        stripe.verify_provider_signature(raw_body=b"{}", headers={}, secret=None)
+    except PaymentProviderNotConfigured:
+        pass
+    else:
+        raise AssertionError("Provider signature validation must stay disabled until integration")
 
 
 def test_billing_webhook_is_disabled_by_default() -> None:

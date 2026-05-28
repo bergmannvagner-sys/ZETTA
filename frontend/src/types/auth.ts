@@ -76,4 +76,14 @@ export type BillingConfig = {
   status_mapping: Record<string, string>;
   secret_env_name: string;
   enabled_env_name: string;
+  provider_capabilities: PaymentAdapterCapability[];
+};
+
+export type PaymentAdapterCapability = {
+  provider: string;
+  checkout_enabled: boolean;
+  webhook_signature_headers: string[];
+  customer_reference_fields: string[];
+  event_reference_fields: string[];
+  activation_checkpoints: string[];
 };

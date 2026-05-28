@@ -63,6 +63,15 @@ class AuditLogResponse(BaseModel):
     created_at: str
 
 
+class PaymentAdapterCapabilityResponse(BaseModel):
+    provider: str
+    checkout_enabled: bool
+    webhook_signature_headers: list[str]
+    customer_reference_fields: list[str]
+    event_reference_fields: list[str]
+    activation_checkpoints: list[str]
+
+
 class BillingConfigResponse(BaseModel):
     webhooks_enabled: bool
     webhook_secret_configured: bool
@@ -72,6 +81,7 @@ class BillingConfigResponse(BaseModel):
     status_mapping: dict[str, str]
     secret_env_name: str
     enabled_env_name: str
+    provider_capabilities: list[PaymentAdapterCapabilityResponse]
 
 
 class ModerationAccountRequest(BaseModel):
