@@ -5,7 +5,7 @@ import { useAuthStore } from "@/store/auth-store";
 const extra = Constants.expoConfig?.extra as { apiUrl?: string } | undefined;
 
 const NETWORK_ERROR_MESSAGE =
-  "Não foi possível conectar ao servidor. Verifique sua internet ou a configuração da API.";
+  "Nao foi possivel conectar ao servidor. Verifique sua internet ou a configuracao da API.";
 const MISSING_API_URL_MESSAGE = "API nao configurada. Defina EXPO_PUBLIC_API_URL no frontend/.env";
 const EXPIRED_SESSION_MESSAGE = "Sessao expirada. Entre novamente.";
 

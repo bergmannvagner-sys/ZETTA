@@ -25,6 +25,10 @@ class PendingAccountResponse(BaseModel):
     document_last4: str | None = None
     subscription_plan: SubscriptionPlan
     subscription_status: SubscriptionStatus
+    verification_score: int
+    verification_recommendation: str
+    verification_signals: list[str]
+    verification_warnings: list[str]
     created_at: str
 
 

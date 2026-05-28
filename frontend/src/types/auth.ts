@@ -41,4 +41,8 @@ export type AuthResponse = {
 
 export type PendingAccount = AuthUser & {
   created_at: string;
+  verification_score: number;
+  verification_recommendation: "REVIEW_APPROVE" | "REVIEW_REQUIRED" | "HIGH_RISK_REVIEW" | string;
+  verification_signals: string[];
+  verification_warnings: string[];
 };

@@ -28,6 +28,24 @@ function pendingPath(search: string, role?: UserRole): string {
   return `/admin/pending-accounts${query ? `?${query}` : ""}`;
 }
 
+function recommendationLabel(value: string): string {
+  if (value === "REVIEW_APPROVE") return "Triagem favoravel";
+  if (value === "HIGH_RISK_REVIEW") return "Revisao rigorosa";
+  return "Revisao manual";
+}
+
+function recommendationClass(value: string): string {
+  if (value === "REVIEW_APPROVE") return "border-mint/25 bg-mint/10";
+  if (value === "HIGH_RISK_REVIEW") return "border-rose/25 bg-rose/10";
+  return "border-violet/25 bg-violet/10";
+}
+
+function recommendationTextClass(value: string): string {
+  if (value === "REVIEW_APPROVE") return "text-mint";
+  if (value === "HIGH_RISK_REVIEW") return "text-rose";
+  return "text-lilac";
+}
+
 export default function AdminPendingAccounts() {
   const user = useAuthStore((state) => state.user);
   const [search, setSearch] = useState("");
@@ -93,8 +111,27 @@ export default function AdminPendingAccounts() {
             <Text className="text-sm text-muted">
               Assinatura apos decisao: {subscriptionStatusLabel(account.subscription_status)}
             </Text>
+            <View className={`rounded-xl border px-3 py-2 ${recommendationClass(account.verification_recommendation)}`}>
+              <Text className={`text-sm font-semibold ${recommendationTextClass(account.verification_recommendation)}`}>
+                {recommendationLabel(account.verification_recommendation)} - {account.verification_score}/100
+              </Text>
+            </View>
+            <View className="gap-1">
+              <Text className="text-xs font-semibold text-muted">Sinais da triagem</Text>
+              {account.verification_signals.map((signal) => (
+                <Text key={signal} className="text-xs leading-5 text-muted">
+                  - {signal}
+                </Text>
+              ))}
+              {account.verification_warnings.map((warning) => (
+                <Text key={warning} className="text-xs leading-5 text-lilac">
+                  - {warning}
+                </Text>
+              ))}
+            </View>
             <Text className="text-xs leading-5 text-muted">
-              Ao aprovar, perfis pagos entram como teste liberado ate integracao com pagamento real.
+              A triagem ajuda a revisao, mas nao aprova sozinha. Ao aprovar, perfis pagos entram
+              como teste liberado ate integracao com pagamento real.
             </Text>
             <View className="gap-2">
               <Button
