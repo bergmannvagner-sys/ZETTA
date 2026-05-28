@@ -1,4 +1,5 @@
 import logging
+import re
 
 import httpx
 
@@ -25,6 +26,17 @@ SYSTEM_PROMPT = (
 )
 
 
+def _clean_answer(answer: str) -> str:
+    cleaned = re.sub(r"\*\*(.*?)\*\*", r"\1", answer)
+    cleaned = re.sub(r"(?m)^\s*\d+\.\s+", "- ", cleaned)
+    cleaned = re.sub(r"\n{3,}", "\n\n", cleaned).strip()
+    sentences = re.split(r"(?<=[.!?])\s+", cleaned)
+    limited = " ".join(sentence for sentence in sentences[:5] if sentence).strip()
+    if len(limited) > 700:
+        limited = limited[:697].rstrip() + "..."
+    return limited or SAFE_FALLBACK
+
+
 async def ask_bergmann(message: str) -> tuple[str, str, bool]:
     settings = get_settings()
     risk_level = classify_risk(message)
@@ -49,7 +61,7 @@ async def ask_bergmann(message: str) -> tuple[str, str, bool]:
             )
             response.raise_for_status()
             data = response.json()
-            answer = data["choices"][0]["message"]["content"].strip()
+            answer = _clean_answer(data["choices"][0]["message"]["content"].strip())
             return answer, risk_level, False
     except Exception as exc:
         logger.error("Groq request failed: %s", exc.__class__.__name__)
