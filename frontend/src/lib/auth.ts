@@ -52,25 +52,29 @@ export function getDocumentRequirement(role: UserRole): {
   type: "CPF" | "CNPJ" | "CRP";
   label: string;
   helper: string;
+  maxLength: number;
 } {
   if (organizationRoles.has(role)) {
     return {
       type: "CNPJ",
       label: "CNPJ",
-      helper: "Usado para reduzir contas falsas e liberar a conta apos validacao."
+      helper: "Usado para reduzir contas falsas e liberar a conta apos validacao.",
+      maxLength: 18
     };
   }
   if (role === "PSYCHOLOGIST") {
     return {
       type: "CRP",
       label: "CRP",
-      helper: "O registro profissional sera validado antes de liberar recursos clinicos."
+      helper: "O registro profissional sera validado antes de liberar recursos clinicos.",
+      maxLength: 32
     };
   }
   return {
     type: "CPF",
     label: "CPF",
-    helper: "Usado apenas para validacao da conta e prevencao de duplicidade."
+    helper: "Usado apenas para validacao da conta e prevencao de duplicidade.",
+    maxLength: 14
   };
 }
 
@@ -80,6 +84,49 @@ function normalizeDocumentForValidation(role: UserRole, document: string): strin
     return document.trim().replace(/\s+/gu, "").toUpperCase();
   }
   return document.replace(/\D/gu, "");
+}
+
+export function normalizeDocument(role: UserRole, document: string): string {
+  return normalizeDocumentForValidation(role, document);
+}
+
+function onlyDigits(value: string, maxDigits: number): string {
+  return value.replace(/\D/gu, "").slice(0, maxDigits);
+}
+
+function formatCpf(value: string): string {
+  const digits = onlyDigits(value, 11);
+  const first = digits.slice(0, 3);
+  const second = digits.slice(3, 6);
+  const third = digits.slice(6, 9);
+  const check = digits.slice(9, 11);
+
+  if (digits.length <= 3) return first;
+  if (digits.length <= 6) return `${first}.${second}`;
+  if (digits.length <= 9) return `${first}.${second}.${third}`;
+  return `${first}.${second}.${third}-${check}`;
+}
+
+function formatCnpj(value: string): string {
+  const digits = onlyDigits(value, 14);
+  const first = digits.slice(0, 2);
+  const second = digits.slice(2, 5);
+  const third = digits.slice(5, 8);
+  const branch = digits.slice(8, 12);
+  const check = digits.slice(12, 14);
+
+  if (digits.length <= 2) return first;
+  if (digits.length <= 5) return `${first}.${second}`;
+  if (digits.length <= 8) return `${first}.${second}.${third}`;
+  if (digits.length <= 12) return `${first}.${second}.${third}/${branch}`;
+  return `${first}.${second}.${third}/${branch}-${check}`;
+}
+
+export function formatDocumentInput(role: UserRole, value: string): string {
+  const requirement = getDocumentRequirement(role);
+  if (requirement.type === "CPF") return formatCpf(value);
+  if (requirement.type === "CNPJ") return formatCnpj(value);
+  return value.trimStart().replace(/\s+/gu, "").toUpperCase().slice(0, requirement.maxLength);
 }
 
 export function validateRegisterInput(input: RegisterInput): string | null {
@@ -168,7 +215,7 @@ export async function register(input: RegisterInput): Promise<AuthResponse> {
     name: fullName,
     role: input.role,
     accountType: input.role,
-    document: input.document.trim(),
+    document: normalizeDocument(input.role, input.document),
     lgpdConsent: input.lgpdConsent
   };
 

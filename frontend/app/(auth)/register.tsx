@@ -5,7 +5,7 @@ import { Pressable, Text, View } from "react-native";
 
 import { Screen } from "@/components/screen";
 import { Button, ErrorText, Field } from "@/components/ui";
-import { getDocumentRequirement, register } from "@/lib/auth";
+import { formatDocumentInput, getDocumentRequirement, register } from "@/lib/auth";
 import { useAuthStore } from "@/store/auth-store";
 import { UserRole } from "@/types/auth";
 
@@ -31,6 +31,9 @@ export default function Register() {
   const [document, setDocument] = useState("");
   const [lgpdConsent, setLgpdConsent] = useState(false);
   const documentRequirement = getDocumentRequirement(role);
+  const updateDocument = (value: string) => {
+    setDocument(formatDocumentInput(role, value));
+  };
 
   const mutation = useMutation({
     mutationFn: register,
@@ -54,8 +57,9 @@ export default function Register() {
         <Field
           label={documentRequirement.label}
           value={document}
-          onChangeText={setDocument}
+          onChangeText={updateDocument}
           keyboardType={documentRequirement.type === "CRP" ? "default" : "number-pad"}
+          maxLength={documentRequirement.maxLength}
         />
         <Text className="text-xs leading-5 text-muted">{documentRequirement.helper}</Text>
       </View>

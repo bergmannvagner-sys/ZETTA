@@ -1,5 +1,5 @@
 import { ReactNode } from "react";
-import { ActivityIndicator, Pressable, Text, TextInput, View } from "react-native";
+import { ActivityIndicator, Pressable, Text, TextInput, TextInputProps, View } from "react-native";
 
 type ButtonProps = {
   label: string;
@@ -30,14 +30,16 @@ export function Button({ label, onPress, tone = "primary", loading, disabled }: 
   );
 }
 
-export function Field(props: {
+type FieldProps = Pick<
+  TextInputProps,
+  "autoCapitalize" | "keyboardType" | "maxLength" | "placeholder" | "secureTextEntry" | "textContentType"
+> & {
   label: string;
   value: string;
   onChangeText: (value: string) => void;
-  placeholder?: string;
-  secureTextEntry?: boolean;
-  keyboardType?: "default" | "email-address" | "number-pad";
-}) {
+};
+
+export function Field(props: FieldProps) {
   return (
     <View className="gap-2">
       <Text className="text-sm font-medium text-muted">{props.label}</Text>
@@ -60,7 +62,7 @@ export function ErrorText({ message }: { message?: string }) {
   if (!message) return null;
   const friendlyMessage =
     message === "Network request failed"
-      ? "Nao foi possivel conectar ao servidor. Verifique sua internet ou a URL da API."
+      ? "Não foi possível conectar ao servidor. Verifique sua internet ou a configuração da API."
       : message;
   return (
     <View className="rounded-xl border border-rose/20 bg-rose/10 px-4 py-3">
