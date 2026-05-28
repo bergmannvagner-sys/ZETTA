@@ -9,6 +9,7 @@ from collections.abc import Sequence
 
 import sqlalchemy as sa
 from alembic import op
+from sqlalchemy.dialects import postgresql
 
 revision: str = "202605270001"
 down_revision: str | None = None
@@ -16,7 +17,7 @@ branch_labels: str | Sequence[str] | None = None
 depends_on: str | Sequence[str] | None = None
 
 
-user_role = sa.Enum(
+user_role = postgresql.ENUM(
     "USER",
     "PSYCHOLOGIST",
     "COMPANY",
@@ -27,8 +28,15 @@ user_role = sa.Enum(
     "PUBLIC_INSTITUTION",
     "SUPER_ADMIN",
     name="userrole",
+    create_type=False,
 )
-account_status = sa.Enum("ACTIVE", "PENDING_VERIFICATION", "REJECTED", name="accountstatus")
+account_status = postgresql.ENUM(
+    "ACTIVE",
+    "PENDING_VERIFICATION",
+    "REJECTED",
+    name="accountstatus",
+    create_type=False,
+)
 
 
 def upgrade() -> None:

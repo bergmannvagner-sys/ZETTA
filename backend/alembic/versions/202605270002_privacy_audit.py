@@ -9,6 +9,7 @@ from collections.abc import Sequence
 
 import sqlalchemy as sa
 from alembic import op
+from sqlalchemy.dialects import postgresql
 
 revision: str = "202605270002"
 down_revision: str | None = "202605270001"
@@ -16,8 +17,8 @@ branch_labels: str | Sequence[str] | None = None
 depends_on: str | Sequence[str] | None = None
 
 
-consent_type = sa.Enum("LGPD_MVP", name="consenttype")
-audit_action = sa.Enum(
+consent_type = postgresql.ENUM("LGPD_MVP", name="consenttype", create_type=False)
+audit_action = postgresql.ENUM(
     "USER_REGISTERED",
     "USER_LOGIN",
     "TOKEN_REFRESHED",
@@ -27,6 +28,7 @@ audit_action = sa.Enum(
     "ACCOUNT_APPROVED",
     "ACCOUNT_REJECTED",
     name="auditaction",
+    create_type=False,
 )
 
 
