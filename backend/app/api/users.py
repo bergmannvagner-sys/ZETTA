@@ -17,4 +17,6 @@ def me(user: Annotated[User, Depends(get_current_user)]) -> UserMeResponse:
         full_name=user.full_name,
         role=user.role,
         status=user.status,
+        document_type=user.document_type,
+        document_last4=user.document_last4,
     )

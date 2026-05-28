@@ -17,6 +17,8 @@ export type AuthUser = {
   full_name: string;
   role: UserRole;
   status: AccountStatus;
+  document_type?: "CPF" | "CNPJ" | "CRP" | string | null;
+  document_last4?: string | null;
 };
 
 export type AuthResponse = {

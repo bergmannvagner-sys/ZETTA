@@ -35,6 +35,9 @@ class User(Base):
     password_hash: Mapped[str] = mapped_column(String(255), nullable=False)
     role: Mapped[UserRole] = mapped_column(Enum(UserRole), nullable=False)
     status: Mapped[AccountStatus] = mapped_column(Enum(AccountStatus), nullable=False)
+    document_type: Mapped[str | None] = mapped_column(String(24), nullable=True)
+    document_value_hash: Mapped[str | None] = mapped_column(String(64), unique=True, index=True, nullable=True)
+    document_last4: Mapped[str | None] = mapped_column(String(8), nullable=True)
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), default=lambda: datetime.now(UTC), nullable=False
     )
@@ -46,6 +49,7 @@ class User(Base):
     )
 
     refresh_tokens = relationship("RefreshToken", back_populates="user", cascade="all, delete-orphan")
+    password_reset_tokens = relationship("PasswordResetToken", back_populates="user", cascade="all, delete-orphan")
     chat_sessions = relationship("ChatSession", back_populates="user", cascade="all, delete-orphan")
     sos_events = relationship("SOSEvent", back_populates="user", cascade="all, delete-orphan")
     consent_records = relationship("ConsentRecord", back_populates="user", cascade="all, delete-orphan")

@@ -1,3 +1,5 @@
+import os
+
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 
@@ -9,13 +11,29 @@ from app.schemas.auth import (
     AuthResponse,
     AuthUserResponse,
     LoginRequest,
+    PasswordResetConfirmRequest,
+    PasswordResetConfirmResponse,
+    PasswordResetRequest,
+    PasswordResetRequestResponse,
     PUBLIC_REGISTER_ROLES,
     RefreshRequest,
     RegisterRequest,
     TokenResponse,
 )
-from app.services.tokens import issue_token_pair, rotate_refresh_token
+from app.services.identity import (
+    document_last4,
+    document_lookup_hash,
+    document_type_for_role,
+    normalize_document,
+    validate_document,
+)
 from app.services.audit import write_audit_log
+from app.services.tokens import (
+    issue_password_reset_token,
+    issue_token_pair,
+    reset_password_with_token,
+    rotate_refresh_token,
+)
 
 router = APIRouter(prefix="/auth", tags=["auth"])
 
@@ -27,6 +45,8 @@ def _auth_user(user: User) -> AuthUserResponse:
         full_name=user.full_name,
         role=user.role,
         status=user.status,
+        document_type=user.document_type,
+        document_last4=user.document_last4,
     )
 
 
@@ -40,15 +60,25 @@ def register(payload: RegisterRequest, db: Session = Depends(get_db)) -> AuthRes
     if existing:
         raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="Email already registered")
 
-    account_status = (
-        AccountStatus.ACTIVE if payload.role == UserRole.USER else AccountStatus.PENDING_VERIFICATION
-    )
+    document_type = document_type_for_role(payload.role)
+    normalized_document = normalize_document(document_type, payload.document)
+    document_error = validate_document(document_type, normalized_document)
+    if document_error:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=document_error)
+    document_hash = document_lookup_hash(document_type, normalized_document)
+    existing_document = db.query(User).filter(User.document_value_hash == document_hash).first()
+    if existing_document:
+        raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="Document already registered")
+
     user = User(
         email=payload.email.lower(),
         full_name=payload.full_name,
         password_hash=hash_password(payload.password),
         role=payload.role,
-        status=account_status,
+        status=AccountStatus.PENDING_VERIFICATION,
+        document_type=document_type,
+        document_value_hash=document_hash,
+        document_last4=document_last4(normalized_document),
     )
     db.add(user)
     db.flush()
@@ -59,7 +89,7 @@ def register(payload: RegisterRequest, db: Session = Depends(get_db)) -> AuthRes
         target_user_id=user.id,
         resource_type="user",
         resource_id=user.id,
-        metadata={"role": user.role.value, "status": user.status.value},
+        metadata={"role": user.role.value, "status": user.status.value, "document_type": document_type},
     )
     db.commit()
     db.refresh(user)
@@ -99,3 +129,26 @@ def refresh(payload: RefreshRequest, db: Session = Depends(get_db)) -> TokenResp
     )
     db.commit()
     return TokenResponse(access_token=access_token, refresh_token=refresh_token)
+
+
+@router.post("/password-reset/request", response_model=PasswordResetRequestResponse)
+def request_password_reset(
+    payload: PasswordResetRequest,
+    db: Session = Depends(get_db),
+) -> PasswordResetRequestResponse:
+    user = db.query(User).filter(User.email == payload.email.lower()).first()
+    reset_token = issue_password_reset_token(db, user) if user else None
+    message = "Se o email existir, enviaremos instrucoes para recuperar sua senha."
+    if reset_token and os.getenv("APP_ENV", "").lower() == "test":
+        return PasswordResetRequestResponse(message=message, reset_token=reset_token)
+    return PasswordResetRequestResponse(message=message)
+
+
+@router.post("/password-reset/confirm", response_model=PasswordResetConfirmResponse)
+def confirm_password_reset(
+    payload: PasswordResetConfirmRequest,
+    db: Session = Depends(get_db),
+) -> PasswordResetConfirmResponse:
+    if not reset_password_with_token(db, payload.token, payload.new_password):
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid or expired reset token")
+    return PasswordResetConfirmResponse(message="Senha atualizada com seguranca.")

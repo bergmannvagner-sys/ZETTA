@@ -39,6 +39,11 @@ export default function AdminPendingAccounts() {
             <Text className="text-lg font-semibold text-white">{account.full_name}</Text>
             <Text selectable className="text-sm text-muted">{account.email}</Text>
             <Text className="text-sm text-muted">{account.role}</Text>
+            {account.document_type && account.document_last4 ? (
+              <Text className="text-sm text-muted">
+                {account.document_type} final {account.document_last4}
+              </Text>
+            ) : null}
             <View className="gap-2">
               <Button
                 label="Aprovar"

@@ -5,7 +5,7 @@ import { Pressable, Text, View } from "react-native";
 
 import { Screen } from "@/components/screen";
 import { Button, ErrorText, Field } from "@/components/ui";
-import { register } from "@/lib/auth";
+import { getDocumentRequirement, register } from "@/lib/auth";
 import { useAuthStore } from "@/store/auth-store";
 import { UserRole } from "@/types/auth";
 
@@ -28,7 +28,9 @@ export default function Register() {
   const [fullName, setFullName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [document, setDocument] = useState("");
   const [lgpdConsent, setLgpdConsent] = useState(false);
+  const documentRequirement = getDocumentRequirement(role);
 
   const mutation = useMutation({
     mutationFn: register,
@@ -48,6 +50,15 @@ export default function Register() {
       <Field label="Nome completo" value={fullName} onChangeText={setFullName} />
       <Field label="Email" value={email} onChangeText={setEmail} keyboardType="email-address" />
       <Field label="Senha" value={password} onChangeText={setPassword} secureTextEntry />
+      <View className="gap-2">
+        <Field
+          label={documentRequirement.label}
+          value={document}
+          onChangeText={setDocument}
+          keyboardType={documentRequirement.type === "CRP" ? "default" : "number-pad"}
+        />
+        <Text className="text-xs leading-5 text-muted">{documentRequirement.helper}</Text>
+      </View>
       <Pressable
         accessibilityRole="checkbox"
         accessibilityState={{ checked: lgpdConsent }}
@@ -70,7 +81,7 @@ export default function Register() {
         label="Criar conta"
         loading={mutation.isPending}
         onPress={() =>
-          mutation.mutate({ email, full_name: fullName, password, role, lgpdConsent })
+          mutation.mutate({ email, full_name: fullName, password, role, document, lgpdConsent })
         }
       />
     </Screen>

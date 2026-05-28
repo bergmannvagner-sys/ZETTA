@@ -1,5 +1,5 @@
 import { useMutation } from "@tanstack/react-query";
-import { Link, router } from "expo-router";
+import { Href, Link, router } from "expo-router";
 import { useState } from "react";
 import { Text, View } from "react-native";
 
@@ -40,6 +40,9 @@ export default function Login() {
       />
       <Link href="/(auth)/select-role" className="text-center text-base font-semibold text-mint">
         Criar conta
+      </Link>
+      <Link href={"/(auth)/forgot-password" as Href} className="text-center text-sm font-semibold text-muted">
+        Esqueci minha senha
       </Link>
     </Screen>
   );

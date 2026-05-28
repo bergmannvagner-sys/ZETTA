@@ -22,6 +22,7 @@ class RegisterRequest(BaseModel):
     full_name: str = Field(min_length=2, max_length=160)
     password: str = Field(min_length=8, max_length=128)
     role: UserRole
+    document: str = Field(min_length=4, max_length=32)
     lgpdConsent: bool = False
 
     @model_validator(mode="before")
@@ -34,6 +35,11 @@ class RegisterRequest(BaseModel):
             normalized["full_name"] = normalized["name"]
         if "role" not in normalized and "accountType" in normalized:
             normalized["role"] = normalized["accountType"]
+        if "document" not in normalized:
+            for alias in ("cpf", "cnpj", "crp", "verificationDocument"):
+                if alias in normalized:
+                    normalized["document"] = normalized[alias]
+                    break
         return normalized
 
 
@@ -44,6 +50,24 @@ class LoginRequest(BaseModel):
 
 class RefreshRequest(BaseModel):
     refresh_token: str = Field(min_length=32)
+
+
+class PasswordResetRequest(BaseModel):
+    email: EmailStr
+
+
+class PasswordResetConfirmRequest(BaseModel):
+    token: str = Field(min_length=32, max_length=256)
+    new_password: str = Field(min_length=8, max_length=128)
+
+
+class PasswordResetRequestResponse(BaseModel):
+    message: str
+    reset_token: str | None = None
+
+
+class PasswordResetConfirmResponse(BaseModel):
+    message: str
 
 
 class TokenResponse(BaseModel):
@@ -58,6 +82,8 @@ class AuthUserResponse(BaseModel):
     full_name: str
     role: UserRole
     status: AccountStatus
+    document_type: str | None = None
+    document_last4: str | None = None
 
 
 class AuthResponse(TokenResponse):

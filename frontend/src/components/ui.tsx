@@ -36,7 +36,7 @@ export function Field(props: {
   onChangeText: (value: string) => void;
   placeholder?: string;
   secureTextEntry?: boolean;
-  keyboardType?: "default" | "email-address";
+  keyboardType?: "default" | "email-address" | "number-pad";
 }) {
   return (
     <View className="gap-2">
