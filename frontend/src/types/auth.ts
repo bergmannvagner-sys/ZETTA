@@ -48,6 +48,11 @@ export type PendingAccount = AuthUser & {
 };
 
 export type SubscriptionAccount = AuthUser & {
+  billing_provider?: string | null;
+  billing_customer_id?: string | null;
+  billing_subscription_id?: string | null;
+  billing_last_event_id?: string | null;
+  billing_last_event_at?: string | null;
   created_at: string;
 };
 

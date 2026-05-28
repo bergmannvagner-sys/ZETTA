@@ -721,3 +721,29 @@ def test_super_admin_can_manage_paid_subscription_status() -> None:
     )
     assert active.status_code == 200
     assert active.json()["status"] == "ACTIVE"
+
+    reference = client.post(
+        "/admin/billing-reference",
+        json={
+            "user_id": company_id,
+            "billing_provider": "STRIPE",
+            "billing_customer_id": "cus_test_company",
+            "billing_subscription_id": "sub_test_company",
+            "billing_last_event_id": "evt_test_company",
+            "reason": "external provider linked",
+        },
+        headers=admin_headers,
+    )
+    assert reference.status_code == 200
+    assert reference.json()["billing_provider"] == "STRIPE"
+    assert reference.json()["billing_customer_id"] == "cus_test_company"
+    assert reference.json()["billing_subscription_id"] == "sub_test_company"
+
+    listed_after_reference = client.get("/admin/subscriptions", headers=admin_headers)
+    assert listed_after_reference.status_code == 200
+    company_payload = next(
+        account for account in listed_after_reference.json() if account["email"] == "billing-company@example.com"
+    )
+    assert company_payload["billing_provider"] == "STRIPE"
+    assert company_payload["billing_customer_id"] == "cus_test_company"
+    assert company_payload["billing_subscription_id"] == "sub_test_company"

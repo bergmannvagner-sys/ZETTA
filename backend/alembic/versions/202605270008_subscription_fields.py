@@ -80,8 +80,9 @@ def upgrade() -> None:
         END
         """
     )
-    op.alter_column("bergmann_users", "subscription_plan", server_default=None)
-    op.alter_column("bergmann_users", "subscription_status", server_default=None)
+    if bind.dialect.name != "sqlite":
+        op.alter_column("bergmann_users", "subscription_plan", server_default=None)
+        op.alter_column("bergmann_users", "subscription_status", server_default=None)
 
 
 def downgrade() -> None:

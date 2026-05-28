@@ -28,12 +28,81 @@ const statusActions: Array<{ label: string; value: SubscriptionStatus; tone?: "p
   { label: "Cancelar", value: "CANCELED", tone: "danger" }
 ];
 
+const providerOptions = ["NONE", "STRIPE", "MERCADO_PAGO"] as const;
+type BillingProviderOption = (typeof providerOptions)[number];
+
 function subscriptionsPath(search: string, role?: UserRole): string {
   const params = new URLSearchParams();
   if (search.trim()) params.set("q", search.trim());
   if (role) params.set("role", role);
   const query = params.toString();
   return `/admin/subscriptions${query ? `?${query}` : ""}`;
+}
+
+function displayValue(value?: string | null): string {
+  return value?.trim() ? value : "Nao vinculado";
+}
+
+function BillingReferenceForm({ account }: { account: SubscriptionAccount }) {
+  const queryClient = useQueryClient();
+  const [provider, setProvider] = useState<BillingProviderOption>(
+    (account.billing_provider as BillingProviderOption | null) ?? "NONE"
+  );
+  const [customerId, setCustomerId] = useState(account.billing_customer_id ?? "");
+  const [subscriptionId, setSubscriptionId] = useState(account.billing_subscription_id ?? "");
+  const [lastEventId, setLastEventId] = useState(account.billing_last_event_id ?? "");
+  const updateReference = useMutation({
+    mutationFn: () =>
+      apiRequest("/admin/billing-reference", {
+        method: "POST",
+        body: JSON.stringify({
+          user_id: account.id,
+          billing_provider: provider,
+          billing_customer_id: customerId.trim() || null,
+          billing_subscription_id: subscriptionId.trim() || null,
+          billing_last_event_id: lastEventId.trim() || null,
+          reason: "billing provider reference update"
+        })
+      }),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["admin-subscriptions"] })
+  });
+
+  return (
+    <View className="gap-3 rounded-2xl border border-white/10 bg-ink/35 p-3">
+      <Text className="text-sm font-semibold text-white">Referencia externa futura</Text>
+      <Text className="text-xs leading-5 text-muted">
+        Apenas vincula IDs de Stripe ou Mercado Pago. Esta tela nao cria checkout e nao confirma pagamento.
+      </Text>
+      <View className="flex-row flex-wrap gap-2">
+        {providerOptions.map((option) => {
+          const selected = provider === option;
+          return (
+            <Pressable
+              key={option}
+              accessibilityRole="radio"
+              accessibilityState={{ checked: selected }}
+              className={`rounded-full border px-3 py-2 ${
+                selected ? "border-mint bg-mint" : "border-white/10 bg-surface/70"
+              }`}
+              onPress={() => setProvider(option)}
+            >
+              <Text className={`text-xs font-semibold ${selected ? "text-ink" : "text-white"}`}>{option}</Text>
+            </Pressable>
+          );
+        })}
+      </View>
+      <Field label="Customer ID externo" value={customerId} onChangeText={setCustomerId} maxLength={120} />
+      <Field label="Subscription ID externo" value={subscriptionId} onChangeText={setSubscriptionId} maxLength={120} />
+      <Field label="Ultimo evento webhook" value={lastEventId} onChangeText={setLastEventId} maxLength={160} />
+      <ErrorText message={updateReference.error?.message} />
+      <Button
+        label="Salvar referencia"
+        tone="soft"
+        loading={updateReference.isPending}
+        onPress={() => updateReference.mutate()}
+      />
+    </View>
+  );
 }
 
 export default function AdminSubscriptions() {
@@ -117,10 +186,26 @@ export default function AdminSubscriptions() {
             <Text className="text-sm text-muted">
               Assinatura: {subscriptionStatusLabel(account.subscription_status)}
             </Text>
+            <View className="gap-1 rounded-2xl border border-white/10 bg-ink/35 p-3">
+              <Text className="text-sm font-semibold text-white">Gateway futuro</Text>
+              <Text selectable className="text-xs text-muted">
+                Provider: {displayValue(account.billing_provider)}
+              </Text>
+              <Text selectable className="text-xs text-muted">
+                Customer: {displayValue(account.billing_customer_id)}
+              </Text>
+              <Text selectable className="text-xs text-muted">
+                Subscription: {displayValue(account.billing_subscription_id)}
+              </Text>
+              <Text selectable className="text-xs text-muted">
+                Ultimo evento: {displayValue(account.billing_last_event_id)}
+              </Text>
+            </View>
             <Text className="text-xs leading-5 text-muted">
               Trial e Ativo liberam recursos pagos. Pendente e Cancelado bloqueiam acesso pago sem afetar
               dados do usuario.
             </Text>
+            <BillingReferenceForm account={account} />
             <View className="gap-2">
               {statusActions.map((action) => (
                 <Button

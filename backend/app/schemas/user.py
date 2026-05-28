@@ -1,4 +1,6 @@
-from pydantic import BaseModel, EmailStr
+from typing import Literal
+
+from pydantic import BaseModel, EmailStr, Field
 
 from app.models.user import AccountStatus, SubscriptionPlan, SubscriptionStatus, UserRole
 
@@ -42,6 +44,11 @@ class SubscriptionAccountResponse(BaseModel):
     document_last4: str | None = None
     subscription_plan: SubscriptionPlan
     subscription_status: SubscriptionStatus
+    billing_provider: str | None = None
+    billing_customer_id: str | None = None
+    billing_subscription_id: str | None = None
+    billing_last_event_id: str | None = None
+    billing_last_event_at: str | None = None
     created_at: str
 
 
@@ -65,3 +72,12 @@ class SubscriptionStatusUpdateRequest(BaseModel):
     user_id: str
     subscription_status: SubscriptionStatus
     reason: str | None = None
+
+
+class BillingReferenceUpdateRequest(BaseModel):
+    user_id: str
+    billing_provider: Literal["NONE", "STRIPE", "MERCADO_PAGO"]
+    billing_customer_id: str | None = Field(default=None, max_length=120)
+    billing_subscription_id: str | None = Field(default=None, max_length=120)
+    billing_last_event_id: str | None = Field(default=None, max_length=160)
+    reason: str | None = Field(default=None, max_length=240)

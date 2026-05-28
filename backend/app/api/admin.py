@@ -10,6 +10,7 @@ from app.models.user import AccountStatus, SubscriptionStatus, User, UserRole
 from app.models.privacy import AuditAction, AuditLog
 from app.schemas.user import (
     AuditLogResponse,
+    BillingReferenceUpdateRequest,
     ModerationAccountRequest,
     PendingAccountResponse,
     SubscriptionAccountResponse,
@@ -30,6 +31,13 @@ PAID_ADMIN_ROLES = {
     UserRole.SPONSOR,
     UserRole.PUBLIC_INSTITUTION,
 }
+
+
+def clean_optional(value: str | None) -> str | None:
+    if value is None:
+        return None
+    stripped = value.strip()
+    return stripped or None
 
 
 def parse_audit_metadata(metadata_json: str | None) -> dict[str, object] | None:
@@ -110,6 +118,11 @@ def subscriptions(
             document_last4=user.document_last4,
             subscription_plan=user.subscription_plan,
             subscription_status=user.subscription_status,
+            billing_provider=user.billing_provider,
+            billing_customer_id=user.billing_customer_id,
+            billing_subscription_id=user.billing_subscription_id,
+            billing_last_event_id=user.billing_last_event_id,
+            billing_last_event_at=user.billing_last_event_at.isoformat() if user.billing_last_event_at else None,
             created_at=user.created_at.isoformat(),
         )
         for user in users
@@ -179,6 +192,46 @@ def update_subscription_status(
     )
     db.commit()
     return {"status": user.subscription_status.value}
+
+
+@router.post("/billing-reference")
+def update_billing_reference(
+    payload: BillingReferenceUpdateRequest,
+    admin: Annotated[User, Depends(require_roles(UserRole.SUPER_ADMIN))],
+    db: Session = Depends(get_db),
+) -> dict[str, str | None]:
+    user = db.get(User, payload.user_id)
+    if not user or user.role not in PAID_ADMIN_ROLES:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Paid account not found")
+
+    provider = None if payload.billing_provider == "NONE" else payload.billing_provider
+    user.billing_provider = provider
+    user.billing_customer_id = clean_optional(payload.billing_customer_id)
+    user.billing_subscription_id = clean_optional(payload.billing_subscription_id)
+    user.billing_last_event_id = clean_optional(payload.billing_last_event_id)
+    write_audit_log(
+        db,
+        action=AuditAction.SUBSCRIPTION_STATUS_UPDATED,
+        actor_user_id=admin.id,
+        target_user_id=user.id,
+        resource_type="billing_reference",
+        resource_id=user.id,
+        metadata={
+            "role": user.role.value,
+            "reason": payload.reason,
+            "billing_provider": user.billing_provider,
+            "has_customer_id": bool(user.billing_customer_id),
+            "has_subscription_id": bool(user.billing_subscription_id),
+            "has_last_event_id": bool(user.billing_last_event_id),
+        },
+    )
+    db.commit()
+    return {
+        "billing_provider": user.billing_provider,
+        "billing_customer_id": user.billing_customer_id,
+        "billing_subscription_id": user.billing_subscription_id,
+        "billing_last_event_id": user.billing_last_event_id,
+    }
 
 
 @router.post("/approve-account")

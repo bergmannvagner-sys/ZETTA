@@ -60,6 +60,11 @@ class User(Base):
     connection_code: Mapped[str | None] = mapped_column(String(16), unique=True, index=True, nullable=True)
     subscription_plan: Mapped[SubscriptionPlan] = mapped_column(Enum(SubscriptionPlan), nullable=False)
     subscription_status: Mapped[SubscriptionStatus] = mapped_column(Enum(SubscriptionStatus), nullable=False)
+    billing_provider: Mapped[str | None] = mapped_column(String(32), nullable=True)
+    billing_customer_id: Mapped[str | None] = mapped_column(String(120), nullable=True, index=True)
+    billing_subscription_id: Mapped[str | None] = mapped_column(String(120), nullable=True, index=True)
+    billing_last_event_id: Mapped[str | None] = mapped_column(String(160), nullable=True, index=True)
+    billing_last_event_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), default=lambda: datetime.now(UTC), nullable=False
     )
