@@ -21,7 +21,7 @@ from app.schemas.user import (
 from app.services.audit import write_audit_log
 from app.services.billing import approval_subscription_status_for_role
 from app.services.billing_webhooks import STATUS_MAP
-from app.services.payment_adapters import list_payment_adapter_capabilities
+from app.services.payment_adapters import list_payment_adapter_capabilities, validate_billing_reference
 from app.services.verification import build_verification_triage
 
 router = APIRouter(prefix="/admin", tags=["admin"])
@@ -237,10 +237,31 @@ def update_billing_reference(
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Paid account not found")
 
     provider = None if payload.billing_provider == "NONE" else payload.billing_provider
+    customer_id = clean_optional(payload.billing_customer_id)
+    subscription_id = clean_optional(payload.billing_subscription_id)
+    last_event_id = clean_optional(payload.billing_last_event_id)
+    validation_errors = validate_billing_reference(
+        provider=provider,
+        customer_id=customer_id,
+        subscription_id=subscription_id,
+        last_event_id=last_event_id,
+    )
+    if validation_errors:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail={"message": "Invalid billing reference", "errors": validation_errors},
+        )
+
+    previous = {
+        "billing_provider": user.billing_provider,
+        "has_customer_id": bool(user.billing_customer_id),
+        "has_subscription_id": bool(user.billing_subscription_id),
+        "has_last_event_id": bool(user.billing_last_event_id),
+    }
     user.billing_provider = provider
-    user.billing_customer_id = clean_optional(payload.billing_customer_id)
-    user.billing_subscription_id = clean_optional(payload.billing_subscription_id)
-    user.billing_last_event_id = clean_optional(payload.billing_last_event_id)
+    user.billing_customer_id = customer_id
+    user.billing_subscription_id = subscription_id
+    user.billing_last_event_id = last_event_id
     write_audit_log(
         db,
         action=AuditAction.SUBSCRIPTION_STATUS_UPDATED,
@@ -251,6 +272,7 @@ def update_billing_reference(
         metadata={
             "role": user.role.value,
             "reason": payload.reason,
+            "previous": previous,
             "billing_provider": user.billing_provider,
             "has_customer_id": bool(user.billing_customer_id),
             "has_subscription_id": bool(user.billing_subscription_id),

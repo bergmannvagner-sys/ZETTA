@@ -156,6 +156,47 @@ def list_payment_adapter_capabilities() -> list[PaymentAdapterCapabilities]:
     return [adapter.capabilities() for adapter in PAYMENT_ADAPTERS.values()]
 
 
+def validate_billing_reference(
+    *,
+    provider: str | None,
+    customer_id: str | None,
+    subscription_id: str | None,
+    last_event_id: str | None,
+) -> list[str]:
+    normalized_provider = provider.strip().upper() if provider else None
+    errors: list[str] = []
+    if normalized_provider is None:
+        if customer_id or subscription_id or last_event_id:
+            errors.append("Provider NONE cannot keep external billing IDs")
+        return errors
+
+    if normalized_provider not in PAYMENT_ADAPTERS:
+        errors.append("Unsupported payment provider")
+        return errors
+
+    if not customer_id:
+        errors.append("Customer ID is required for paid providers")
+    if not subscription_id:
+        errors.append("Subscription ID is required for paid providers")
+
+    if normalized_provider == "STRIPE":
+        if customer_id and not customer_id.startswith("cus_"):
+            errors.append("Stripe Customer ID must start with cus_")
+        if subscription_id and not subscription_id.startswith("sub_"):
+            errors.append("Stripe Subscription ID must start with sub_")
+        if last_event_id and not last_event_id.startswith("evt_"):
+            errors.append("Stripe event ID must start with evt_")
+
+    if normalized_provider == "MERCADO_PAGO":
+        stripe_like_values = [
+            value for value in (customer_id, subscription_id, last_event_id) if value
+        ]
+        if any(value.startswith(("cus_", "sub_", "evt_")) for value in stripe_like_values):
+            errors.append("Mercado Pago reference cannot use Stripe ID prefixes")
+
+    return errors
+
+
 def _data_object(payload: Mapping[str, Any]) -> Mapping[str, Any]:
     data = payload.get("data")
     if not isinstance(data, Mapping):

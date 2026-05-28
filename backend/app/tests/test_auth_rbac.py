@@ -16,7 +16,11 @@ from app.core.security import hash_password
 from app.core.config import get_settings
 from app.models.user import AccountStatus, SubscriptionStatus, User, UserRole
 from app.services.billing_webhooks import build_signature
-from app.services.payment_adapters import PaymentProviderNotConfigured, get_payment_adapter
+from app.services.payment_adapters import (
+    PaymentProviderNotConfigured,
+    get_payment_adapter,
+    validate_billing_reference,
+)
 
 Base.metadata.create_all(bind=engine)
 client = TestClient(app)
@@ -726,6 +730,21 @@ def test_super_admin_can_manage_paid_subscription_status() -> None:
     assert active.status_code == 200
     assert active.json()["status"] == "ACTIVE"
 
+    invalid_reference = client.post(
+        "/admin/billing-reference",
+        json={
+            "user_id": company_id,
+            "billing_provider": "MERCADO_PAGO",
+            "billing_customer_id": "cus_test_company",
+            "billing_subscription_id": "sub_test_company",
+            "billing_last_event_id": "evt_test_company",
+            "reason": "wrong provider ids",
+        },
+        headers=admin_headers,
+    )
+    assert invalid_reference.status_code == 400
+    assert "Mercado Pago reference cannot use Stripe ID prefixes" in invalid_reference.text
+
     reference = client.post(
         "/admin/billing-reference",
         json={
@@ -751,6 +770,12 @@ def test_super_admin_can_manage_paid_subscription_status() -> None:
     assert company_payload["billing_provider"] == "STRIPE"
     assert company_payload["billing_customer_id"] == "cus_test_company"
     assert company_payload["billing_subscription_id"] == "sub_test_company"
+
+    audit = client.get("/admin/audit-logs?resource_type=billing_reference&limit=10", headers=admin_headers)
+    assert audit.status_code == 200
+    billing_reference_log = next(entry for entry in audit.json() if entry["target_user_id"] == company_id)
+    assert billing_reference_log["metadata"]["billing_provider"] == "STRIPE"
+    assert billing_reference_log["metadata"]["previous"]["billing_provider"] is None
 
     config = client.get("/admin/billing-config", headers=admin_headers)
     assert config.status_code == 200
@@ -805,6 +830,19 @@ def test_payment_provider_adapters_are_local_only_contracts() -> None:
         pass
     else:
         raise AssertionError("Provider signature validation must stay disabled until integration")
+
+    assert validate_billing_reference(
+        provider="STRIPE",
+        customer_id="cus_123",
+        subscription_id="sub_123",
+        last_event_id="evt_123",
+    ) == []
+    assert validate_billing_reference(
+        provider=None,
+        customer_id="cus_123",
+        subscription_id=None,
+        last_event_id=None,
+    ) == ["Provider NONE cannot keep external billing IDs"]
 
 
 def test_billing_webhook_is_disabled_by_default() -> None:

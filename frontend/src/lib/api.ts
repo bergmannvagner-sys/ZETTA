@@ -130,6 +130,16 @@ function getApiErrorMessage(data: unknown): string {
     if (typeof detail === "string") {
       return detail;
     }
+    if (detail && typeof detail === "object") {
+      const structured = detail as { message?: unknown; errors?: unknown };
+      const message =
+        typeof structured.message === "string" ? structured.message : "Nao foi possivel concluir a acao.";
+      if (Array.isArray(structured.errors)) {
+        const errors = structured.errors.filter((error): error is string => typeof error === "string");
+        return errors.length > 0 ? `${message}\n${errors.join("\n")}` : message;
+      }
+      return message;
+    }
   }
   return "Nao foi possivel concluir a acao.";
 }

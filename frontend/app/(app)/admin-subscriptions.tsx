@@ -8,7 +8,7 @@ import { Button, Card, ErrorText, Field } from "@/components/ui";
 import { apiRequest } from "@/lib/api";
 import { planLabel, subscriptionStatusLabel } from "@/lib/billing";
 import { useAuthStore } from "@/store/auth-store";
-import { SubscriptionAccount, SubscriptionStatus, UserRole } from "@/types/auth";
+import { AuditLogEntry, SubscriptionAccount, SubscriptionStatus, UserRole } from "@/types/auth";
 
 const roleFilters: Array<{ label: string; value?: UserRole }> = [
   { label: "Todos" },
@@ -43,7 +43,43 @@ function displayValue(value?: string | null): string {
   return value?.trim() ? value : "Nao vinculado";
 }
 
-function BillingReferenceForm({ account }: { account: SubscriptionAccount }) {
+function validateBillingReferenceForm(
+  provider: BillingProviderOption,
+  customerId: string,
+  subscriptionId: string,
+  lastEventId: string
+): string[] {
+  const customer = customerId.trim();
+  const subscription = subscriptionId.trim();
+  const event = lastEventId.trim();
+  if (provider === "NONE") {
+    return customer || subscription || event ? ["Remova os IDs externos para usar provider NONE."] : [];
+  }
+
+  const errors: string[] = [];
+  if (!customer) errors.push("Informe o Customer ID externo.");
+  if (!subscription) errors.push("Informe o Subscription ID externo.");
+  if (provider === "STRIPE") {
+    if (customer && !customer.startsWith("cus_")) errors.push("Stripe Customer ID deve comecar com cus_.");
+    if (subscription && !subscription.startsWith("sub_")) errors.push("Stripe Subscription ID deve comecar com sub_.");
+    if (event && !event.startsWith("evt_")) errors.push("Stripe Event ID deve comecar com evt_.");
+  }
+  if (provider === "MERCADO_PAGO") {
+    const values = [customer, subscription, event].filter(Boolean);
+    if (values.some((value) => value.startsWith("cus_") || value.startsWith("sub_") || value.startsWith("evt_"))) {
+      errors.push("Mercado Pago nao deve usar prefixos de IDs do Stripe.");
+    }
+  }
+  return errors;
+}
+
+function BillingReferenceForm({
+  account,
+  history
+}: {
+  account: SubscriptionAccount;
+  history: AuditLogEntry[];
+}) {
   const queryClient = useQueryClient();
   const [provider, setProvider] = useState<BillingProviderOption>(
     (account.billing_provider as BillingProviderOption | null) ?? "NONE"
@@ -51,6 +87,8 @@ function BillingReferenceForm({ account }: { account: SubscriptionAccount }) {
   const [customerId, setCustomerId] = useState(account.billing_customer_id ?? "");
   const [subscriptionId, setSubscriptionId] = useState(account.billing_subscription_id ?? "");
   const [lastEventId, setLastEventId] = useState(account.billing_last_event_id ?? "");
+  const validationErrors = validateBillingReferenceForm(provider, customerId, subscriptionId, lastEventId);
+  const canSave = validationErrors.length === 0;
   const updateReference = useMutation({
     mutationFn: () =>
       apiRequest("/admin/billing-reference", {
@@ -64,7 +102,10 @@ function BillingReferenceForm({ account }: { account: SubscriptionAccount }) {
           reason: "billing provider reference update"
         })
       }),
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["admin-subscriptions"] })
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["admin-subscriptions"] });
+      queryClient.invalidateQueries({ queryKey: ["billing-reference-audit"] });
+    }
   });
 
   return (
@@ -84,7 +125,14 @@ function BillingReferenceForm({ account }: { account: SubscriptionAccount }) {
               className={`rounded-full border px-3 py-2 ${
                 selected ? "border-mint bg-mint" : "border-white/10 bg-surface/70"
               }`}
-              onPress={() => setProvider(option)}
+              onPress={() => {
+                setProvider(option);
+                if (option === "NONE") {
+                  setCustomerId("");
+                  setSubscriptionId("");
+                  setLastEventId("");
+                }
+              }}
             >
               <Text className={`text-xs font-semibold ${selected ? "text-ink" : "text-white"}`}>{option}</Text>
             </Pressable>
@@ -94,13 +142,37 @@ function BillingReferenceForm({ account }: { account: SubscriptionAccount }) {
       <Field label="Customer ID externo" value={customerId} onChangeText={setCustomerId} maxLength={120} />
       <Field label="Subscription ID externo" value={subscriptionId} onChangeText={setSubscriptionId} maxLength={120} />
       <Field label="Ultimo evento webhook" value={lastEventId} onChangeText={setLastEventId} maxLength={160} />
+      {validationErrors.length > 0 ? (
+        <View className="rounded-xl border border-violet/30 bg-violet/15 px-4 py-3">
+          {validationErrors.map((error) => (
+            <Text key={error} className="text-xs leading-5 text-rose">
+              - {error}
+            </Text>
+          ))}
+        </View>
+      ) : (
+        <Text className="text-xs leading-5 text-muted">
+          Referencia visualmente valida. A confirmacao financeira continua dependendo do webhook real.
+        </Text>
+      )}
       <ErrorText message={updateReference.error?.message} />
       <Button
         label="Salvar referencia"
         tone="soft"
         loading={updateReference.isPending}
+        disabled={!canSave}
         onPress={() => updateReference.mutate()}
       />
+      {history.length > 0 ? (
+        <View className="gap-2 rounded-xl border border-white/10 bg-surface/45 p-3">
+          <Text className="text-xs font-semibold text-white">Historico recente</Text>
+          {history.slice(0, 3).map((entry) => (
+            <Text key={entry.id} selectable className="text-xs leading-5 text-muted">
+              {new Date(entry.created_at).toLocaleString()} - {String(entry.metadata?.billing_provider ?? "NONE")}
+            </Text>
+          ))}
+        </View>
+      ) : null}
     </View>
   );
 }
@@ -115,6 +187,11 @@ export default function AdminSubscriptions() {
   const subscriptions = useQuery({
     queryKey: ["admin-subscriptions", search.trim(), role],
     queryFn: () => apiRequest<SubscriptionAccount[]>(subscriptionsPath(search, role)),
+    enabled: user?.role === "SUPER_ADMIN"
+  });
+  const billingReferenceAudit = useQuery({
+    queryKey: ["billing-reference-audit"],
+    queryFn: () => apiRequest<AuditLogEntry[]>("/admin/audit-logs?resource_type=billing_reference&limit=100"),
     enabled: user?.role === "SUPER_ADMIN"
   });
 
@@ -205,7 +282,12 @@ export default function AdminSubscriptions() {
               Trial e Ativo liberam recursos pagos. Pendente e Cancelado bloqueiam acesso pago sem afetar
               dados do usuario.
             </Text>
-            <BillingReferenceForm account={account} />
+            <BillingReferenceForm
+              account={account}
+              history={(billingReferenceAudit.data ?? []).filter(
+                (entry: AuditLogEntry) => entry.target_user_id === account.id
+              )}
+            />
             <View className="gap-2">
               {statusActions.map((action) => (
                 <Button
