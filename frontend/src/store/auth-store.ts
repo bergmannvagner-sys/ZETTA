@@ -32,7 +32,7 @@ export const useAuthStore = create<AuthState>((set) => ({
     await SecureStore.deleteItemAsync(ACCESS_KEY);
     await SecureStore.deleteItemAsync(REFRESH_KEY);
     await SecureStore.deleteItemAsync(USER_KEY);
-    set({ accessToken: null, refreshToken: null, user: null });
+    set({ accessToken: null, refreshToken: null, user: null, hydrated: true });
   },
   hydrate: async () => {
     try {

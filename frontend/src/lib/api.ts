@@ -6,6 +6,7 @@ const extra = Constants.expoConfig?.extra as { apiUrl?: string } | undefined;
 
 const NETWORK_ERROR_MESSAGE = "Nao foi possivel conectar ao servidor. Verifique sua internet ou a URL da API.";
 const MISSING_API_URL_MESSAGE = "API nao configurada. Defina EXPO_PUBLIC_API_URL no frontend/.env";
+const EXPIRED_SESSION_MESSAGE = "Sessao expirada. Entre novamente.";
 
 export class ApiError extends Error {
   status: number;
@@ -130,13 +131,21 @@ function getApiErrorMessage(data: unknown): string {
   return "Nao foi possivel concluir a acao.";
 }
 
+function isInvalidTokenMessage(data: unknown): boolean {
+  if (!data || typeof data !== "object" || !("detail" in data)) {
+    return false;
+  }
+  return (data as { detail?: unknown }).detail === "Invalid token";
+}
+
 export async function apiRequest<T>(path: string, options: ApiOptions = {}): Promise<T> {
   const baseUrl = resolveApiUrl();
   const endpoint = `${baseUrl}${path.startsWith("/") ? path : `/${path}`}`;
   const headers = new Headers(options.headers);
   headers.set("Content-Type", "application/json");
-  if (options.auth !== false) {
-    const token = useAuthStore.getState().accessToken;
+  const shouldUseAuth = options.auth !== false;
+  const token = useAuthStore.getState().accessToken;
+  if (shouldUseAuth) {
     if (token) {
       headers.set("Authorization", `Bearer ${token}`);
     }
@@ -158,6 +167,10 @@ export async function apiRequest<T>(path: string, options: ApiOptions = {}): Pro
           status: response.status,
           validation
         });
+      }
+      if (response.status === 401 && shouldUseAuth && token && isInvalidTokenMessage(data)) {
+        await useAuthStore.getState().clearSession();
+        throw new ApiError(EXPIRED_SESSION_MESSAGE, response.status, validation);
       }
       throw new ApiError(getApiErrorMessage(data), response.status, validation);
     }
