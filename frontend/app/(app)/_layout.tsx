@@ -53,6 +53,7 @@ export default function AppLayout() {
       <Stack.Screen name="consent" options={{ title: "Consentimento" }} />
       <Stack.Screen name="admin-pending-accounts" options={{ title: "Contas pendentes" }} />
       <Stack.Screen name="admin-subscriptions" options={{ title: "Assinaturas" }} />
+      <Stack.Screen name="admin-audit" options={{ title: "Auditoria" }} />
     </Stack>
   );
 }

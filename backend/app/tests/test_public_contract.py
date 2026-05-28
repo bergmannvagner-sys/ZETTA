@@ -39,6 +39,7 @@ def test_public_openapi_contract_matches_mobile_mvp() -> None:
     assert "/admin/pending-accounts" in paths
     assert "/admin/subscriptions" in paths
     assert "/admin/subscription-status" in paths
+    assert "/admin/audit-logs" in paths
     assert "/admin/approve-account" in paths
     assert "/admin/reject-account" in paths
 

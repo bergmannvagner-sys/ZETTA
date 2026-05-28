@@ -1,3 +1,4 @@
+import json
 from typing import Annotated
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
@@ -6,8 +7,9 @@ from sqlalchemy.orm import Session
 from app.api.deps import require_roles
 from app.db.session import get_db
 from app.models.user import AccountStatus, SubscriptionStatus, User, UserRole
-from app.models.privacy import AuditAction
+from app.models.privacy import AuditAction, AuditLog
 from app.schemas.user import (
+    AuditLogResponse,
     ModerationAccountRequest,
     PendingAccountResponse,
     SubscriptionAccountResponse,
@@ -28,6 +30,16 @@ PAID_ADMIN_ROLES = {
     UserRole.SPONSOR,
     UserRole.PUBLIC_INSTITUTION,
 }
+
+
+def parse_audit_metadata(metadata_json: str | None) -> dict[str, object] | None:
+    if not metadata_json:
+        return None
+    try:
+        parsed = json.loads(metadata_json)
+    except json.JSONDecodeError:
+        return None
+    return parsed if isinstance(parsed, dict) else None
 
 
 @router.get("/pending-accounts", response_model=list[PendingAccountResponse])
@@ -101,6 +113,35 @@ def subscriptions(
             created_at=user.created_at.isoformat(),
         )
         for user in users
+    ]
+
+
+@router.get("/audit-logs", response_model=list[AuditLogResponse])
+def audit_logs(
+    _: Annotated[User, Depends(require_roles(UserRole.SUPER_ADMIN))],
+    action: AuditAction | None = Query(default=None),
+    resource_type: str | None = Query(default=None, max_length=80),
+    limit: int = Query(default=50, ge=1, le=100),
+    db: Session = Depends(get_db),
+) -> list[AuditLogResponse]:
+    query = db.query(AuditLog)
+    if action:
+        query = query.filter(AuditLog.action == action)
+    if resource_type:
+        query = query.filter(AuditLog.resource_type == resource_type.strip())
+    logs = query.order_by(AuditLog.created_at.desc()).limit(limit).all()
+    return [
+        AuditLogResponse(
+            id=log.id,
+            action=log.action.value,
+            resource_type=log.resource_type,
+            resource_id=log.resource_id,
+            actor_user_id=log.actor_user_id,
+            target_user_id=log.target_user_id,
+            metadata=parse_audit_metadata(log.metadata_json),
+            created_at=log.created_at.isoformat(),
+        )
+        for log in logs
     ]
 
 

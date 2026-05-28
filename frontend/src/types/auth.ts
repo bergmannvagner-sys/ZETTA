@@ -50,3 +50,14 @@ export type PendingAccount = AuthUser & {
 export type SubscriptionAccount = AuthUser & {
   created_at: string;
 };
+
+export type AuditLogEntry = {
+  id: string;
+  action: string;
+  resource_type: string;
+  resource_id?: string | null;
+  actor_user_id?: string | null;
+  target_user_id?: string | null;
+  metadata?: Record<string, unknown> | null;
+  created_at: string;
+};

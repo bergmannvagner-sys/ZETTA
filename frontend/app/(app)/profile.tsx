@@ -49,6 +49,11 @@ export default function Profile() {
             tone="soft"
             onPress={() => router.push("/(app)/admin-subscriptions" as never)}
           />
+          <Button
+            label="Auditoria"
+            tone="soft"
+            onPress={() => router.push("/(app)/admin-audit" as never)}
+          />
         </>
       ) : null}
       <Button

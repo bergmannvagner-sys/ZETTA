@@ -45,6 +45,17 @@ class SubscriptionAccountResponse(BaseModel):
     created_at: str
 
 
+class AuditLogResponse(BaseModel):
+    id: str
+    action: str
+    resource_type: str
+    resource_id: str | None = None
+    actor_user_id: str | None = None
+    target_user_id: str | None = None
+    metadata: dict[str, object] | None = None
+    created_at: str
+
+
 class ModerationAccountRequest(BaseModel):
     user_id: str
     reason: str | None = None
