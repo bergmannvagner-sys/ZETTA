@@ -4,11 +4,13 @@ import { Pressable, Text, View } from "react-native";
 import { AnimatedOrb } from "@/components/orb/AnimatedOrb";
 import { Screen } from "@/components/screen";
 import { Button } from "@/components/ui";
+import { hasPaidAccess } from "@/lib/billing";
 import { useAuthStore } from "@/store/auth-store";
 
 export default function Home() {
   const user = useAuthStore((state) => state.user);
   const firstName = user?.full_name.split(" ")[0] ?? "voce";
+  const paidAccess = hasPaidAccess(user);
   const careLinks = [
     { label: "Humor", route: "/(app)/mood" },
     { label: "Diario", route: "/(app)/journal" },
@@ -16,9 +18,9 @@ export default function Home() {
     { label: "Compartilhar", route: "/(app)/sharing" },
     { label: "Resumo", route: "/(app)/emotional-report" }
   ];
-  const professionalLinks = user?.role === "PSYCHOLOGIST"
+  const professionalLinks = paidAccess && user?.role === "PSYCHOLOGIST"
     ? [{ label: "Usuarios autorizados", route: "/(app)/professional-users" }]
-    : user?.role === "COMPANY"
+    : paidAccess && user?.role === "COMPANY"
       ? [{ label: "Painel NR-1", route: "/(app)/nr1" }]
       : [];
 

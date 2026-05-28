@@ -11,7 +11,7 @@ from app.db.base import Base
 from app.db.session import SessionLocal, engine
 from app.main import app
 from app.models.privacy import AuditAction, AuditLog
-from app.models.user import AccountStatus, User
+from app.models.user import AccountStatus, SubscriptionStatus, User
 
 Base.metadata.create_all(bind=engine)
 client = TestClient(app)
@@ -65,6 +65,8 @@ def test_user_register_login_and_access_common_area() -> None:
     assert data["user"]["status"] == "ACTIVE"
     assert data["user"]["document_type"] == "CPF"
     assert data["user"]["document_last4"] == "4725"
+    assert data["user"]["subscription_plan"] == "FREE_USER"
+    assert data["user"]["subscription_status"] == "FREE"
 
     me = client.get("/users/me", headers={"Authorization": f"Bearer {data['access_token']}"})
     assert me.status_code == 200
@@ -134,6 +136,8 @@ def test_non_user_registration_is_pending_and_blocked_from_active_routes() -> No
     assert register.status_code == 201
     data = register.json()
     assert data["user"]["status"] == "PENDING_VERIFICATION"
+    assert data["user"]["subscription_plan"] == "PSYCHOLOGIST_PRO"
+    assert data["user"]["subscription_status"] == "PENDING"
 
     sos = client.post(
         "/sos/event",
@@ -162,6 +166,7 @@ def test_approved_non_user_is_blocked_from_common_sos() -> None:
         user = db.get(User, data["user"]["id"])
         assert user is not None
         user.status = AccountStatus.ACTIVE
+        user.subscription_status = SubscriptionStatus.TRIAL
         db.commit()
     finally:
         db.close()
@@ -178,6 +183,42 @@ def test_approved_non_user_is_blocked_from_common_sos() -> None:
     sos = client.post("/sos/event", json={"intensity": "HIGH"}, headers=headers)
     assert sos.status_code == 403
     assert sos.json()["detail"] == "Only common area allowed"
+
+
+def test_paid_profile_requires_trial_or_active_subscription_after_approval() -> None:
+    register = client.post(
+        "/auth/register",
+        json={
+            "email": "company-no-plan@example.com",
+            "full_name": "Empresa Sem Plano",
+            "password": "strongpass123",
+            "role": "COMPANY",
+            "document": "55443322000105",
+            "lgpdConsent": True,
+        },
+    )
+    assert register.status_code == 201
+    data = register.json()
+    db = SessionLocal()
+    try:
+        user = db.get(User, data["user"]["id"])
+        assert user is not None
+        user.status = AccountStatus.ACTIVE
+        user.subscription_status = SubscriptionStatus.PENDING
+        db.commit()
+    finally:
+        db.close()
+
+    headers = {"Authorization": f"Bearer {data['access_token']}"}
+    consent_status = client.get("/privacy/consent", headers=headers)
+    client.post(
+        "/privacy/consent",
+        json={"policy_version": consent_status.json()["policy_version"]},
+        headers=headers,
+    )
+    response = client.get("/nr1/report", headers=headers)
+    assert response.status_code == 402
+    assert response.json()["detail"] == "Paid plan required"
 
 
 def test_e2e_user_consent_chat_sos_and_audit() -> None:
@@ -358,6 +399,7 @@ def test_emotional_journal_sharing_and_nr1_privacy_boundaries() -> None:
             target = db.query(User).filter(User.email == email).first()
             assert target is not None
             target.status = AccountStatus.ACTIVE
+            target.subscription_status = SubscriptionStatus.TRIAL
         db.commit()
     finally:
         db.close()
@@ -591,6 +633,7 @@ def test_non_user_cannot_use_personal_care_reminders_after_approval() -> None:
         user = db.get(User, data["user"]["id"])
         assert user is not None
         user.status = AccountStatus.ACTIVE
+        user.subscription_status = SubscriptionStatus.TRIAL
         db.commit()
     finally:
         db.close()

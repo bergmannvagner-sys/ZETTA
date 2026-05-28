@@ -2,6 +2,7 @@ from app.core.config import get_settings
 from app.core.security import hash_password
 from app.db.session import SessionLocal
 from app.models.user import AccountStatus, User, UserRole
+from app.services.billing import default_plan_for_role, initial_subscription_status_for_role
 
 
 def main() -> None:
@@ -20,6 +21,8 @@ def main() -> None:
                 password_hash=hash_password(settings.super_admin_password),
                 role=UserRole.SUPER_ADMIN,
                 status=AccountStatus.ACTIVE,
+                subscription_plan=default_plan_for_role(UserRole.SUPER_ADMIN),
+                subscription_status=initial_subscription_status_for_role(UserRole.SUPER_ADMIN),
             )
         )
         db.commit()

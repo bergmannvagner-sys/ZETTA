@@ -6,7 +6,7 @@ from typing import Annotated
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 
-from app.api.deps import require_lgpd_consent, require_roles
+from app.api.deps import require_lgpd_consent, require_paid_roles
 from app.db.session import get_db
 from app.models.emotional import (
     EmotionLog,
@@ -32,6 +32,7 @@ from app.schemas.emotional import (
     SharingConsentResponse,
 )
 from app.services.audit import write_audit_log
+from app.services.billing import has_paid_access
 from app.services.connection_codes import generate_connection_code, normalize_connection_code
 
 router = APIRouter(tags=["emotional"])
@@ -228,6 +229,8 @@ def grant_sharing_consent(
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Professional or company account not found")
     if target.status.value != "ACTIVE":
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Target account is not active")
+    if not has_paid_access(target):
+        raise HTTPException(status_code=status.HTTP_402_PAYMENT_REQUIRED, detail="Target paid plan is not active")
     if not target.connection_code:
         target.connection_code = generate_connection_code(db)
     if payload.period_start and payload.period_end and payload.period_start > payload.period_end:
@@ -378,7 +381,7 @@ def create_my_emotional_report(
 
 @router.get("/professional/authorized-users", response_model=list[AuthorizedUserSummary])
 def list_authorized_users_for_professional(
-    user: Annotated[User, Depends(require_roles(UserRole.PSYCHOLOGIST))],
+    user: Annotated[User, Depends(require_paid_roles(UserRole.PSYCHOLOGIST))],
     db: Session = Depends(get_db),
 ) -> list[AuthorizedUserSummary]:
     consents = _active_consents_for_target(db, user)
@@ -421,7 +424,7 @@ def list_authorized_users_for_professional(
 @router.get("/professional/authorized-users/{owner_user_id}", response_model=AuthorizedUserDetail)
 def get_authorized_user_detail_for_professional(
     owner_user_id: str,
-    user: Annotated[User, Depends(require_roles(UserRole.PSYCHOLOGIST))],
+    user: Annotated[User, Depends(require_paid_roles(UserRole.PSYCHOLOGIST))],
     db: Session = Depends(get_db),
 ) -> AuthorizedUserDetail:
     consent = _active_consent_for_target_owner(db, user, owner_user_id)
@@ -493,7 +496,7 @@ def get_authorized_user_detail_for_professional(
 
 @router.get("/nr1/report", response_model=NR1ReportResponse)
 def get_nr1_report(
-    user: Annotated[User, Depends(require_roles(UserRole.COMPANY))],
+    user: Annotated[User, Depends(require_paid_roles(UserRole.COMPANY))],
     db: Session = Depends(get_db),
 ) -> NR1ReportResponse:
     consents = [

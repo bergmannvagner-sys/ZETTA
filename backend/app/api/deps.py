@@ -7,6 +7,7 @@ from sqlalchemy.orm import Session
 from app.core.security import decode_token
 from app.db.session import get_db
 from app.models.user import AccountStatus, User, UserRole
+from app.services.billing import has_paid_access
 from app.services.consent import get_active_lgpd_consent
 
 bearer_scheme = HTTPBearer(auto_error=False)
@@ -57,6 +58,17 @@ def require_roles(*roles: UserRole):
     def dependency(user: Annotated[User, Depends(require_active_user)]) -> User:
         if user.role not in roles:
             raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Insufficient permission")
+        return user
+
+    return dependency
+
+
+def require_paid_roles(*roles: UserRole):
+    def dependency(user: Annotated[User, Depends(require_active_user)]) -> User:
+        if user.role not in roles:
+            raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Insufficient permission")
+        if not has_paid_access(user):
+            raise HTTPException(status_code=status.HTTP_402_PAYMENT_REQUIRED, detail="Paid plan required")
         return user
 
     return dependency

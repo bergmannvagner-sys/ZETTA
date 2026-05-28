@@ -26,6 +26,25 @@ class AccountStatus(str, enum.Enum):
     REJECTED = "REJECTED"
 
 
+class SubscriptionPlan(str, enum.Enum):
+    FREE_USER = "FREE_USER"
+    PSYCHOLOGIST_PRO = "PSYCHOLOGIST_PRO"
+    COMPANY_NR1 = "COMPANY_NR1"
+    CLINIC = "CLINIC"
+    INSTITUTIONAL = "INSTITUTIONAL"
+    SPONSOR = "SPONSOR"
+    INTERNAL = "INTERNAL"
+
+
+class SubscriptionStatus(str, enum.Enum):
+    FREE = "FREE"
+    PENDING = "PENDING"
+    TRIAL = "TRIAL"
+    ACTIVE = "ACTIVE"
+    PAST_DUE = "PAST_DUE"
+    CANCELED = "CANCELED"
+
+
 class User(Base):
     __tablename__ = "bergmann_users"
 
@@ -39,6 +58,8 @@ class User(Base):
     document_value_hash: Mapped[str | None] = mapped_column(String(64), unique=True, index=True, nullable=True)
     document_last4: Mapped[str | None] = mapped_column(String(8), nullable=True)
     connection_code: Mapped[str | None] = mapped_column(String(16), unique=True, index=True, nullable=True)
+    subscription_plan: Mapped[SubscriptionPlan] = mapped_column(Enum(SubscriptionPlan), nullable=False)
+    subscription_status: Mapped[SubscriptionStatus] = mapped_column(Enum(SubscriptionStatus), nullable=False)
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), default=lambda: datetime.now(UTC), nullable=False
     )

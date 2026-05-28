@@ -6,6 +6,7 @@ import { Pressable, Text, View } from "react-native";
 import { Screen } from "@/components/screen";
 import { Button, Card, ErrorText, Field } from "@/components/ui";
 import { apiRequest } from "@/lib/api";
+import { planLabel, subscriptionStatusLabel } from "@/lib/billing";
 import { useAuthStore } from "@/store/auth-store";
 import { PendingAccount, UserRole } from "@/types/auth";
 
@@ -88,6 +89,13 @@ export default function AdminPendingAccounts() {
                 {account.document_type} final {account.document_last4}
               </Text>
             ) : null}
+            <Text className="text-sm text-muted">Plano: {planLabel(account.subscription_plan)}</Text>
+            <Text className="text-sm text-muted">
+              Assinatura apos decisao: {subscriptionStatusLabel(account.subscription_status)}
+            </Text>
+            <Text className="text-xs leading-5 text-muted">
+              Ao aprovar, perfis pagos entram como teste liberado ate integracao com pagamento real.
+            </Text>
             <View className="gap-2">
               <Button
                 label="Aprovar"

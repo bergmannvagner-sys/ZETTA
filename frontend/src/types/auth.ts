@@ -10,6 +10,15 @@ export type UserRole =
   | "SUPER_ADMIN";
 
 export type AccountStatus = "ACTIVE" | "PENDING_VERIFICATION" | "REJECTED";
+export type SubscriptionPlan =
+  | "FREE_USER"
+  | "PSYCHOLOGIST_PRO"
+  | "COMPANY_NR1"
+  | "CLINIC"
+  | "INSTITUTIONAL"
+  | "SPONSOR"
+  | "INTERNAL";
+export type SubscriptionStatus = "FREE" | "PENDING" | "TRIAL" | "ACTIVE" | "PAST_DUE" | "CANCELED";
 
 export type AuthUser = {
   id: string;
@@ -19,6 +28,8 @@ export type AuthUser = {
   status: AccountStatus;
   document_type?: "CPF" | "CNPJ" | "CRP" | string | null;
   document_last4?: string | null;
+  subscription_plan: SubscriptionPlan;
+  subscription_status: SubscriptionStatus;
 };
 
 export type AuthResponse = {

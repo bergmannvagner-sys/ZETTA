@@ -27,6 +27,7 @@ from app.services.identity import (
     normalize_document,
     validate_document,
 )
+from app.services.billing import default_plan_for_role, initial_subscription_status_for_role
 from app.services.email import send_password_reset_email
 from app.services.audit import write_audit_log
 from app.services.tokens import (
@@ -48,6 +49,8 @@ def _auth_user(user: User) -> AuthUserResponse:
         status=user.status,
         document_type=user.document_type,
         document_last4=user.document_last4,
+        subscription_plan=user.subscription_plan,
+        subscription_status=user.subscription_status,
     )
 
 
@@ -80,6 +83,8 @@ def register(payload: RegisterRequest, db: Session = Depends(get_db)) -> AuthRes
         document_type=document_type,
         document_value_hash=document_hash,
         document_last4=document_last4(normalized_document),
+        subscription_plan=default_plan_for_role(payload.role),
+        subscription_status=initial_subscription_status_for_role(payload.role),
     )
     db.add(user)
     db.flush()
@@ -90,7 +95,13 @@ def register(payload: RegisterRequest, db: Session = Depends(get_db)) -> AuthRes
         target_user_id=user.id,
         resource_type="user",
         resource_id=user.id,
-        metadata={"role": user.role.value, "status": user.status.value, "document_type": document_type},
+        metadata={
+            "role": user.role.value,
+            "status": user.status.value,
+            "document_type": document_type,
+            "subscription_plan": user.subscription_plan.value,
+            "subscription_status": user.subscription_status.value,
+        },
     )
     db.commit()
     db.refresh(user)

@@ -5,10 +5,11 @@ from sqlalchemy.orm import Session
 
 from app.api.deps import require_roles
 from app.db.session import get_db
-from app.models.user import AccountStatus, User, UserRole
+from app.models.user import AccountStatus, SubscriptionStatus, User, UserRole
 from app.models.privacy import AuditAction
 from app.schemas.user import ModerationAccountRequest, PendingAccountResponse
 from app.services.audit import write_audit_log
+from app.services.billing import approval_subscription_status_for_role
 
 router = APIRouter(prefix="/admin", tags=["admin"])
 
@@ -36,6 +37,8 @@ def pending_accounts(
             status=user.status,
             document_type=user.document_type,
             document_last4=user.document_last4,
+            subscription_plan=user.subscription_plan,
+            subscription_status=user.subscription_status,
             created_at=user.created_at.isoformat(),
         )
         for user in users
@@ -52,6 +55,7 @@ def approve_account(
     if not user or user.role == UserRole.SUPER_ADMIN:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Account not found")
     user.status = AccountStatus.ACTIVE
+    user.subscription_status = approval_subscription_status_for_role(user.role)
     write_audit_log(
         db,
         action=AuditAction.ACCOUNT_APPROVED,
@@ -59,7 +63,12 @@ def approve_account(
         target_user_id=user.id,
         resource_type="user",
         resource_id=user.id,
-        metadata={"role": user.role.value, "reason": payload.reason},
+        metadata={
+            "role": user.role.value,
+            "reason": payload.reason,
+            "subscription_plan": user.subscription_plan.value,
+            "subscription_status": user.subscription_status.value,
+        },
     )
     db.commit()
     return {"status": "approved"}
@@ -75,6 +84,7 @@ def reject_account(
     if not user or user.role == UserRole.SUPER_ADMIN:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Account not found")
     user.status = AccountStatus.REJECTED
+    user.subscription_status = SubscriptionStatus.CANCELED
     write_audit_log(
         db,
         action=AuditAction.ACCOUNT_REJECTED,

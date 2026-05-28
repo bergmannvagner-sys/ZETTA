@@ -4,13 +4,15 @@ import { Text } from "react-native";
 
 import { Screen } from "@/components/screen";
 import { Button, Card } from "@/components/ui";
+import { hasPaidAccess, planLabel, subscriptionStatusLabel } from "@/lib/billing";
 import { getMyConnectionCode } from "@/lib/emotional";
 import { useAuthStore } from "@/store/auth-store";
 
 export default function Profile() {
   const user = useAuthStore((state) => state.user);
   const clearSession = useAuthStore((state) => state.clearSession);
-  const canShareCode = user?.status === "ACTIVE" && (user.role === "PSYCHOLOGIST" || user.role === "COMPANY");
+  const canShareCode =
+    user?.status === "ACTIVE" && (user.role === "PSYCHOLOGIST" || user.role === "COMPANY") && hasPaidAccess(user);
   const connectionCode = useQuery({
     queryKey: ["my-connection-code"],
     queryFn: getMyConnectionCode,
@@ -25,6 +27,12 @@ export default function Profile() {
         <Text selectable className="text-sm text-muted">{user?.email}</Text>
         <Text selectable className="text-sm text-muted">Perfil: {user?.role}</Text>
         <Text selectable className="text-sm text-muted">Status: {user?.status}</Text>
+        <Text selectable className="text-sm text-muted">
+          Plano: {planLabel(user?.subscription_plan)}
+        </Text>
+        <Text selectable className="text-sm text-muted">
+          Assinatura: {subscriptionStatusLabel(user?.subscription_status)}
+        </Text>
         {canShareCode && connectionCode.data ? (
           <Text selectable className="text-sm text-mint">Codigo de conexao: {connectionCode.data.connection_code}</Text>
         ) : null}

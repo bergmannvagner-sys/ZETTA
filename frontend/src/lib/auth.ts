@@ -204,7 +204,9 @@ function normalizeAuthResponse(data: RawAuthResponse): AuthResponse {
     role: rawUser.role ?? "USER",
     status: rawUser.status ?? rawUser.accountStatus ?? "ACTIVE",
     document_type: rawUser.document_type,
-    document_last4: rawUser.document_last4
+    document_last4: rawUser.document_last4,
+    subscription_plan: rawUser.subscription_plan ?? "FREE_USER",
+    subscription_status: rawUser.subscription_status ?? "FREE"
   };
 
   return {

@@ -3,6 +3,7 @@ import { Text, View } from "react-native";
 
 import { Screen } from "@/components/screen";
 import { Button, Card } from "@/components/ui";
+import { planLabel, subscriptionStatusLabel } from "@/lib/billing";
 import { useAuthStore } from "@/store/auth-store";
 
 export default function Verification() {
@@ -27,12 +28,19 @@ export default function Verification() {
         <Text selectable className="text-sm text-muted">
           {documentLabel}
         </Text>
+        <Text selectable className="text-sm text-muted">
+          Plano: {planLabel(user?.subscription_plan)}
+        </Text>
+        <Text selectable className="text-sm text-muted">
+          Assinatura: {subscriptionStatusLabel(user?.subscription_status)}
+        </Text>
       </Card>
       <Card>
         <Text className="text-base font-semibold text-white">Proximos passos</Text>
         <Text className="text-sm leading-5 text-muted">
           A equipe revisa seu perfil e libera o acesso quando os dados forem consistentes.
-          Se houver divergencia, a conta pode ser recusada e voce podera corrigir as informacoes.
+          Perfis profissionais e institucionais usam plano pago; nesta fase local, a aprovacao libera
+          um periodo de teste ate a integracao com pagamento real.
         </Text>
       </Card>
       <View className="gap-3">

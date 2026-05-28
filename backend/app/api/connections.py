@@ -7,6 +7,7 @@ from app.api.deps import require_lgpd_consent
 from app.db.session import get_db
 from app.models.user import AccountStatus, User, UserRole
 from app.schemas.connections import ConnectionSearchResponse, MyConnectionCodeResponse
+from app.services.billing import has_paid_access
 from app.services.connection_codes import generate_connection_code, normalize_connection_code
 
 router = APIRouter(prefix="/connections", tags=["connections"])
@@ -37,6 +38,8 @@ def get_my_connection_code(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Only psychologist or company accounts can share connection code",
         )
+    if not has_paid_access(user):
+        raise HTTPException(status_code=status.HTTP_402_PAYMENT_REQUIRED, detail="Paid plan required")
     if not user.connection_code:
         user.connection_code = generate_connection_code(db)
         db.commit()
@@ -64,6 +67,7 @@ def search_connection_target(
         or target.id == user.id
         or target.role not in CONNECTABLE_ROLES
         or target.status != AccountStatus.ACTIVE
+        or not has_paid_access(target)
     ):
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Active psychologist or company not found")
     if not target.connection_code:
