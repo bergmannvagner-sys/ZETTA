@@ -15,6 +15,11 @@ export default function Home() {
     { label: "Compartilhar", route: "/(app)/sharing" },
     { label: "Resumo", route: "/(app)/emotional-report" }
   ];
+  const professionalLinks = user?.role === "PSYCHOLOGIST"
+    ? [{ label: "Usuarios autorizados", route: "/(app)/professional-users" }]
+    : user?.role === "COMPANY"
+      ? [{ label: "Painel NR-1", route: "/(app)/nr1" }]
+      : [];
 
   return (
     <Screen>
@@ -54,6 +59,25 @@ export default function Home() {
           <Text className="text-sm font-semibold text-muted">Cuidado continuo</Text>
           <View className="flex-row flex-wrap justify-center gap-3">
             {careLinks.map((item) => (
+              <Pressable
+                key={item.route}
+                accessibilityRole="button"
+                onPress={() => router.push(item.route as never)}
+                className="rounded-full border border-white/10 bg-surface/55 px-4 py-3"
+              >
+                <Text className="text-mint">{item.label}</Text>
+              </Pressable>
+            ))}
+          </View>
+        </View>
+      ) : null}
+      {professionalLinks.length ? (
+        <View className="gap-3">
+          <Text className="text-sm font-semibold text-muted">
+            {user?.role === "COMPANY" ? "Saude organizacional" : "Acompanhamento autorizado"}
+          </Text>
+          <View className="flex-row flex-wrap justify-center gap-3">
+            {professionalLinks.map((item) => (
               <Pressable
                 key={item.route}
                 accessibilityRole="button"

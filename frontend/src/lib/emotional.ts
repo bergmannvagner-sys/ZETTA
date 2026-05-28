@@ -46,6 +46,25 @@ export type EmotionalReport = {
   created_at: string;
 };
 
+export type AuthorizedUserSummary = {
+  user_id: string;
+  full_name: string;
+  email: string;
+  categories: SharingCategory[];
+  summary_only: boolean;
+  latest_mood: string | null;
+  average_intensity: number | null;
+  journal_entries_visible: number;
+};
+
+export type NR1Report = {
+  participant_count: number;
+  suppressed: boolean;
+  summary: string;
+  indicators: Record<string, unknown>;
+  generated_at: string;
+};
+
 export async function createJournalEntry(input: {
   content: string;
   entry_type?: string;
@@ -117,4 +136,12 @@ export async function createMyEmotionalReport(): Promise<EmotionalReport> {
   return apiRequest<EmotionalReport>("/reports/emotional/me", {
     method: "POST"
   });
+}
+
+export async function listAuthorizedUsers(): Promise<AuthorizedUserSummary[]> {
+  return apiRequest<AuthorizedUserSummary[]>("/professional/authorized-users");
+}
+
+export async function getNR1Report(): Promise<NR1Report> {
+  return apiRequest<NR1Report>("/nr1/report");
 }
