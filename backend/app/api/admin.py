@@ -5,11 +5,13 @@ from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy.orm import Session
 
 from app.api.deps import require_roles
+from app.core.config import get_settings
 from app.db.session import get_db
 from app.models.user import AccountStatus, SubscriptionStatus, User, UserRole
 from app.models.privacy import AuditAction, AuditLog
 from app.schemas.user import (
     AuditLogResponse,
+    BillingConfigResponse,
     BillingReferenceUpdateRequest,
     ModerationAccountRequest,
     PendingAccountResponse,
@@ -18,6 +20,7 @@ from app.schemas.user import (
 )
 from app.services.audit import write_audit_log
 from app.services.billing import approval_subscription_status_for_role
+from app.services.billing_webhooks import STATUS_MAP
 from app.services.verification import build_verification_triage
 
 router = APIRouter(prefix="/admin", tags=["admin"])
@@ -127,6 +130,23 @@ def subscriptions(
         )
         for user in users
     ]
+
+
+@router.get("/billing-config", response_model=BillingConfigResponse)
+def billing_config(
+    _: Annotated[User, Depends(require_roles(UserRole.SUPER_ADMIN))],
+) -> BillingConfigResponse:
+    settings = get_settings()
+    return BillingConfigResponse(
+        webhooks_enabled=settings.billing_webhooks_enabled,
+        webhook_secret_configured=bool(settings.billing_webhook_secret),
+        webhook_path="/billing/webhook",
+        signature_header="X-Bergmann-Billing-Signature",
+        supported_providers=["STRIPE", "MERCADO_PAGO"],
+        status_mapping={external: internal.value for external, internal in sorted(STATUS_MAP.items())},
+        secret_env_name="BILLING_WEBHOOK_SECRET",
+        enabled_env_name="BILLING_WEBHOOKS_ENABLED",
+    )
 
 
 @router.get("/audit-logs", response_model=list[AuditLogResponse])

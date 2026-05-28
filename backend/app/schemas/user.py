@@ -63,6 +63,17 @@ class AuditLogResponse(BaseModel):
     created_at: str
 
 
+class BillingConfigResponse(BaseModel):
+    webhooks_enabled: bool
+    webhook_secret_configured: bool
+    webhook_path: str
+    signature_header: str
+    supported_providers: list[str]
+    status_mapping: dict[str, str]
+    secret_env_name: str
+    enabled_env_name: str
+
+
 class ModerationAccountRequest(BaseModel):
     user_id: str
     reason: str | None = None

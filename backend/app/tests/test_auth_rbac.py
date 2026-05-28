@@ -751,6 +751,16 @@ def test_super_admin_can_manage_paid_subscription_status() -> None:
     assert company_payload["billing_customer_id"] == "cus_test_company"
     assert company_payload["billing_subscription_id"] == "sub_test_company"
 
+    config = client.get("/admin/billing-config", headers=admin_headers)
+    assert config.status_code == 200
+    config_payload = config.json()
+    assert config_payload["webhook_path"] == "/billing/webhook"
+    assert config_payload["signature_header"] == "X-Bergmann-Billing-Signature"
+    assert config_payload["secret_env_name"] == "BILLING_WEBHOOK_SECRET"
+    assert "STRIPE" in config_payload["supported_providers"]
+    assert "MERCADO_PAGO" in config_payload["supported_providers"]
+    assert "billing_webhook_secret" not in config_payload
+
 
 def test_billing_webhook_is_disabled_by_default() -> None:
     settings = get_settings()

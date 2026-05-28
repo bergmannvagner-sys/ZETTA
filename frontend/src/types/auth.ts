@@ -66,3 +66,14 @@ export type AuditLogEntry = {
   metadata?: Record<string, unknown> | null;
   created_at: string;
 };
+
+export type BillingConfig = {
+  webhooks_enabled: boolean;
+  webhook_secret_configured: boolean;
+  webhook_path: string;
+  signature_header: string;
+  supported_providers: string[];
+  status_mapping: Record<string, string>;
+  secret_env_name: string;
+  enabled_env_name: string;
+};
