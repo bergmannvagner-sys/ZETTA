@@ -710,6 +710,18 @@ def test_super_admin_can_manage_paid_subscription_status() -> None:
     assert listed.status_code == 200
     assert any(account["email"] == "billing-company@example.com" for account in listed.json())
 
+    plans = client.get("/admin/commercial-plans", headers=admin_headers)
+    assert plans.status_code == 200
+    plans_payload = plans.json()
+    assert all(plan["checkout_public_enabled"] is False for plan in plans_payload)
+    assert all(plan["admin_only_pricing"] is True for plan in plans_payload)
+    company_plan = next(plan for plan in plans_payload if plan["role"] == "COMPANY")
+    assert company_plan["plan"] == "COMPANY_NR1"
+    assert "Painel NR-1" in company_plan["included_features"]
+
+    public_plans = client.get("/admin/commercial-plans")
+    assert public_plans.status_code in {401, 403}
+
     past_due = client.post(
         "/admin/subscription-status",
         json={"user_id": company_id, "subscription_status": "PAST_DUE", "reason": "manual billing check"},

@@ -56,6 +56,18 @@ export type SubscriptionAccount = AuthUser & {
   created_at: string;
 };
 
+export type CommercialPlan = {
+  role: UserRole;
+  plan: SubscriptionPlan;
+  title: string;
+  description: string;
+  admin_price_placeholder: string;
+  billing_interval_placeholder: string;
+  included_features: string[];
+  checkout_public_enabled: boolean;
+  admin_only_pricing: boolean;
+};
+
 export type AuditLogEntry = {
   id: string;
   action: string;

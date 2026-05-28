@@ -13,6 +13,7 @@ from app.schemas.user import (
     AuditLogResponse,
     BillingConfigResponse,
     BillingReferenceUpdateRequest,
+    CommercialPlanResponse,
     ModerationAccountRequest,
     PendingAccountResponse,
     SubscriptionAccountResponse,
@@ -21,6 +22,7 @@ from app.schemas.user import (
 from app.services.audit import write_audit_log
 from app.services.billing import approval_subscription_status_for_role
 from app.services.billing_webhooks import STATUS_MAP
+from app.services.commercial_plans import list_commercial_plans
 from app.services.payment_adapters import list_payment_adapter_capabilities, validate_billing_reference
 from app.services.verification import build_verification_triage
 
@@ -130,6 +132,26 @@ def subscriptions(
             created_at=user.created_at.isoformat(),
         )
         for user in users
+    ]
+
+
+@router.get("/commercial-plans", response_model=list[CommercialPlanResponse])
+def commercial_plans(
+    _: Annotated[User, Depends(require_roles(UserRole.SUPER_ADMIN))],
+) -> list[CommercialPlanResponse]:
+    return [
+        CommercialPlanResponse(
+            role=plan.role,
+            plan=plan.plan,
+            title=plan.title,
+            description=plan.description,
+            admin_price_placeholder=plan.admin_price_placeholder,
+            billing_interval_placeholder=plan.billing_interval_placeholder,
+            included_features=list(plan.included_features),
+            checkout_public_enabled=plan.checkout_public_enabled,
+            admin_only_pricing=plan.admin_only_pricing,
+        )
+        for plan in list_commercial_plans()
     ]
 
 

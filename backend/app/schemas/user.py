@@ -52,6 +52,18 @@ class SubscriptionAccountResponse(BaseModel):
     created_at: str
 
 
+class CommercialPlanResponse(BaseModel):
+    role: UserRole
+    plan: SubscriptionPlan
+    title: str
+    description: str
+    admin_price_placeholder: str
+    billing_interval_placeholder: str
+    included_features: list[str]
+    checkout_public_enabled: bool
+    admin_only_pricing: bool
+
+
 class AuditLogResponse(BaseModel):
     id: str
     action: str
