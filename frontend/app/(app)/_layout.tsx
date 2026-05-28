@@ -22,6 +22,7 @@ export default function AppLayout() {
       <Stack.Screen name="chat" options={{ title: "Conversar" }} />
       <Stack.Screen name="journal" options={{ title: "Diario emocional" }} />
       <Stack.Screen name="mood" options={{ title: "Humor" }} />
+      <Stack.Screen name="routine" options={{ title: "Rotina leve" }} />
       <Stack.Screen name="sharing" options={{ title: "Compartilhamento" }} />
       <Stack.Screen name="emotional-report" options={{ title: "Relatorio emocional" }} />
       <Stack.Screen name="professional-users" options={{ title: "Acompanhamento" }} />

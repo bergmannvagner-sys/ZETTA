@@ -12,6 +12,7 @@ export default function Home() {
   const careLinks = [
     { label: "Humor", route: "/(app)/mood" },
     { label: "Diario", route: "/(app)/journal" },
+    { label: "Rotina", route: "/(app)/routine" },
     { label: "Compartilhar", route: "/(app)/sharing" },
     { label: "Resumo", route: "/(app)/emotional-report" }
   ];

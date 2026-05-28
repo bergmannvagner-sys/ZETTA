@@ -32,6 +32,7 @@ def test_public_openapi_contract_matches_mobile_mvp() -> None:
     assert "/reports/emotional/me" in paths
     assert "/professional/authorized-users" in paths
     assert "/nr1/report" in paths
+    assert "/assistant/reminders" in paths
     assert "/admin/pending-accounts" in paths
     assert "/admin/approve-account" in paths
     assert "/admin/reject-account" in paths

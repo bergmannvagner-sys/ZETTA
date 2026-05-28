@@ -1,3 +1,4 @@
+from app.models.assistant import CareReminder, CareReminderCategory
 from app.models.chat import ChatMessage, ChatSession
 from app.models.emotional import (
     EmotionLog,
@@ -17,6 +18,8 @@ __all__ = [
     "AccountStatus",
     "AuditAction",
     "AuditLog",
+    "CareReminder",
+    "CareReminderCategory",
     "ChatMessage",
     "ChatSession",
     "ConsentRecord",

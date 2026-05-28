@@ -436,3 +436,107 @@ def test_emotional_journal_sharing_and_nr1_privacy_boundaries() -> None:
     after_revoke = client.get("/professional/authorized-users", headers=psychologist_headers)
     assert after_revoke.status_code == 200
     assert after_revoke.json() == []
+
+
+def test_user_care_reminders_require_consent_and_stay_user_owned() -> None:
+    register = client.post(
+        "/auth/register",
+        json={
+            "email": "assistant-user@example.com",
+            "full_name": "Pessoa Rotina",
+            "password": "strongpass123",
+            "role": "USER",
+            "document": "71402513046",
+            "lgpdConsent": True,
+        },
+    )
+    assert register.status_code == 201
+    headers = {"Authorization": f"Bearer {register.json()['access_token']}"}
+
+    blocked = client.post(
+        "/assistant/reminders",
+        json={"title": "Beber agua", "category": "WATER", "cadence": "DAILY", "time_local": "09:30"},
+        headers=headers,
+    )
+    assert blocked.status_code == 403
+    assert blocked.json()["detail"] == "LGPD consent required"
+
+    consent_status = client.get("/privacy/consent", headers=headers)
+    client.post(
+        "/privacy/consent",
+        json={"policy_version": consent_status.json()["policy_version"]},
+        headers=headers,
+    )
+
+    created = client.post(
+        "/assistant/reminders",
+        json={
+            "title": "Beber agua",
+            "category": "WATER",
+            "cadence": "DAILY",
+            "time_local": "09:30",
+            "note": "Um copo pequeno ja basta.",
+        },
+        headers=headers,
+    )
+    assert created.status_code == 201
+    reminder = created.json()
+    assert reminder["title"] == "Beber agua"
+    assert reminder["category"] == "WATER"
+    assert reminder["last_completed_at"] is None
+
+    listed = client.get("/assistant/reminders", headers=headers)
+    assert listed.status_code == 200
+    assert [item["id"] for item in listed.json()] == [reminder["id"]]
+
+    completed = client.post(f"/assistant/reminders/{reminder['id']}/complete", headers=headers)
+    assert completed.status_code == 200
+    assert completed.json()["last_completed_at"] is not None
+
+    db = SessionLocal()
+    try:
+        actions = {entry.action for entry in db.query(AuditLog).all()}
+    finally:
+        db.close()
+    assert AuditAction.CARE_REMINDER_CREATED in actions
+    assert AuditAction.CARE_REMINDER_COMPLETED in actions
+
+
+def test_non_user_cannot_use_personal_care_reminders_after_approval() -> None:
+    register = client.post(
+        "/auth/register",
+        json={
+            "email": "assistant-company@example.com",
+            "full_name": "Empresa Rotina",
+            "password": "strongpass123",
+            "role": "COMPANY",
+            "document": "99888777000100",
+            "lgpdConsent": True,
+        },
+    )
+    assert register.status_code == 201
+    data = register.json()
+    db = SessionLocal()
+    try:
+        user = db.get(User, data["user"]["id"])
+        assert user is not None
+        user.status = AccountStatus.ACTIVE
+        db.commit()
+    finally:
+        db.close()
+
+    headers = {"Authorization": f"Bearer {data['access_token']}"}
+    consent_status = client.get("/privacy/consent", headers=headers)
+    client.post(
+        "/privacy/consent",
+        json={"policy_version": consent_status.json()["policy_version"]},
+        headers=headers,
+    )
+
+    response = client.post(
+        "/assistant/reminders",
+        json={"title": "Pausa leve", "category": "PAUSE", "cadence": "DAILY"},
+        headers=headers,
+    )
+    assert response.status_code == 403
+    assert response.json()["detail"] == "Only common users can create reminders"
