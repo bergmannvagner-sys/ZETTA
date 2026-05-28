@@ -304,3 +304,135 @@ def test_password_reset_flow_changes_password_and_revokes_old_refresh_tokens() -
 
     old_refresh_response = client.post("/auth/refresh", json={"refresh_token": old_refresh})
     assert old_refresh_response.status_code == 401
+
+
+def test_emotional_journal_sharing_and_nr1_privacy_boundaries() -> None:
+    user_register = client.post(
+        "/auth/register",
+        json={
+            "email": "sharing-user@example.com",
+            "full_name": "Pessoa Sharing",
+            "password": "strongpass123",
+            "role": "USER",
+            "document": "24681357928",
+            "lgpdConsent": True,
+        },
+    )
+    assert user_register.status_code == 201
+    user_token = user_register.json()["access_token"]
+    user_headers = {"Authorization": f"Bearer {user_token}"}
+    consent_status = client.get("/privacy/consent", headers=user_headers)
+    client.post(
+        "/privacy/consent",
+        json={"policy_version": consent_status.json()["policy_version"]},
+        headers=user_headers,
+    )
+
+    psychologist_register = client.post(
+        "/auth/register",
+        json={
+            "email": "sharing-psi@example.com",
+            "full_name": "Psicologa Sharing",
+            "password": "strongpass123",
+            "role": "PSYCHOLOGIST",
+            "document": "06/456789",
+            "lgpdConsent": True,
+        },
+    )
+    company_register = client.post(
+        "/auth/register",
+        json={
+            "email": "sharing-company@example.com",
+            "full_name": "Empresa Sharing",
+            "password": "strongpass123",
+            "role": "COMPANY",
+            "document": "24681357000140",
+            "lgpdConsent": True,
+        },
+    )
+    assert psychologist_register.status_code == 201
+    assert company_register.status_code == 201
+    db = SessionLocal()
+    try:
+        for email in ("sharing-psi@example.com", "sharing-company@example.com"):
+            target = db.query(User).filter(User.email == email).first()
+            assert target is not None
+            target.status = AccountStatus.ACTIVE
+        db.commit()
+    finally:
+        db.close()
+
+    psychologist_login = client.post(
+        "/auth/login",
+        json={"email": "sharing-psi@example.com", "password": "strongpass123"},
+    )
+    company_login = client.post(
+        "/auth/login",
+        json={"email": "sharing-company@example.com", "password": "strongpass123"},
+    )
+    psychologist_headers = {"Authorization": f"Bearer {psychologist_login.json()['access_token']}"}
+    company_headers = {"Authorization": f"Bearer {company_login.json()['access_token']}"}
+
+    journal = client.post(
+        "/journal/entries",
+        json={"content": "Hoje fiquei ansioso, mas consegui pedir ajuda.", "tags": ["ansiedade", "vitoria"]},
+        headers=user_headers,
+    )
+    assert journal.status_code == 201
+
+    emotion = client.post(
+        "/emotions/logs",
+        json={"mood": "ansioso", "emotions": ["ansiedade"], "intensity": 8, "stress": 7, "anxiety": 8},
+        headers=user_headers,
+    )
+    assert emotion.status_code == 201
+
+    report = client.post("/reports/emotional/me", headers=user_headers)
+    assert report.status_code == 201
+    assert report.json()["risk_level"] == "ELEVATED"
+
+    unauthorized_professional = client.get("/professional/authorized-users", headers=psychologist_headers)
+    assert unauthorized_professional.status_code == 200
+    assert unauthorized_professional.json() == []
+
+    professional_consent = client.post(
+        "/sharing/consents",
+        json={
+            "target_email": "sharing-psi@example.com",
+            "categories": ["MOOD", "TRENDS"],
+            "summary_only": True,
+        },
+        headers=user_headers,
+    )
+    assert professional_consent.status_code == 201
+
+    authorized_professional = client.get("/professional/authorized-users", headers=psychologist_headers)
+    assert authorized_professional.status_code == 200
+    authorized_payload = authorized_professional.json()
+    assert len(authorized_payload) == 1
+    assert authorized_payload[0]["latest_mood"] == "ansioso"
+    assert authorized_payload[0]["average_intensity"] == 8.0
+    assert authorized_payload[0]["journal_entries_visible"] == 0
+
+    company_consent = client.post(
+        "/sharing/consents",
+        json={
+            "target_email": "sharing-company@example.com",
+            "categories": ["MOOD", "TRENDS"],
+            "summary_only": True,
+        },
+        headers=user_headers,
+    )
+    assert company_consent.status_code == 201
+
+    nr1 = client.get("/nr1/report", headers=company_headers)
+    assert nr1.status_code == 200
+    assert nr1.json()["participant_count"] == 1
+    assert nr1.json()["suppressed"] is True
+    assert "insuficiente" in nr1.json()["summary"]
+
+    revoke = client.delete(f"/sharing/consents/{professional_consent.json()['id']}", headers=user_headers)
+    assert revoke.status_code == 204
+    after_revoke = client.get("/professional/authorized-users", headers=psychologist_headers)
+    assert after_revoke.status_code == 200
+    assert after_revoke.json() == []

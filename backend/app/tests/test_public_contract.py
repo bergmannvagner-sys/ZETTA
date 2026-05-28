@@ -26,6 +26,12 @@ def test_public_openapi_contract_matches_mobile_mvp() -> None:
     assert "/privacy/consent" in paths
     assert "/chat/message" in paths
     assert "/sos/event" in paths
+    assert "/journal/entries" in paths
+    assert "/emotions/logs" in paths
+    assert "/sharing/consents" in paths
+    assert "/reports/emotional/me" in paths
+    assert "/professional/authorized-users" in paths
+    assert "/nr1/report" in paths
     assert "/admin/pending-accounts" in paths
     assert "/admin/approve-account" in paths
     assert "/admin/reject-account" in paths

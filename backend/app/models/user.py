@@ -53,3 +53,11 @@ class User(Base):
     chat_sessions = relationship("ChatSession", back_populates="user", cascade="all, delete-orphan")
     sos_events = relationship("SOSEvent", back_populates="user", cascade="all, delete-orphan")
     consent_records = relationship("ConsentRecord", back_populates="user", cascade="all, delete-orphan")
+    journal_entries = relationship("JournalEntry", back_populates="user", cascade="all, delete-orphan")
+    emotion_logs = relationship("EmotionLog", back_populates="user", cascade="all, delete-orphan")
+    sharing_consents = relationship(
+        "UserSharingConsent",
+        foreign_keys="UserSharingConsent.owner_user_id",
+        back_populates="owner",
+        cascade="all, delete-orphan",
+    )
