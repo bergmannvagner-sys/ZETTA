@@ -24,6 +24,7 @@ class AccountStatus(str, enum.Enum):
     ACTIVE = "ACTIVE"
     PENDING_VERIFICATION = "PENDING_VERIFICATION"
     REJECTED = "REJECTED"
+    ARCHIVED = "ARCHIVED"
 
 
 class SubscriptionPlan(str, enum.Enum):

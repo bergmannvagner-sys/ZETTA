@@ -114,6 +114,8 @@ def login(payload: LoginRequest, db: Session = Depends(get_db)) -> AuthResponse:
     user = db.query(User).filter(User.email == payload.email.lower()).first()
     if not user or not verify_password(payload.password, user.password_hash):
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid credentials")
+    if user.status == AccountStatus.ARCHIVED:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Account archived")
     write_audit_log(
         db,
         action=AuditAction.USER_LOGIN,

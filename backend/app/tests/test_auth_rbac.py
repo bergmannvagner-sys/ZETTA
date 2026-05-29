@@ -230,6 +230,66 @@ def test_paid_profile_requires_trial_or_active_subscription_after_approval() -> 
     assert response.json()["detail"] == "Paid plan required"
 
 
+def test_super_admin_can_archive_rejected_or_qa_accounts_and_login_is_blocked() -> None:
+    register = client.post(
+        "/auth/register",
+        json={
+            "email": "qa-archive-user@example.com",
+            "full_name": "Pessoa QA Arquivo",
+            "password": "strongpass123",
+            "role": "USER",
+            "document": "98765432100",
+            "lgpdConsent": True,
+        },
+    )
+    assert register.status_code == 201
+    target_id = register.json()["user"]["id"]
+
+    db = SessionLocal()
+    try:
+        admin = User(
+            email="archive-admin@example.com",
+            full_name="Admin Archive",
+            password_hash=hash_password("strongpass123"),
+            role=UserRole.SUPER_ADMIN,
+            status=AccountStatus.ACTIVE,
+            subscription_plan="INTERNAL",
+            subscription_status=SubscriptionStatus.ACTIVE,
+        )
+        db.add(admin)
+        db.commit()
+    finally:
+        db.close()
+
+    admin_login = client.post(
+        "/auth/login",
+        json={"email": "archive-admin@example.com", "password": "strongpass123"},
+    )
+    assert admin_login.status_code == 200
+    admin_headers = {"Authorization": f"Bearer {admin_login.json()['access_token']}"}
+
+    archive = client.post(
+        "/admin/archive-account",
+        json={"user_id": target_id, "reason": "cleanup QA account"},
+        headers=admin_headers,
+    )
+    assert archive.status_code == 200
+    assert archive.json()["status"] == "archived"
+
+    login = client.post(
+        "/auth/login",
+        json={"email": "qa-archive-user@example.com", "password": "strongpass123"},
+    )
+    assert login.status_code == 403
+    assert login.json()["detail"] == "Account archived"
+
+    audit = client.get("/admin/audit-logs?action=ACCOUNT_ARCHIVED&limit=10", headers=admin_headers)
+    assert audit.status_code == 200
+    archive_log = next(entry for entry in audit.json() if entry["target_user_id"] == target_id)
+    assert archive_log["metadata"]["previous_status"] == "ACTIVE"
+    assert archive_log["metadata"]["subscription_status"] == "CANCELED"
+
+
 def test_e2e_user_consent_chat_sos_and_audit() -> None:
     register = client.post(
         "/auth/register",

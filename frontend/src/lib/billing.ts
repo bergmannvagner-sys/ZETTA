@@ -50,6 +50,9 @@ export function isPaidRole(role?: UserRole): boolean {
 export function paidAccessBlockTitle(user?: AuthUser | null): string {
   if (!user) return "Acesso nao carregado";
   if (!isPaidRole(user.role) || hasPaidAccess(user)) return "Acesso liberado";
+  if (user.status === "ARCHIVED") {
+    return "Conta arquivada";
+  }
   if (user.status === "REJECTED" || user.subscription_status === "CANCELED") {
     return "Acesso comercial indisponivel";
   }
@@ -76,6 +79,9 @@ export function paidAccessBlockMessage(user?: AuthUser | null): string {
   if (user.subscription_status === "PAST_DUE") {
     return "Os recursos comerciais ficam pausados enquanto o pagamento estiver pendente. Os dados autorizados seguem protegidos.";
   }
+  if (user.status === "ARCHIVED") {
+    return "Esta conta foi arquivada administrativamente. O acesso fica bloqueado sem exclusao fisica dos registros de auditoria.";
+  }
   if (user.status === "REJECTED" || user.subscription_status === "CANCELED") {
     return "Este perfil comercial nao esta liberado para acessar recursos pagos. Fale com a administracao para revisar a situacao.";
   }
@@ -86,6 +92,7 @@ export function paidAccessActionLabel(user?: AuthUser | null): string {
   if (!user) return "Ver acesso";
   if (user.status === "PENDING_VERIFICATION" || user.subscription_status === "PENDING") return "Acompanhar analise";
   if (user.subscription_status === "PAST_DUE") return "Ver pendencia";
+  if (user.status === "ARCHIVED") return "Conta arquivada";
   if (user.subscription_status === "CANCELED" || user.status === "REJECTED") return "Revisar acesso";
   return "Ver plano";
 }

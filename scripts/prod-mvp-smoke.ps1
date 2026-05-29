@@ -186,7 +186,19 @@ if (-not ($plans | Where-Object { $_.role -eq "COMPANY" })) {
 }
 Write-Host "commercial plans: ok"
 
+foreach ($account in @($user.user, $psychologist.user, $company.user)) {
+  Invoke-Json -Method POST -Path "/admin/archive-account" -Headers $adminHeaders -Body @{
+    user_id = $account.id
+    reason = "production MVP smoke cleanup"
+  } | Out-Null
+}
+Invoke-Json -Method POST -Path "/auth/login" -Body @{
+  email = $userEmail
+  password = $password
+} -AllowedStatus @(403) | Out-Null
+Write-Host "QA archive cleanup: ok"
+
 Write-Host ""
 Write-Host "Production MVP smoke test passed." -ForegroundColor Green
-Write-Host "Created QA accounts are intentionally left in production for audit/RBAC visibility."
+Write-Host "Created QA accounts were archived without physical deletion."
 Write-Host "Password and tokens were used in memory only and were not printed."

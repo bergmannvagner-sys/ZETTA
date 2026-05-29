@@ -9,7 +9,7 @@ export type UserRole =
   | "PUBLIC_INSTITUTION"
   | "SUPER_ADMIN";
 
-export type AccountStatus = "ACTIVE" | "PENDING_VERIFICATION" | "REJECTED";
+export type AccountStatus = "ACTIVE" | "PENDING_VERIFICATION" | "REJECTED" | "ARCHIVED";
 export type SubscriptionPlan =
   | "FREE_USER"
   | "PSYCHOLOGIST_PRO"

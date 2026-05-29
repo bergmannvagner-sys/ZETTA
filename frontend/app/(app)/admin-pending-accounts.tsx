@@ -143,6 +143,13 @@ export default function AdminPendingAccounts() {
                 tone="danger"
                 onPress={() => moderation.mutate({ path: "/admin/reject-account", userId: account.id })}
               />
+              {account.email.startsWith("qa-") || account.email.endsWith("@example.com") ? (
+                <Button
+                  label="Arquivar QA"
+                  tone="soft"
+                  onPress={() => moderation.mutate({ path: "/admin/archive-account", userId: account.id })}
+                />
+              ) : null}
             </View>
           </Card>
         ))}

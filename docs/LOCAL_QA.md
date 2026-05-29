@@ -129,4 +129,4 @@ powershell -ExecutionPolicy Bypass -File .\scripts\prod-mvp-smoke.ps1
 Remove-Item Env:\ZETTA_ADMIN_PASSWORD
 ```
 
-The script creates unique USER, PSYCHOLOGIST, and COMPANY accounts in production. They are not deleted automatically because the MVP has no safe admin delete endpoint yet.
+The script creates unique USER, PSYCHOLOGIST, and COMPANY accounts in production, validates RBAC, then archives those QA accounts without physical deletion.

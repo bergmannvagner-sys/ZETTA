@@ -361,3 +361,42 @@ def reject_account(
     )
     db.commit()
     return {"status": "rejected"}
+
+
+@router.post("/archive-account")
+def archive_account(
+    payload: ModerationAccountRequest,
+    admin: Annotated[User, Depends(require_roles(UserRole.SUPER_ADMIN))],
+    db: Session = Depends(get_db),
+) -> dict[str, str]:
+    user = db.get(User, payload.user_id)
+    if not user or user.role == UserRole.SUPER_ADMIN:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Account not found")
+    is_qa_account = user.email.startswith("qa-") or user.email.endswith("@example.com")
+    if user.status != AccountStatus.REJECTED and not is_qa_account:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Only rejected accounts or QA accounts can be archived",
+        )
+    previous_status = user.status
+    previous_subscription_status = user.subscription_status
+    user.status = AccountStatus.ARCHIVED
+    user.subscription_status = SubscriptionStatus.CANCELED
+    write_audit_log(
+        db,
+        action=AuditAction.ACCOUNT_ARCHIVED,
+        actor_user_id=admin.id,
+        target_user_id=user.id,
+        resource_type="user",
+        resource_id=user.id,
+        metadata={
+            "role": user.role.value,
+            "reason": payload.reason,
+            "previous_status": previous_status.value,
+            "previous_subscription_status": previous_subscription_status.value,
+            "subscription_status": user.subscription_status.value,
+            "qa_account": is_qa_account,
+        },
+    )
+    db.commit()
+    return {"status": "archived"}

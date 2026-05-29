@@ -207,6 +207,20 @@ export default function AdminSubscriptions() {
       }),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ["admin-subscriptions"] })
   });
+  const archiveAccount = useMutation({
+    mutationFn: ({ userId }: { userId: string }) =>
+      apiRequest("/admin/archive-account", {
+        method: "POST",
+        body: JSON.stringify({
+          user_id: userId,
+          reason: reason.trim() || "admin archive"
+        })
+      }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["admin-subscriptions"] });
+      queryClient.invalidateQueries({ queryKey: ["billing-reference-audit"] });
+    }
+  });
 
   const accounts = subscriptions.data ?? [];
 
@@ -246,7 +260,7 @@ export default function AdminSubscriptions() {
         })}
       </View>
       <Field label="Motivo da alteracao" value={reason} onChangeText={setReason} />
-      <ErrorText message={subscriptions.error?.message ?? updateStatus.error?.message} />
+      <ErrorText message={subscriptions.error?.message ?? updateStatus.error?.message ?? archiveAccount.error?.message} />
       {subscriptions.isLoading ? <Text className="text-muted">Carregando...</Text> : null}
       {accounts.length === 0 && !subscriptions.isLoading ? (
         <Text className="text-muted">Nenhuma conta paga encontrada.</Text>
@@ -298,6 +312,16 @@ export default function AdminSubscriptions() {
                   onPress={() => updateStatus.mutate({ userId: account.id, subscriptionStatus: action.value })}
                 />
               ))}
+              {account.status === "REJECTED" ||
+              account.email.startsWith("qa-") ||
+              account.email.endsWith("@example.com") ? (
+                <Button
+                  label="Arquivar conta"
+                  tone="danger"
+                  disabled={account.status === "ARCHIVED" || archiveAccount.isPending}
+                  onPress={() => archiveAccount.mutate({ userId: account.id })}
+                />
+              ) : null}
             </View>
           </Card>
         ))}
