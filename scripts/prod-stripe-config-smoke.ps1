@@ -46,7 +46,7 @@ if (-not $AdminPassword) {
   Fail "Set ZETTA_ADMIN_PASSWORD or pass -AdminPassword. Do not commit or share this value."
 }
 
-Write-Host "ZETTA production Mercado Pago config smoke test" -ForegroundColor Green
+Write-Host "ZETTA production Stripe config smoke test" -ForegroundColor Green
 Write-Host "API: $ApiUrl"
 Write-Host "Admin email: $AdminEmail"
 
@@ -64,26 +64,26 @@ $headers = @{ Authorization = "Bearer $($adminLogin.access_token)" }
 Write-Host "admin auth: ok"
 
 $billingConfig = Invoke-Json -Method GET -Path "/admin/billing-config" -Headers $headers
-$mercadoPago = $billingConfig.provider_capabilities | Where-Object { $_.provider -eq "MERCADO_PAGO" } | Select-Object -First 1
-if (-not $mercadoPago) {
-  Fail "MERCADO_PAGO provider capability was not returned."
+$stripe = $billingConfig.provider_capabilities | Where-Object { $_.provider -eq "STRIPE" } | Select-Object -First 1
+if (-not $stripe) {
+  Fail "STRIPE provider capability was not returned."
 }
-if (-not $mercadoPago.provider_configured) {
-  Fail "Mercado Pago is not configured. Set MERCADO_PAGO_ACCESS_TOKEN, MERCADO_PAGO_PUBLIC_KEY, and MERCADO_PAGO_WEBHOOK_SECRET in Render."
+if (-not $stripe.provider_configured) {
+  Fail "Stripe is not configured. Set STRIPE_SECRET_KEY, STRIPE_PUBLISHABLE_KEY, and STRIPE_WEBHOOK_SECRET in Render."
 }
-if (-not $mercadoPago.sandbox_enabled) {
-  Fail "Mercado Pago sandbox/test mode is not enabled. Keep MERCADO_PAGO_SANDBOX_MODE=true for this MVP step."
+if (-not $stripe.sandbox_enabled) {
+  Fail "Stripe sandbox/test mode is not enabled. Keep STRIPE_SANDBOX_MODE=true for this MVP step."
 }
-if ($mercadoPago.checkout_enabled) {
-  Fail "Checkout is unexpectedly enabled. This step must not expose public checkout yet."
+if ($stripe.checkout_enabled) {
+  Fail "Public checkout is unexpectedly enabled. This step must stay admin-only."
 }
-if (-not ($mercadoPago.required_env_names -contains "MERCADO_PAGO_ACCESS_TOKEN")) {
-  Fail "Mercado Pago required env list is incomplete."
+if (-not ($stripe.required_env_names -contains "STRIPE_SECRET_KEY")) {
+  Fail "Stripe required env list is incomplete."
 }
 
-Write-Host "mercado pago configured: ok"
+Write-Host "stripe configured: ok"
 Write-Host "sandbox/test mode: ok"
 Write-Host "public checkout disabled: ok"
 Write-Host ""
-Write-Host "Mercado Pago config smoke test passed." -ForegroundColor Green
-Write-Host "No token, public key, webhook secret, or admin password was printed."
+Write-Host "Stripe config smoke test passed." -ForegroundColor Green
+Write-Host "No secret key, publishable key, webhook secret, or admin password was printed."

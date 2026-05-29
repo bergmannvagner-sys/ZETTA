@@ -110,10 +110,19 @@ class StripePaymentAdapter(LocalOnlyPaymentAdapter):
     event_reference_fields = ("id", "type", "data.object.id")
     required_env_names = (
         "STRIPE_SECRET_KEY",
+        "STRIPE_PUBLISHABLE_KEY",
         "STRIPE_WEBHOOK_SECRET",
-        "STRIPE_PRICE_IDS",
+        "STRIPE_SANDBOX_MODE",
+        "STRIPE_SUCCESS_URL",
+        "STRIPE_CANCEL_URL",
+        "STRIPE_PRICE_ID_PSYCHOLOGIST",
+        "STRIPE_PRICE_ID_COMPANY",
+        "STRIPE_PRICE_ID_CLINIC",
+        "STRIPE_PRICE_ID_INSTITUTIONAL",
+        "STRIPE_PRICE_ID_SPONSOR",
     )
     activation_checkpoints = (
+        "Comecar em sandbox/teste com chaves sk_test_ e pk_test_.",
         "Configurar STRIPE_WEBHOOK_SECRET fora do repositorio.",
         "Validar Stripe-Signature usando SDK oficial antes de processar evento.",
         "Buscar customer e subscription reais no Stripe antes de liberar acesso pago.",
@@ -132,45 +141,8 @@ class StripePaymentAdapter(LocalOnlyPaymentAdapter):
             or super().extract_subscription_reference(payload)
         )
 
-
-class MercadoPagoPaymentAdapter(LocalOnlyPaymentAdapter):
-    provider = "MERCADO_PAGO"
-    webhook_signature_headers = ("x-signature", "x-request-id")
-    customer_reference_fields = ("payer.id", "external_reference")
-    event_reference_fields = ("id", "type", "action", "data.id")
-    required_env_names = (
-        "MERCADO_PAGO_ACCESS_TOKEN",
-        "MERCADO_PAGO_PUBLIC_KEY",
-        "MERCADO_PAGO_WEBHOOK_SECRET",
-        "MERCADO_PAGO_SANDBOX_MODE",
-    )
-    activation_checkpoints = (
-        "Comecar em sandbox/teste, sem checkout publico.",
-        "Configurar segredo de webhook Mercado Pago fora do repositorio.",
-        "Validar x-signature e x-request-id antes de processar evento.",
-        "Consultar pagamento/preapproval no Mercado Pago para confirmar status real.",
-        "Vincular external_reference ao usuario antes de liberar acesso pago.",
-    )
-
-    def extract_event_reference(self, payload: Mapping[str, Any]) -> str | None:
-        data = payload.get("data")
-        if isinstance(data, Mapping):
-            return _as_text(data.get("id")) or super().extract_event_reference(payload)
-        return super().extract_event_reference(payload)
-
-    def extract_customer_reference(self, payload: Mapping[str, Any]) -> str | None:
-        payer = payload.get("payer")
-        if isinstance(payer, Mapping):
-            return _as_text(payer.get("id")) or self._external_reference(payload)
-        return self._external_reference(payload) or super().extract_customer_reference(payload)
-
-    def _external_reference(self, payload: Mapping[str, Any]) -> str | None:
-        return _as_text(payload.get("external_reference"))
-
-
 PAYMENT_ADAPTERS: dict[str, PaymentProviderAdapter] = {
     "STRIPE": StripePaymentAdapter(),
-    "MERCADO_PAGO": MercadoPagoPaymentAdapter(),
 }
 
 
@@ -215,13 +187,6 @@ def validate_billing_reference(
             errors.append("Stripe Subscription ID must start with sub_")
         if last_event_id and not last_event_id.startswith("evt_"):
             errors.append("Stripe event ID must start with evt_")
-
-    if normalized_provider == "MERCADO_PAGO":
-        stripe_like_values = [
-            value for value in (customer_id, subscription_id, last_event_id) if value
-        ]
-        if any(value.startswith(("cus_", "sub_", "evt_")) for value in stripe_like_values):
-            errors.append("Mercado Pago reference cannot use Stripe ID prefixes")
 
     return errors
 

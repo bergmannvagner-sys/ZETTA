@@ -821,7 +821,7 @@ def test_super_admin_can_manage_paid_subscription_status(monkeypatch) -> None:
         "/admin/billing-reference",
         json={
             "user_id": company_id,
-            "billing_provider": "MERCADO_PAGO",
+            "billing_provider": "PAGSEGURO",
             "billing_customer_id": "cus_test_company",
             "billing_subscription_id": "sub_test_company",
             "billing_last_event_id": "evt_test_company",
@@ -829,8 +829,7 @@ def test_super_admin_can_manage_paid_subscription_status(monkeypatch) -> None:
         },
         headers=admin_headers,
     )
-    assert invalid_reference.status_code == 400
-    assert "Mercado Pago reference cannot use Stripe ID prefixes" in invalid_reference.text
+    assert invalid_reference.status_code == 422
 
     reference = client.post(
         "/admin/billing-reference",
@@ -871,7 +870,7 @@ def test_super_admin_can_manage_paid_subscription_status(monkeypatch) -> None:
     assert config_payload["signature_header"] == "X-Bergmann-Billing-Signature"
     assert config_payload["secret_env_name"] == "BILLING_WEBHOOK_SECRET"
     assert "STRIPE" in config_payload["supported_providers"]
-    assert "MERCADO_PAGO" in config_payload["supported_providers"]
+    assert "MERCADO_PAGO" not in config_payload["supported_providers"]
     assert "billing_webhook_secret" not in config_payload
 
     email_config = client.get("/admin/email-config", headers=admin_headers)
@@ -895,117 +894,111 @@ def test_super_admin_can_manage_paid_subscription_status(monkeypatch) -> None:
         for capability in config_payload["provider_capabilities"]
         if capability["provider"] == "STRIPE"
     )
-    mercado_pago_config = next(
-        capability
-        for capability in config_payload["provider_capabilities"]
-        if capability["provider"] == "MERCADO_PAGO"
-    )
     assert stripe_config["checkout_enabled"] is False
     assert "Stripe-Signature" in stripe_config["webhook_signature_headers"]
     assert "customer" in stripe_config["customer_reference_fields"]
     assert "STRIPE_WEBHOOK_SECRET" in stripe_config["required_env_names"]
+    assert "STRIPE_SECRET_KEY" in stripe_config["required_env_names"]
     assert stripe_config["provider_configured"] is False
-    assert mercado_pago_config["checkout_enabled"] is False
-    assert mercado_pago_config["provider_configured"] is False
-    assert mercado_pago_config["sandbox_enabled"] is True
-    assert "x-signature" in mercado_pago_config["webhook_signature_headers"]
-    assert "external_reference" in mercado_pago_config["customer_reference_fields"]
-    assert "MERCADO_PAGO_ACCESS_TOKEN" in mercado_pago_config["required_env_names"]
-    assert "MERCADO_PAGO_WEBHOOK_SECRET" in mercado_pago_config["required_env_names"]
-    assert "mercado_pago_access_token" not in config_payload
-    assert "mercado_pago_webhook_secret" not in config_payload
+    assert stripe_config["sandbox_enabled"] is True
+    assert "stripe_secret_key" not in config_payload
+    assert "stripe_webhook_secret" not in config_payload
 
     settings = get_settings()
-    previous_mp_access_token = settings.mercado_pago_access_token
-    previous_mp_public_key = settings.mercado_pago_public_key
-    previous_mp_webhook_secret = settings.mercado_pago_webhook_secret
-    previous_mp_sandbox_mode = settings.mercado_pago_sandbox_mode
-    settings.mercado_pago_access_token = "TEST-123"
-    settings.mercado_pago_public_key = "TEST-public-key"
-    settings.mercado_pago_webhook_secret = "test-webhook-secret"
-    settings.mercado_pago_sandbox_mode = True
+    previous_stripe_secret_key = settings.stripe_secret_key
+    previous_stripe_publishable_key = settings.stripe_publishable_key
+    previous_stripe_webhook_secret = settings.stripe_webhook_secret
+    previous_stripe_sandbox_mode = settings.stripe_sandbox_mode
+    settings.stripe_secret_key = "sk_test_123"
+    settings.stripe_publishable_key = "pk_test_123"
+    settings.stripe_webhook_secret = "whsec_test"
+    settings.stripe_sandbox_mode = True
     try:
         configured_config = client.get("/admin/billing-config", headers=admin_headers)
         assert configured_config.status_code == 200
-        configured_mp_config = next(
+        configured_stripe_config = next(
             capability
             for capability in configured_config.json()["provider_capabilities"]
-            if capability["provider"] == "MERCADO_PAGO"
+            if capability["provider"] == "STRIPE"
         )
-        assert configured_mp_config["provider_configured"] is True
-        assert configured_mp_config["sandbox_enabled"] is True
-        assert configured_mp_config["checkout_enabled"] is False
-        assert "TEST-123" not in configured_config.text
-        assert "test-webhook-secret" not in configured_config.text
+        assert configured_stripe_config["provider_configured"] is True
+        assert configured_stripe_config["sandbox_enabled"] is True
+        assert configured_stripe_config["checkout_enabled"] is False
+        assert "sk_test_123" not in configured_config.text
+        assert "whsec_test" not in configured_config.text
     finally:
-        settings.mercado_pago_access_token = previous_mp_access_token
-        settings.mercado_pago_public_key = previous_mp_public_key
-        settings.mercado_pago_webhook_secret = previous_mp_webhook_secret
-        settings.mercado_pago_sandbox_mode = previous_mp_sandbox_mode
+        settings.stripe_secret_key = previous_stripe_secret_key
+        settings.stripe_publishable_key = previous_stripe_publishable_key
+        settings.stripe_webhook_secret = previous_stripe_webhook_secret
+        settings.stripe_sandbox_mode = previous_stripe_sandbox_mode
 
-    missing_mp_checkout = client.post(
-        "/admin/mercado-pago/checkout-preference",
+    missing_stripe_checkout = client.post(
+        "/admin/stripe/checkout-session",
         json={"user_id": company_id},
         headers=admin_headers,
     )
-    assert missing_mp_checkout.status_code == 503
-    assert "Mercado Pago credentials are not configured" in missing_mp_checkout.text
+    assert missing_stripe_checkout.status_code == 503
+    assert "Stripe credentials are not configured" in missing_stripe_checkout.text
 
-    captured_mp_request: dict[str, object] = {}
+    captured_stripe_request: dict[str, object] = {}
 
-    class FakeMercadoPagoResponse:
+    class FakeStripeResponse:
         def raise_for_status(self) -> None:
             return None
 
         def json(self) -> dict[str, object]:
             return {
-                "id": "pref_test_company",
-                "init_point": "https://www.mercadopago.com.br/checkout/v1/redirect?pref_id=pref_test_company",
-                "sandbox_init_point": "https://sandbox.mercadopago.com.br/checkout/v1/redirect?pref_id=pref_test_company",
-                "live_mode": False,
+                "id": "cs_test_company",
+                "url": "https://checkout.stripe.com/c/pay/cs_test_company",
+                "livemode": False,
             }
 
-    def fake_mercado_pago_post(url, **kwargs):
-        captured_mp_request["url"] = url
-        captured_mp_request.update(kwargs)
-        return FakeMercadoPagoResponse()
+    def fake_stripe_post(url, **kwargs):
+        captured_stripe_request["url"] = url
+        captured_stripe_request.update(kwargs)
+        return FakeStripeResponse()
 
-    previous_mp_access_token = settings.mercado_pago_access_token
-    previous_mp_public_key = settings.mercado_pago_public_key
-    previous_mp_webhook_secret = settings.mercado_pago_webhook_secret
-    previous_mp_sandbox_mode = settings.mercado_pago_sandbox_mode
-    previous_public_api_url = settings.public_api_url
-    settings.mercado_pago_access_token = "TEST-ACCESS-TOKEN"
-    settings.mercado_pago_public_key = "TEST-PUBLIC-KEY"
-    settings.mercado_pago_webhook_secret = "test-webhook-secret"
-    settings.mercado_pago_sandbox_mode = True
-    settings.public_api_url = "https://api.example.test"
-    monkeypatch.setattr("app.services.mercado_pago.httpx.post", fake_mercado_pago_post)
+    previous_stripe_secret_key = settings.stripe_secret_key
+    previous_stripe_publishable_key = settings.stripe_publishable_key
+    previous_stripe_webhook_secret = settings.stripe_webhook_secret
+    previous_stripe_sandbox_mode = settings.stripe_sandbox_mode
+    previous_stripe_success_url = settings.stripe_success_url
+    previous_stripe_cancel_url = settings.stripe_cancel_url
+    previous_stripe_price_id_company = settings.stripe_price_id_company
+    settings.stripe_secret_key = "sk_test_123"
+    settings.stripe_publishable_key = "pk_test_123"
+    settings.stripe_webhook_secret = "whsec_test"
+    settings.stripe_sandbox_mode = True
+    settings.stripe_success_url = "https://app.example.test/success"
+    settings.stripe_cancel_url = "https://app.example.test/cancel"
+    settings.stripe_price_id_company = "price_test_company"
+    monkeypatch.setattr("app.services.stripe.httpx.post", fake_stripe_post)
     try:
-        mp_checkout = client.post(
-            "/admin/mercado-pago/checkout-preference",
+        stripe_checkout = client.post(
+            "/admin/stripe/checkout-session",
             json={"user_id": company_id, "reason": "sandbox checkout test"},
             headers=admin_headers,
         )
-        assert mp_checkout.status_code == 200
-        mp_checkout_payload = mp_checkout.json()
-        assert mp_checkout_payload["provider"] == "MERCADO_PAGO"
-        assert mp_checkout_payload["preference_id"] == "pref_test_company"
-        assert mp_checkout_payload["checkout_url"].startswith("https://sandbox.mercadopago.com.br/")
-        assert mp_checkout_payload["live_mode"] is False
-        assert captured_mp_request["url"] == "https://api.mercadopago.com/checkout/preferences"
-        assert captured_mp_request["headers"] == {"Authorization": "Bearer TEST-ACCESS-TOKEN"}
-        mp_body = captured_mp_request["json"]
-        assert mp_body["external_reference"] == company_id
-        assert mp_body["notification_url"] == "https://api.example.test/billing/webhook"
-        assert mp_body["items"][0]["currency_id"] == "BRL"
-        assert mp_body["items"][0]["unit_price"] == 1.0
+        assert stripe_checkout.status_code == 200
+        stripe_checkout_payload = stripe_checkout.json()
+        assert stripe_checkout_payload["provider"] == "STRIPE"
+        assert stripe_checkout_payload["session_id"] == "cs_test_company"
+        assert stripe_checkout_payload["checkout_url"].startswith("https://checkout.stripe.com/")
+        assert stripe_checkout_payload["live_mode"] is False
+        assert captured_stripe_request["url"] == "https://api.stripe.com/v1/checkout/sessions"
+        assert captured_stripe_request["headers"]["Authorization"] == "Bearer sk_test_123"
+        stripe_body = captured_stripe_request["content"]
+        assert "mode=subscription" in stripe_body
+        assert f"client_reference_id={company_id}" in stripe_body
+        assert "line_items%5B0%5D%5Bprice%5D=price_test_company" in stripe_body
     finally:
-        settings.mercado_pago_access_token = previous_mp_access_token
-        settings.mercado_pago_public_key = previous_mp_public_key
-        settings.mercado_pago_webhook_secret = previous_mp_webhook_secret
-        settings.mercado_pago_sandbox_mode = previous_mp_sandbox_mode
-        settings.public_api_url = previous_public_api_url
+        settings.stripe_secret_key = previous_stripe_secret_key
+        settings.stripe_publishable_key = previous_stripe_publishable_key
+        settings.stripe_webhook_secret = previous_stripe_webhook_secret
+        settings.stripe_sandbox_mode = previous_stripe_sandbox_mode
+        settings.stripe_success_url = previous_stripe_success_url
+        settings.stripe_cancel_url = previous_stripe_cancel_url
+        settings.stripe_price_id_company = previous_stripe_price_id_company
 
 
 def test_payment_provider_adapters_are_local_only_contracts() -> None:
@@ -1023,10 +1016,6 @@ def test_payment_provider_adapters_are_local_only_contracts() -> None:
         )
         == "sub_123"
     )
-
-    mercado_pago = get_payment_adapter("MERCADO_PAGO")
-    assert mercado_pago.extract_event_reference({"data": {"id": "mp_evt_123"}}) == "mp_evt_123"
-    assert mercado_pago.extract_customer_reference({"external_reference": "user_123"}) == "user_123"
 
     try:
         stripe.verify_provider_signature(raw_body=b"{}", headers={}, secret=None)

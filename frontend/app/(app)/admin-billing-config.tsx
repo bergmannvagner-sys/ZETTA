@@ -9,12 +9,13 @@ import { useAuthStore } from "@/store/auth-store";
 import { BillingConfig, PaymentAdapterCapability } from "@/types/auth";
 
 const checklist = [
-  "Criar conta real no Mercado Pago em modo sandbox/teste.",
-  "Configurar produto e planos reais fora do app.",
-  "Definir MERCADO_PAGO_ACCESS_TOKEN, MERCADO_PAGO_PUBLIC_KEY e MERCADO_PAGO_WEBHOOK_SECRET no Render.",
+  "Criar conta real no Stripe e usar modo teste.",
+  "Configurar produtos e Price IDs reais no Stripe, ainda em test mode.",
+  "Definir STRIPE_SECRET_KEY, STRIPE_PUBLISHABLE_KEY e STRIPE_WEBHOOK_SECRET no Render.",
+  "Definir STRIPE_PRICE_ID_* para cada plano comercial.",
   "Definir BILLING_WEBHOOK_SECRET com segredo forte no Render.",
   "Ativar BILLING_WEBHOOKS_ENABLED somente depois do teste de assinatura.",
-  "Cadastrar a URL /billing/webhook no provedor.",
+  "Cadastrar a URL /billing/webhook no Stripe.",
   "Confirmar eventos de assinatura ativa, vencida e cancelada.",
   "Verificar auditoria antes de liberar cobranca publica."
 ];
@@ -46,7 +47,7 @@ export default function AdminBillingConfig() {
         <Text className="text-sm font-semibold tracking-[4px] text-mint">ADMIN</Text>
         <Text className="text-3xl font-semibold text-white">Configuracao de pagamentos</Text>
         <Text className="text-base leading-6 text-muted">
-          Preparacao operacional para Mercado Pago sandbox e Stripe futuro. Esta tela nao exibe segredo e nao cria checkout publico.
+          Preparacao operacional para Stripe em modo teste. Esta tela nao exibe segredo e nao cria checkout publico.
         </Text>
       </View>
 

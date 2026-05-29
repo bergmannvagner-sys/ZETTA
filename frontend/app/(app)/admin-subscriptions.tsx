@@ -8,7 +8,7 @@ import { Button, Card, ErrorText, Field } from "@/components/ui";
 import { apiRequest } from "@/lib/api";
 import { planLabel, subscriptionStatusLabel } from "@/lib/billing";
 import { useAuthStore } from "@/store/auth-store";
-import { AuditLogEntry, MercadoPagoCheckout, SubscriptionAccount, SubscriptionStatus, UserRole } from "@/types/auth";
+import { AuditLogEntry, StripeCheckout, SubscriptionAccount, SubscriptionStatus, UserRole } from "@/types/auth";
 
 const roleFilters: Array<{ label: string; value?: UserRole }> = [
   { label: "Todos" },
@@ -28,7 +28,7 @@ const statusActions: Array<{ label: string; value: SubscriptionStatus; tone?: "p
   { label: "Cancelar", value: "CANCELED", tone: "danger" }
 ];
 
-const providerOptions = ["NONE", "STRIPE", "MERCADO_PAGO"] as const;
+const providerOptions = ["NONE", "STRIPE"] as const;
 type BillingProviderOption = (typeof providerOptions)[number];
 
 function subscriptionsPath(search: string, role?: UserRole): string {
@@ -63,12 +63,6 @@ function validateBillingReferenceForm(
     if (customer && !customer.startsWith("cus_")) errors.push("Stripe Customer ID deve comecar com cus_.");
     if (subscription && !subscription.startsWith("sub_")) errors.push("Stripe Subscription ID deve comecar com sub_.");
     if (event && !event.startsWith("evt_")) errors.push("Stripe Event ID deve comecar com evt_.");
-  }
-  if (provider === "MERCADO_PAGO") {
-    const values = [customer, subscription, event].filter(Boolean);
-    if (values.some((value) => value.startsWith("cus_") || value.startsWith("sub_") || value.startsWith("evt_"))) {
-      errors.push("Mercado Pago nao deve usar prefixos de IDs do Stripe.");
-    }
   }
   return errors;
 }
@@ -107,9 +101,9 @@ function BillingReferenceForm({
       queryClient.invalidateQueries({ queryKey: ["billing-reference-audit"] });
     }
   });
-  const createMercadoPagoCheckout = useMutation({
+  const createStripeCheckout = useMutation({
     mutationFn: () =>
-      apiRequest<MercadoPagoCheckout>("/admin/mercado-pago/checkout-preference", {
+      apiRequest<StripeCheckout>("/admin/stripe/checkout-session", {
         method: "POST",
         body: JSON.stringify({
           user_id: account.id,
@@ -127,7 +121,7 @@ function BillingReferenceForm({
     <View className="gap-3 rounded-2xl border border-white/10 bg-ink/35 p-3">
       <Text className="text-sm font-semibold text-white">Referencia externa futura</Text>
       <Text className="text-xs leading-5 text-muted">
-        Apenas vincula IDs de Stripe ou Mercado Pago. Esta tela nao cria checkout e nao confirma pagamento.
+        Apenas vincula IDs de Stripe. Esta tela nao confirma pagamento sem webhook ou acao administrativa.
       </Text>
       <View className="flex-row flex-wrap gap-2">
         {providerOptions.map((option) => {
@@ -178,16 +172,15 @@ function BillingReferenceForm({
         disabled={!canSave}
         onPress={() => updateReference.mutate()}
       />
-      <ErrorText message={createMercadoPagoCheckout.error?.message} />
+      <ErrorText message={createStripeCheckout.error?.message} />
       <Button
-        label="Criar checkout Mercado Pago sandbox"
+        label="Criar checkout Stripe sandbox"
         tone="soft"
-        loading={createMercadoPagoCheckout.isPending}
-        onPress={() => createMercadoPagoCheckout.mutate()}
+        loading={createStripeCheckout.isPending}
+        onPress={() => createStripeCheckout.mutate()}
       />
       <Text className="text-xs leading-5 text-muted">
-        O link abre o checkout real de teste do Mercado Pago. A assinatura so deve virar ativa depois do webhook
-        validado.
+        O link abre o Stripe Checkout em modo teste. A assinatura so deve virar ativa depois do webhook validado.
       </Text>
       {history.length > 0 ? (
         <View className="gap-2 rounded-xl border border-white/10 bg-surface/45 p-3">

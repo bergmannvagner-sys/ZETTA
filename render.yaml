@@ -56,19 +56,27 @@ services:
         value: "false"
       - key: BILLING_WEBHOOK_SECRET
         sync: false
-      - key: MERCADO_PAGO_ACCESS_TOKEN
+      - key: STRIPE_SECRET_KEY
         sync: false
-      - key: MERCADO_PAGO_PUBLIC_KEY
+      - key: STRIPE_PUBLISHABLE_KEY
         sync: false
-      - key: MERCADO_PAGO_WEBHOOK_SECRET
+      - key: STRIPE_WEBHOOK_SECRET
         sync: false
-      - key: MERCADO_PAGO_SANDBOX_MODE
+      - key: STRIPE_SANDBOX_MODE
         value: "true"
-      - key: MERCADO_PAGO_SUCCESS_URL
+      - key: STRIPE_SUCCESS_URL
         sync: false
-      - key: MERCADO_PAGO_FAILURE_URL
+      - key: STRIPE_CANCEL_URL
         sync: false
-      - key: MERCADO_PAGO_PENDING_URL
+      - key: STRIPE_PRICE_ID_PSYCHOLOGIST
+        sync: false
+      - key: STRIPE_PRICE_ID_COMPANY
+        sync: false
+      - key: STRIPE_PRICE_ID_CLINIC
+        sync: false
+      - key: STRIPE_PRICE_ID_INSTITUTIONAL
+        sync: false
+      - key: STRIPE_PRICE_ID_SPONSOR
         sync: false
 
   - type: redis

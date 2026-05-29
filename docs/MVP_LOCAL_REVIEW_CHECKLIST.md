@@ -157,7 +157,7 @@ Profissional, empresa e admin:
 - [ ] `POST /admin/billing-reference` rejeita provider e IDs incompatíveis.
 - [ ] `NONE` nao aceita IDs externos.
 - [ ] Stripe exige `cus_`, `sub_` e `evt_` quando evento existir.
-- [ ] Mercado Pago nao aceita prefixos de IDs do Stripe.
+- [ ] Apenas Stripe aparece como provider ativo de pagamento.
 - [ ] Webhook fica desativado por env ate provider real ser ligado.
 - [ ] Idempotencia por `billing_last_event_id` esta coberta por teste.
 
