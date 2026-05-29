@@ -10,6 +10,7 @@ class CommercialPlan:
     title: str
     description: str
     admin_price_placeholder: str
+    sandbox_price_brl: float
     billing_interval_placeholder: str
     included_features: tuple[str, ...]
     checkout_public_enabled: bool = False
@@ -23,6 +24,7 @@ COMMERCIAL_PLANS: tuple[CommercialPlan, ...] = (
         title="Psicologo Pro",
         description="Acompanhamento de usuarios que autorizaram compartilhamento emocional.",
         admin_price_placeholder="Definir preco mensal profissional",
+        sandbox_price_brl=1.00,
         billing_interval_placeholder="Mensal ou anual",
         included_features=(
             "Pacientes autorizados por consentimento",
@@ -37,6 +39,7 @@ COMMERCIAL_PLANS: tuple[CommercialPlan, ...] = (
         title="Empresa NR-1",
         description="Saude emocional organizacional com indicadores agregados e governanca.",
         admin_price_placeholder="Definir preco por faixa de colaboradores",
+        sandbox_price_brl=1.00,
         billing_interval_placeholder="Mensal corporativo",
         included_features=(
             "Painel NR-1",
@@ -51,6 +54,7 @@ COMMERCIAL_PLANS: tuple[CommercialPlan, ...] = (
         title="Clinica",
         description="Operacao clinica validada para equipe e dados autorizados.",
         admin_price_placeholder="Definir preco institucional",
+        sandbox_price_brl=1.00,
         billing_interval_placeholder="Mensal institucional",
         included_features=(
             "Gestao institucional validada",
@@ -65,6 +69,7 @@ COMMERCIAL_PLANS: tuple[CommercialPlan, ...] = (
         title="Hospital",
         description="Apoio institucional para operacao clinica e acolhimento autorizado.",
         admin_price_placeholder="Definir contrato institucional",
+        sandbox_price_brl=1.00,
         billing_interval_placeholder="Contrato mensal ou anual",
         included_features=(
             "Fluxos institucionais",
@@ -79,6 +84,7 @@ COMMERCIAL_PLANS: tuple[CommercialPlan, ...] = (
         title="ONG",
         description="Acolhimento social com controle de consentimento e projetos autorizados.",
         admin_price_placeholder="Definir valor social ou patrocinado",
+        sandbox_price_brl=1.00,
         billing_interval_placeholder="Contrato social",
         included_features=(
             "Projetos de acolhimento",
@@ -93,6 +99,7 @@ COMMERCIAL_PLANS: tuple[CommercialPlan, ...] = (
         title="Instituicao publica",
         description="Base para SUS, UBS, CAPS e governo com governanca de dados.",
         admin_price_placeholder="Definir contrato publico",
+        sandbox_price_brl=1.00,
         billing_interval_placeholder="Contrato administrativo",
         included_features=(
             "Atendimento institucional validado",
@@ -107,6 +114,7 @@ COMMERCIAL_PLANS: tuple[CommercialPlan, ...] = (
         title="Patrocinador",
         description="Apoio financeiro a iniciativas de cuidado sem acesso indevido a dados.",
         admin_price_placeholder="Definir cota de patrocinio",
+        sandbox_price_brl=1.00,
         billing_interval_placeholder="Cota mensal, campanha ou anual",
         included_features=(
             "Apoio a iniciativas sociais",
@@ -120,3 +128,7 @@ COMMERCIAL_PLANS: tuple[CommercialPlan, ...] = (
 
 def list_commercial_plans() -> list[CommercialPlan]:
     return list(COMMERCIAL_PLANS)
+
+
+def commercial_plan_for_role(role: UserRole) -> CommercialPlan | None:
+    return next((plan for plan in COMMERCIAL_PLANS if plan.role == role), None)

@@ -155,3 +155,7 @@ Remove-Item Env:\ZETTA_ADMIN_PASSWORD
 ```
 
 The script checks `/admin/billing-config`, confirms Mercado Pago env readiness, keeps checkout public disabled, and requires sandbox/test mode before real payment integration.
+
+After this smoke passes, the super admin can open "Assinaturas" and create a Mercado Pago sandbox checkout
+for a paid account. The link is provider-real, admin-only, and does not mark the subscription active until
+webhook validation or manual admin confirmation is completed.

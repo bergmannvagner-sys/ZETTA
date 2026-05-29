@@ -1,14 +1,14 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Redirect } from "expo-router";
 import { useState } from "react";
-import { Pressable, Text, View } from "react-native";
+import { Linking, Pressable, Text, View } from "react-native";
 
 import { Screen } from "@/components/screen";
 import { Button, Card, ErrorText, Field } from "@/components/ui";
 import { apiRequest } from "@/lib/api";
 import { planLabel, subscriptionStatusLabel } from "@/lib/billing";
 import { useAuthStore } from "@/store/auth-store";
-import { AuditLogEntry, SubscriptionAccount, SubscriptionStatus, UserRole } from "@/types/auth";
+import { AuditLogEntry, MercadoPagoCheckout, SubscriptionAccount, SubscriptionStatus, UserRole } from "@/types/auth";
 
 const roleFilters: Array<{ label: string; value?: UserRole }> = [
   { label: "Todos" },
@@ -107,6 +107,21 @@ function BillingReferenceForm({
       queryClient.invalidateQueries({ queryKey: ["billing-reference-audit"] });
     }
   });
+  const createMercadoPagoCheckout = useMutation({
+    mutationFn: () =>
+      apiRequest<MercadoPagoCheckout>("/admin/mercado-pago/checkout-preference", {
+        method: "POST",
+        body: JSON.stringify({
+          user_id: account.id,
+          reason: "admin sandbox checkout preference"
+        })
+      }),
+    onSuccess: async (checkout) => {
+      queryClient.invalidateQueries({ queryKey: ["admin-subscriptions"] });
+      queryClient.invalidateQueries({ queryKey: ["billing-reference-audit"] });
+      await Linking.openURL(checkout.checkout_url);
+    }
+  });
 
   return (
     <View className="gap-3 rounded-2xl border border-white/10 bg-ink/35 p-3">
@@ -163,6 +178,17 @@ function BillingReferenceForm({
         disabled={!canSave}
         onPress={() => updateReference.mutate()}
       />
+      <ErrorText message={createMercadoPagoCheckout.error?.message} />
+      <Button
+        label="Criar checkout Mercado Pago sandbox"
+        tone="soft"
+        loading={createMercadoPagoCheckout.isPending}
+        onPress={() => createMercadoPagoCheckout.mutate()}
+      />
+      <Text className="text-xs leading-5 text-muted">
+        O link abre o checkout real de teste do Mercado Pago. A assinatura so deve virar ativa depois do webhook
+        validado.
+      </Text>
       {history.length > 0 ? (
         <View className="gap-2 rounded-xl border border-white/10 bg-surface/45 p-3">
           <Text className="text-xs font-semibold text-white">Historico recente</Text>

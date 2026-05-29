@@ -62,6 +62,7 @@ export type CommercialPlan = {
   title: string;
   description: string;
   admin_price_placeholder: string;
+  sandbox_price_brl: number;
   billing_interval_placeholder: string;
   included_features: string[];
   checkout_public_enabled: boolean;
@@ -113,4 +114,14 @@ export type PaymentAdapterCapability = {
   event_reference_fields: string[];
   required_env_names: string[];
   activation_checkpoints: string[];
+};
+
+export type MercadoPagoCheckout = {
+  provider: "MERCADO_PAGO";
+  preference_id: string;
+  checkout_url: string;
+  sandbox_checkout_url?: string | null;
+  external_reference: string;
+  amount_brl: number;
+  live_mode: boolean;
 };

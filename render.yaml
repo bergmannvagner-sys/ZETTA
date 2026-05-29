@@ -50,6 +50,8 @@ services:
         value: "true"
       - key: PASSWORD_RESET_URL
         sync: false
+      - key: PUBLIC_API_URL
+        sync: false
       - key: BILLING_WEBHOOKS_ENABLED
         value: "false"
       - key: BILLING_WEBHOOK_SECRET

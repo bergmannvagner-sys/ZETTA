@@ -24,6 +24,7 @@ Recomendadas:
 - `SMTP_FROM_EMAIL`
 - `SMTP_USE_TLS=true`
 - `PASSWORD_RESET_URL=bergmann://reset-password`
+- `PUBLIC_API_URL=https://zetta-bergmann.onrender.com`
 - `BILLING_WEBHOOKS_ENABLED=false`
 - `BILLING_WEBHOOK_SECRET`
 - `MERCADO_PAGO_ACCESS_TOKEN`
@@ -63,6 +64,7 @@ Variaveis:
 - `MERCADO_PAGO_PUBLIC_KEY`: public key do Mercado Pago.
 - `MERCADO_PAGO_WEBHOOK_SECRET`: segredo usado para validar notificacoes reais do provider.
 - `MERCADO_PAGO_SANDBOX_MODE=true`: manter `true` ate concluir smoke e validacao manual.
+- `PUBLIC_API_URL`: URL publica da API usada para montar `notification_url` no checkout sandbox.
 - `BILLING_WEBHOOK_SECRET`: segredo interno do endpoint `/billing/webhook`.
 - `BILLING_WEBHOOKS_ENABLED=false`: manter `false` ate a assinatura do webhook real estar validada.
 
@@ -77,6 +79,11 @@ Remove-Item Env:\ZETTA_ADMIN_PASSWORD
 
 Esse smoke confirma que Mercado Pago esta configurado em sandbox e que checkout publico continua
 desativado. Ele nao imprime segredo, token, public key ou access token.
+
+Depois do smoke passar, a tela de super admin "Assinaturas" pode gerar um checkout sandbox real
+para uma conta comercial. Esse link nao aparece para usuarios comuns e nao ativa a assinatura por
+si so; a liberacao financeira continua dependendo do webhook validado ou da acao administrativa
+manual enquanto o MVP estiver em teste.
 
 ## Frontend
 

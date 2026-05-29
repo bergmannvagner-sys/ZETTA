@@ -58,6 +58,7 @@ class CommercialPlanResponse(BaseModel):
     title: str
     description: str
     admin_price_placeholder: str
+    sandbox_price_brl: float
     billing_interval_placeholder: str
     included_features: list[str]
     checkout_public_enabled: bool
@@ -129,3 +130,20 @@ class BillingReferenceUpdateRequest(BaseModel):
     billing_subscription_id: str | None = Field(default=None, max_length=120)
     billing_last_event_id: str | None = Field(default=None, max_length=160)
     reason: str | None = Field(default=None, max_length=240)
+
+
+class MercadoPagoCheckoutRequest(BaseModel):
+    user_id: str
+    amount_brl: float | None = Field(default=None, gt=0, le=10000)
+    title: str | None = Field(default=None, max_length=120)
+    reason: str | None = Field(default=None, max_length=240)
+
+
+class MercadoPagoCheckoutResponse(BaseModel):
+    provider: Literal["MERCADO_PAGO"]
+    preference_id: str
+    checkout_url: str
+    sandbox_checkout_url: str | None = None
+    external_reference: str
+    amount_brl: float
+    live_mode: bool

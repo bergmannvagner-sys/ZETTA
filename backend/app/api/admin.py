@@ -15,6 +15,8 @@ from app.schemas.user import (
     BillingReferenceUpdateRequest,
     CommercialPlanResponse,
     EmailConfigResponse,
+    MercadoPagoCheckoutRequest,
+    MercadoPagoCheckoutResponse,
     ModerationAccountRequest,
     PendingAccountResponse,
     SubscriptionAccountResponse,
@@ -23,7 +25,8 @@ from app.schemas.user import (
 from app.services.audit import write_audit_log
 from app.services.billing import approval_subscription_status_for_role
 from app.services.billing_webhooks import STATUS_MAP
-from app.services.commercial_plans import list_commercial_plans
+from app.services.commercial_plans import commercial_plan_for_role, list_commercial_plans
+from app.services.mercado_pago import MercadoPagoIntegrationError, create_mercado_pago_checkout_preference
 from app.services.payment_adapters import list_payment_adapter_capabilities, validate_billing_reference
 from app.services.verification import build_verification_triage
 
@@ -203,6 +206,7 @@ def commercial_plans(
             title=plan.title,
             description=plan.description,
             admin_price_placeholder=plan.admin_price_placeholder,
+            sandbox_price_brl=plan.sandbox_price_brl,
             billing_interval_placeholder=plan.billing_interval_placeholder,
             included_features=list(plan.included_features),
             checkout_public_enabled=plan.checkout_public_enabled,
@@ -397,6 +401,58 @@ def update_billing_reference(
         "billing_subscription_id": user.billing_subscription_id,
         "billing_last_event_id": user.billing_last_event_id,
     }
+
+
+@router.post("/mercado-pago/checkout-preference", response_model=MercadoPagoCheckoutResponse)
+def create_mercado_pago_checkout(
+    payload: MercadoPagoCheckoutRequest,
+    admin: Annotated[User, Depends(require_roles(UserRole.SUPER_ADMIN))],
+    db: Session = Depends(get_db),
+) -> MercadoPagoCheckoutResponse:
+    settings = get_settings()
+    user = db.get(User, payload.user_id)
+    if not user or user.role not in PAID_ADMIN_ROLES:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Paid account not found")
+    if user.status in {AccountStatus.REJECTED, AccountStatus.ARCHIVED}:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Account cannot receive checkout")
+    plan = commercial_plan_for_role(user.role)
+    if not plan:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="No commercial plan for role")
+
+    amount_brl = payload.amount_brl or plan.sandbox_price_brl
+    try:
+        preference = create_mercado_pago_checkout_preference(
+            settings=settings,
+            user=user,
+            plan=plan,
+            amount_brl=amount_brl,
+            title=payload.title,
+        )
+    except MercadoPagoIntegrationError as exc:
+        raise HTTPException(status_code=status.HTTP_503_SERVICE_UNAVAILABLE, detail=str(exc)) from exc
+
+    user.billing_provider = "MERCADO_PAGO"
+    user.billing_subscription_id = preference["preference_id"]
+    write_audit_log(
+        db,
+        action=AuditAction.SUBSCRIPTION_STATUS_UPDATED,
+        actor_user_id=admin.id,
+        target_user_id=user.id,
+        resource_type="mercado_pago_checkout_preference",
+        resource_id=user.id,
+        metadata={
+            "reason": payload.reason,
+            "role": user.role.value,
+            "subscription_plan": user.subscription_plan.value,
+            "provider": "MERCADO_PAGO",
+            "preference_id": preference["preference_id"],
+            "amount_brl": preference["amount_brl"],
+            "sandbox": settings.mercado_pago_sandbox_mode,
+            "checkout_created": True,
+        },
+    )
+    db.commit()
+    return MercadoPagoCheckoutResponse(**preference)
 
 
 @router.post("/approve-account")

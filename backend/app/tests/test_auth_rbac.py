@@ -738,7 +738,7 @@ def test_non_user_cannot_use_personal_care_reminders_after_approval() -> None:
     assert response.json()["detail"] == "Only common users can create reminders"
 
 
-def test_super_admin_can_manage_paid_subscription_status() -> None:
+def test_super_admin_can_manage_paid_subscription_status(monkeypatch) -> None:
     register = client.post(
         "/auth/register",
         json={
@@ -791,6 +791,7 @@ def test_super_admin_can_manage_paid_subscription_status() -> None:
     assert all(plan["admin_only_pricing"] is True for plan in plans_payload)
     company_plan = next(plan for plan in plans_payload if plan["role"] == "COMPANY")
     assert company_plan["plan"] == "COMPANY_NR1"
+    assert company_plan["sandbox_price_brl"] == 1.0
     assert "Painel NR-1" in company_plan["included_features"]
 
     public_plans = client.get("/admin/commercial-plans")
@@ -941,6 +942,70 @@ def test_super_admin_can_manage_paid_subscription_status() -> None:
         settings.mercado_pago_public_key = previous_mp_public_key
         settings.mercado_pago_webhook_secret = previous_mp_webhook_secret
         settings.mercado_pago_sandbox_mode = previous_mp_sandbox_mode
+
+    missing_mp_checkout = client.post(
+        "/admin/mercado-pago/checkout-preference",
+        json={"user_id": company_id},
+        headers=admin_headers,
+    )
+    assert missing_mp_checkout.status_code == 503
+    assert "Mercado Pago credentials are not configured" in missing_mp_checkout.text
+
+    captured_mp_request: dict[str, object] = {}
+
+    class FakeMercadoPagoResponse:
+        def raise_for_status(self) -> None:
+            return None
+
+        def json(self) -> dict[str, object]:
+            return {
+                "id": "pref_test_company",
+                "init_point": "https://www.mercadopago.com.br/checkout/v1/redirect?pref_id=pref_test_company",
+                "sandbox_init_point": "https://sandbox.mercadopago.com.br/checkout/v1/redirect?pref_id=pref_test_company",
+                "live_mode": False,
+            }
+
+    def fake_mercado_pago_post(url, **kwargs):
+        captured_mp_request["url"] = url
+        captured_mp_request.update(kwargs)
+        return FakeMercadoPagoResponse()
+
+    previous_mp_access_token = settings.mercado_pago_access_token
+    previous_mp_public_key = settings.mercado_pago_public_key
+    previous_mp_webhook_secret = settings.mercado_pago_webhook_secret
+    previous_mp_sandbox_mode = settings.mercado_pago_sandbox_mode
+    previous_public_api_url = settings.public_api_url
+    settings.mercado_pago_access_token = "TEST-ACCESS-TOKEN"
+    settings.mercado_pago_public_key = "TEST-PUBLIC-KEY"
+    settings.mercado_pago_webhook_secret = "test-webhook-secret"
+    settings.mercado_pago_sandbox_mode = True
+    settings.public_api_url = "https://api.example.test"
+    monkeypatch.setattr("app.services.mercado_pago.httpx.post", fake_mercado_pago_post)
+    try:
+        mp_checkout = client.post(
+            "/admin/mercado-pago/checkout-preference",
+            json={"user_id": company_id, "reason": "sandbox checkout test"},
+            headers=admin_headers,
+        )
+        assert mp_checkout.status_code == 200
+        mp_checkout_payload = mp_checkout.json()
+        assert mp_checkout_payload["provider"] == "MERCADO_PAGO"
+        assert mp_checkout_payload["preference_id"] == "pref_test_company"
+        assert mp_checkout_payload["checkout_url"].startswith("https://sandbox.mercadopago.com.br/")
+        assert mp_checkout_payload["live_mode"] is False
+        assert captured_mp_request["url"] == "https://api.mercadopago.com/checkout/preferences"
+        assert captured_mp_request["headers"] == {"Authorization": "Bearer TEST-ACCESS-TOKEN"}
+        mp_body = captured_mp_request["json"]
+        assert mp_body["external_reference"] == company_id
+        assert mp_body["notification_url"] == "https://api.example.test/billing/webhook"
+        assert mp_body["items"][0]["currency_id"] == "BRL"
+        assert mp_body["items"][0]["unit_price"] == 1.0
+    finally:
+        settings.mercado_pago_access_token = previous_mp_access_token
+        settings.mercado_pago_public_key = previous_mp_public_key
+        settings.mercado_pago_webhook_secret = previous_mp_webhook_secret
+        settings.mercado_pago_sandbox_mode = previous_mp_sandbox_mode
+        settings.public_api_url = previous_public_api_url
 
 
 def test_payment_provider_adapters_are_local_only_contracts() -> None:
