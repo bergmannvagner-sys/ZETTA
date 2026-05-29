@@ -135,6 +135,48 @@ def subscriptions(
     ]
 
 
+@router.get("/moderated-accounts", response_model=list[SubscriptionAccountResponse])
+def moderated_accounts(
+    _: Annotated[User, Depends(require_roles(UserRole.SUPER_ADMIN))],
+    q: str | None = Query(default=None, max_length=120),
+    role: UserRole | None = Query(default=None),
+    account_status: AccountStatus | None = Query(default=None),
+    db: Session = Depends(get_db),
+) -> list[SubscriptionAccountResponse]:
+    allowed_statuses = {AccountStatus.REJECTED, AccountStatus.ARCHIVED}
+    query = db.query(User).filter(User.status.in_(allowed_statuses))
+    if account_status:
+        if account_status not in allowed_statuses:
+            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Status is not moderated")
+        query = query.filter(User.status == account_status)
+    if role:
+        query = query.filter(User.role == role)
+    if q:
+        like = f"%{q.strip().lower()}%"
+        query = query.filter((User.email.ilike(like)) | (User.full_name.ilike(like)))
+    users = query.order_by(User.updated_at.desc(), User.created_at.desc()).all()
+    return [
+        SubscriptionAccountResponse(
+            id=user.id,
+            email=user.email,
+            full_name=user.full_name,
+            role=user.role,
+            status=user.status,
+            document_type=user.document_type,
+            document_last4=user.document_last4,
+            subscription_plan=user.subscription_plan,
+            subscription_status=user.subscription_status,
+            billing_provider=user.billing_provider,
+            billing_customer_id=user.billing_customer_id,
+            billing_subscription_id=user.billing_subscription_id,
+            billing_last_event_id=user.billing_last_event_id,
+            billing_last_event_at=user.billing_last_event_at.isoformat() if user.billing_last_event_at else None,
+            created_at=user.created_at.isoformat(),
+        )
+        for user in users
+    ]
+
+
 @router.get("/commercial-plans", response_model=list[CommercialPlanResponse])
 def commercial_plans(
     _: Annotated[User, Depends(require_roles(UserRole.SUPER_ADMIN))],
@@ -188,6 +230,7 @@ def audit_logs(
     _: Annotated[User, Depends(require_roles(UserRole.SUPER_ADMIN))],
     action: AuditAction | None = Query(default=None),
     resource_type: str | None = Query(default=None, max_length=80),
+    target_user_id: str | None = Query(default=None, max_length=36),
     limit: int = Query(default=50, ge=1, le=100),
     db: Session = Depends(get_db),
 ) -> list[AuditLogResponse]:
@@ -196,6 +239,8 @@ def audit_logs(
         query = query.filter(AuditLog.action == action)
     if resource_type:
         query = query.filter(AuditLog.resource_type == resource_type.strip())
+    if target_user_id:
+        query = query.filter(AuditLog.target_user_id == target_user_id.strip())
     logs = query.order_by(AuditLog.created_at.desc()).limit(limit).all()
     return [
         AuditLogResponse(

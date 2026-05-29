@@ -289,6 +289,20 @@ def test_super_admin_can_archive_rejected_or_qa_accounts_and_login_is_blocked() 
     assert archive_log["metadata"]["previous_status"] == "ACTIVE"
     assert archive_log["metadata"]["subscription_status"] == "CANCELED"
 
+    moderated = client.get("/admin/moderated-accounts?account_status=ARCHIVED&q=qa-archive-user", headers=admin_headers)
+    assert moderated.status_code == 200
+    moderated_payload = moderated.json()
+    assert len(moderated_payload) == 1
+    assert moderated_payload[0]["id"] == target_id
+    assert moderated_payload[0]["status"] == "ARCHIVED"
+
+    invalid_status = client.get("/admin/moderated-accounts?account_status=ACTIVE", headers=admin_headers)
+    assert invalid_status.status_code == 400
+
+    user_audit = client.get(f"/admin/audit-logs?target_user_id={target_id}&limit=10", headers=admin_headers)
+    assert user_audit.status_code == 200
+    assert any(entry["action"] == "ACCOUNT_ARCHIVED" for entry in user_audit.json())
+
 
 def test_e2e_user_consent_chat_sos_and_audit() -> None:
     register = client.post(

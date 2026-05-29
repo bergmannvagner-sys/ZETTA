@@ -52,6 +52,7 @@ export default function AppLayout() {
       <Stack.Screen name="verification" options={{ title: "Conta em analise" }} />
       <Stack.Screen name="consent" options={{ title: "Consentimento" }} />
       <Stack.Screen name="admin-pending-accounts" options={{ title: "Contas pendentes" }} />
+      <Stack.Screen name="admin-moderated-accounts" options={{ title: "Contas moderadas" }} />
       <Stack.Screen name="admin-subscriptions" options={{ title: "Assinaturas" }} />
       <Stack.Screen name="admin-commercial-plans" options={{ title: "Planos comerciais" }} />
       <Stack.Screen name="admin-billing-config" options={{ title: "Pagamentos" }} />
