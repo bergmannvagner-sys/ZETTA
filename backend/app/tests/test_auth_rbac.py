@@ -872,6 +872,23 @@ def test_super_admin_can_manage_paid_subscription_status() -> None:
     assert "STRIPE" in config_payload["supported_providers"]
     assert "MERCADO_PAGO" in config_payload["supported_providers"]
     assert "billing_webhook_secret" not in config_payload
+
+    email_config = client.get("/admin/email-config", headers=admin_headers)
+    assert email_config.status_code == 200
+    email_config_payload = email_config.json()
+    assert email_config_payload["smtp_configured"] is False
+    assert "SMTP_PASSWORD" in email_config_payload["required_env_names"]
+    assert set(email_config_payload) == {
+        "smtp_configured",
+        "smtp_host_configured",
+        "smtp_username_configured",
+        "smtp_password_configured",
+        "smtp_from_email_configured",
+        "smtp_use_tls",
+        "smtp_port",
+        "password_reset_url_configured",
+        "required_env_names",
+    }
     stripe_config = next(
         capability
         for capability in config_payload["provider_capabilities"]

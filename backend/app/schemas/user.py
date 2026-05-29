@@ -96,6 +96,18 @@ class BillingConfigResponse(BaseModel):
     provider_capabilities: list[PaymentAdapterCapabilityResponse]
 
 
+class EmailConfigResponse(BaseModel):
+    smtp_configured: bool
+    smtp_host_configured: bool
+    smtp_username_configured: bool
+    smtp_password_configured: bool
+    smtp_from_email_configured: bool
+    smtp_use_tls: bool
+    smtp_port: int
+    password_reset_url_configured: bool
+    required_env_names: list[str]
+
+
 class ModerationAccountRequest(BaseModel):
     user_id: str
     reason: str | None = None

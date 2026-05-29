@@ -77,6 +77,7 @@ $checks = @(
   @{ name = "subscriptions"; path = "/admin/subscriptions" },
   @{ name = "commercial plans"; path = "/admin/commercial-plans" },
   @{ name = "billing config"; path = "/admin/billing-config" },
+  @{ name = "email config"; path = "/admin/email-config" },
   @{ name = "audit logs"; path = "/admin/audit-logs?limit=5" }
 )
 

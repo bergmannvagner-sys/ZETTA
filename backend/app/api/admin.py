@@ -14,6 +14,7 @@ from app.schemas.user import (
     BillingConfigResponse,
     BillingReferenceUpdateRequest,
     CommercialPlanResponse,
+    EmailConfigResponse,
     ModerationAccountRequest,
     PendingAccountResponse,
     SubscriptionAccountResponse,
@@ -221,6 +222,32 @@ def billing_config(
                 "activation_checkpoints": list(capability.activation_checkpoints),
             }
             for capability in list_payment_adapter_capabilities()
+        ],
+    )
+
+
+@router.get("/email-config", response_model=EmailConfigResponse)
+def email_config(
+    _: Annotated[User, Depends(require_roles(UserRole.SUPER_ADMIN))],
+) -> EmailConfigResponse:
+    settings = get_settings()
+    return EmailConfigResponse(
+        smtp_configured=settings.smtp_configured,
+        smtp_host_configured=bool(settings.smtp_host),
+        smtp_username_configured=bool(settings.smtp_username),
+        smtp_password_configured=bool(settings.smtp_password),
+        smtp_from_email_configured=bool(settings.smtp_from_email),
+        smtp_use_tls=settings.smtp_use_tls,
+        smtp_port=settings.smtp_port,
+        password_reset_url_configured=bool(settings.password_reset_url),
+        required_env_names=[
+            "SMTP_HOST",
+            "SMTP_PORT",
+            "SMTP_USERNAME",
+            "SMTP_PASSWORD",
+            "SMTP_FROM_EMAIL",
+            "SMTP_USE_TLS",
+            "PASSWORD_RESET_URL",
         ],
     )
 

@@ -116,6 +116,7 @@ The script checks:
 - `/admin/subscriptions`
 - `/admin/commercial-plans`
 - `/admin/billing-config`
+- `/admin/email-config`
 - `/admin/audit-logs`
 
 Do not commit or share `ZETTA_ADMIN_PASSWORD`.
@@ -130,3 +131,16 @@ Remove-Item Env:\ZETTA_ADMIN_PASSWORD
 ```
 
 The script creates unique USER, PSYCHOLOGIST, and COMPANY accounts in production, validates RBAC, then archives those QA accounts without physical deletion.
+
+validate production SMTP/password reset without printing secrets:
+
+```powershell
+$env:ZETTA_ADMIN_EMAIL="admin@example.com"
+$env:ZETTA_ADMIN_PASSWORD="use-your-real-secret-locally"
+$env:ZETTA_PASSWORD_RESET_EMAIL="admin@example.com"
+powershell -ExecutionPolicy Bypass -File .\scripts\prod-password-reset-smoke.ps1
+Remove-Item Env:\ZETTA_ADMIN_PASSWORD
+Remove-Item Env:\ZETTA_PASSWORD_RESET_EMAIL
+```
+
+The script checks `/admin/email-config`, confirms SMTP is configured, requests password reset, and requires a manual inbox check.

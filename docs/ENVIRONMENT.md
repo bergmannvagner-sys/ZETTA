@@ -34,6 +34,14 @@ apos a troca de senha. Em producao, o token nao e retornado pela API; ele precis
 por SMTP usando as variaveis acima. Provedores compativeis incluem Resend SMTP, SendGrid,
 Brevo, AWS SES ou outro SMTP autenticado.
 
+Para validar em producao, use a tela de super admin "Configurar email" ou rode:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File .\scripts\prod-password-reset-smoke.ps1
+```
+
+O smoke nao imprime token nem senha; depois dele, confirme manualmente se o email chegou.
+
 ## Frontend
 
 - `EXPO_PUBLIC_API_URL`: URL pública da API.

@@ -91,6 +91,18 @@ export type BillingConfig = {
   provider_capabilities: PaymentAdapterCapability[];
 };
 
+export type EmailConfig = {
+  smtp_configured: boolean;
+  smtp_host_configured: boolean;
+  smtp_username_configured: boolean;
+  smtp_password_configured: boolean;
+  smtp_from_email_configured: boolean;
+  smtp_use_tls: boolean;
+  smtp_port: number;
+  password_reset_url_configured: boolean;
+  required_env_names: string[];
+};
+
 export type PaymentAdapterCapability = {
   provider: string;
   checkout_enabled: boolean;
