@@ -10,6 +10,7 @@ from collections.abc import Sequence
 import sqlalchemy as sa
 from alembic import op
 from sqlalchemy import inspect
+from sqlalchemy.dialects import postgresql
 
 revision: str = "202605270008"
 down_revision: str | None = "202605270007"
@@ -37,9 +38,10 @@ def _column_exists(table_name: str, column_name: str) -> bool:
 
 
 def upgrade() -> None:
-    plan_enum = sa.Enum(*PLAN_VALUES, name="subscriptionplan")
-    status_enum = sa.Enum(*STATUS_VALUES, name="subscriptionstatus")
     bind = op.get_bind()
+    enum_cls = postgresql.ENUM if bind.dialect.name == "postgresql" else sa.Enum
+    plan_enum = enum_cls(*PLAN_VALUES, name="subscriptionplan")
+    status_enum = enum_cls(*STATUS_VALUES, name="subscriptionstatus")
     plan_enum.create(bind, checkfirst=True)
     status_enum.create(bind, checkfirst=True)
 
@@ -54,10 +56,8 @@ def upgrade() -> None:
             sa.Column("subscription_status", status_enum, nullable=False, server_default="FREE"),
         )
 
-    op.execute(
-        """
-        UPDATE bergmann_users
-        SET subscription_plan = CASE
+    plan_expression = """
+        CASE
             WHEN role = 'USER' THEN 'FREE_USER'
             WHEN role = 'PSYCHOLOGIST' THEN 'PSYCHOLOGIST_PRO'
             WHEN role = 'COMPANY' THEN 'COMPANY_NR1'
@@ -66,20 +66,22 @@ def upgrade() -> None:
             WHEN role = 'SUPER_ADMIN' THEN 'INTERNAL'
             ELSE 'INSTITUTIONAL'
         END
-        """
-    )
-    op.execute(
-        """
-        UPDATE bergmann_users
-        SET subscription_status = CASE
+    """
+    status_expression = """
+        CASE
             WHEN role = 'USER' THEN 'FREE'
             WHEN role = 'SUPER_ADMIN' THEN 'ACTIVE'
             WHEN status = 'ACTIVE' THEN 'TRIAL'
             WHEN status = 'REJECTED' THEN 'CANCELED'
             ELSE 'PENDING'
         END
-        """
-    )
+    """
+    if bind.dialect.name == "postgresql":
+        plan_expression = f"({plan_expression})::subscriptionplan"
+        status_expression = f"({status_expression})::subscriptionstatus"
+
+    op.execute(f"UPDATE bergmann_users SET subscription_plan = {plan_expression}")
+    op.execute(f"UPDATE bergmann_users SET subscription_status = {status_expression}")
     if bind.dialect.name != "sqlite":
         op.alter_column("bergmann_users", "subscription_plan", server_default=None)
         op.alter_column("bergmann_users", "subscription_status", server_default=None)
