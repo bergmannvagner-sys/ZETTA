@@ -1,10 +1,14 @@
 import logging
+from collections.abc import AsyncIterator
+from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from app.api import admin, assistant, auth, billing, chat, connections, emotional, privacy, sos, users
 from app.core.config import get_settings
+from app.db.session import SessionLocal
+from app.services.super_admin import sync_super_admin
 
 logging.basicConfig(
     level=logging.INFO,
@@ -12,7 +16,22 @@ logging.basicConfig(
 )
 
 settings = get_settings()
-app = FastAPI(title=settings.app_name)
+logger = logging.getLogger(__name__)
+
+
+@asynccontextmanager
+async def lifespan(_: FastAPI) -> AsyncIterator[None]:
+    if settings.super_admin_bootstrap_on_startup:
+        db = SessionLocal()
+        try:
+            sync_super_admin(db, settings)
+            logger.info("Super admin bootstrap completed for configured email")
+        finally:
+            db.close()
+    yield
+
+
+app = FastAPI(title=settings.app_name, lifespan=lifespan)
 
 app.add_middleware(
     CORSMiddleware,

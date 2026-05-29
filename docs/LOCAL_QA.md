@@ -87,6 +87,17 @@ If the admin password was exposed or needs rotation, set a new `SUPER_ADMIN_PASS
 python -m app.rotate_super_admin_password
 ```
 
+On Render plans without Shell, set these environment variables and deploy the latest commit:
+
+```text
+SUPER_ADMIN_EMAIL=admin@example.com
+SUPER_ADMIN_PASSWORD=use-a-new-strong-secret
+SUPER_ADMIN_BOOTSTRAP_ON_STARTUP=true
+```
+
+The app will create or rotate the super admin during startup without printing the password.
+After the smoke test passes, remove `SUPER_ADMIN_PASSWORD` and set `SUPER_ADMIN_BOOTSTRAP_ON_STARTUP=false` in Render.
+
 validate admin auth without printing the password or token:
 
 ```powershell

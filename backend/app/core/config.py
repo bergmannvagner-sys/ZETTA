@@ -23,6 +23,7 @@ class Settings(BaseSettings):
     ai_timeout_seconds: int = 30
     super_admin_email: str = "admin@bergmann.local"
     super_admin_password: str | None = None
+    super_admin_bootstrap_on_startup: bool = False
     smtp_host: str | None = None
     smtp_port: int = 587
     smtp_username: str | None = None
