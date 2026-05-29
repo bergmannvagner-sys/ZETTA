@@ -104,6 +104,7 @@ validate admin auth without printing the password or token:
 $env:ZETTA_ADMIN_EMAIL="admin@example.com"
 $env:ZETTA_ADMIN_PASSWORD="use-your-real-secret-locally"
 powershell -ExecutionPolicy Bypass -File .\scripts\prod-admin-smoke.ps1
+Remove-Item Env:\ZETTA_ADMIN_PASSWORD
 ```
 
 The script checks:
@@ -118,3 +119,14 @@ The script checks:
 - `/admin/audit-logs`
 
 Do not commit or share `ZETTA_ADMIN_PASSWORD`.
+
+validate the production MVP flow with generated QA accounts:
+
+```powershell
+$env:ZETTA_ADMIN_EMAIL="admin@example.com"
+$env:ZETTA_ADMIN_PASSWORD="use-your-real-secret-locally"
+powershell -ExecutionPolicy Bypass -File .\scripts\prod-mvp-smoke.ps1
+Remove-Item Env:\ZETTA_ADMIN_PASSWORD
+```
+
+The script creates unique USER, PSYCHOLOGIST, and COMPANY accounts in production. They are not deleted automatically because the MVP has no safe admin delete endpoint yet.
