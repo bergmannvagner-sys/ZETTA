@@ -72,3 +72,32 @@ Then validate manually or through ADB:
 - emotional report
 - chat
 - SOS
+
+## Production admin smoke test
+
+After running the safe production seed:
+
+```bash
+python -m app.seed_super_admin
+```
+
+validate admin auth without printing the password or token:
+
+```powershell
+$env:ZETTA_ADMIN_EMAIL="admin@example.com"
+$env:ZETTA_ADMIN_PASSWORD="use-your-real-secret-locally"
+powershell -ExecutionPolicy Bypass -File .\scripts\prod-admin-smoke.ps1
+```
+
+The script checks:
+
+- `/health`
+- `/auth/login`
+- `/users/me`
+- `/admin/pending-accounts`
+- `/admin/subscriptions`
+- `/admin/commercial-plans`
+- `/admin/billing-config`
+- `/admin/audit-logs`
+
+Do not commit or share `ZETTA_ADMIN_PASSWORD`.
