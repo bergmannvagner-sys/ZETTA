@@ -62,7 +62,7 @@ export type CommercialPlan = {
   title: string;
   description: string;
   admin_price_placeholder: string;
-  sandbox_price_brl: number;
+  price_brl: number;
   billing_interval_placeholder: string;
   included_features: string[];
   checkout_public_enabled: boolean;
@@ -108,7 +108,7 @@ export type PaymentAdapterCapability = {
   provider: string;
   checkout_enabled: boolean;
   provider_configured: boolean;
-  sandbox_enabled: boolean;
+  production_enabled: boolean;
   webhook_signature_headers: string[];
   customer_reference_fields: string[];
   event_reference_fields: string[];

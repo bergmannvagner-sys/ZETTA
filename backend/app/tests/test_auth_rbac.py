@@ -175,7 +175,7 @@ def test_approved_non_user_is_blocked_from_common_sos() -> None:
         user = db.get(User, data["user"]["id"])
         assert user is not None
         user.status = AccountStatus.ACTIVE
-        user.subscription_status = SubscriptionStatus.TRIAL
+        user.subscription_status = SubscriptionStatus.ACTIVE
         db.commit()
     finally:
         db.close()
@@ -194,7 +194,7 @@ def test_approved_non_user_is_blocked_from_common_sos() -> None:
     assert sos.json()["detail"] == "Only common area allowed"
 
 
-def test_paid_profile_requires_trial_or_active_subscription_after_approval() -> None:
+def test_paid_profile_requires_active_subscription_after_approval() -> None:
     register = client.post(
         "/auth/register",
         json={
@@ -482,7 +482,7 @@ def test_emotional_journal_sharing_and_nr1_privacy_boundaries() -> None:
             target = db.query(User).filter(User.email == email).first()
             assert target is not None
             target.status = AccountStatus.ACTIVE
-            target.subscription_status = SubscriptionStatus.TRIAL
+            target.subscription_status = SubscriptionStatus.ACTIVE
         db.commit()
     finally:
         db.close()
@@ -716,7 +716,7 @@ def test_non_user_cannot_use_personal_care_reminders_after_approval() -> None:
         user = db.get(User, data["user"]["id"])
         assert user is not None
         user.status = AccountStatus.ACTIVE
-        user.subscription_status = SubscriptionStatus.TRIAL
+        user.subscription_status = SubscriptionStatus.ACTIVE
         db.commit()
     finally:
         db.close()
@@ -768,7 +768,7 @@ def test_super_admin_can_manage_paid_subscription_status(monkeypatch) -> None:
         company = db.get(User, company_id)
         assert company is not None
         company.status = AccountStatus.ACTIVE
-        company.subscription_status = SubscriptionStatus.TRIAL
+        company.subscription_status = SubscriptionStatus.ACTIVE
         db.commit()
     finally:
         db.close()
@@ -791,7 +791,7 @@ def test_super_admin_can_manage_paid_subscription_status(monkeypatch) -> None:
     assert all(plan["admin_only_pricing"] is True for plan in plans_payload)
     company_plan = next(plan for plan in plans_payload if plan["role"] == "COMPANY")
     assert company_plan["plan"] == "COMPANY_NR1"
-    assert company_plan["sandbox_price_brl"] == 1.0
+    assert company_plan["price_brl"] == 499.9
     assert "Painel NR-1" in company_plan["included_features"]
 
     public_plans = client.get("/admin/commercial-plans")
@@ -900,7 +900,7 @@ def test_super_admin_can_manage_paid_subscription_status(monkeypatch) -> None:
     assert "STRIPE_WEBHOOK_SECRET" in stripe_config["required_env_names"]
     assert "STRIPE_SECRET_KEY" in stripe_config["required_env_names"]
     assert stripe_config["provider_configured"] is False
-    assert stripe_config["sandbox_enabled"] is True
+    assert stripe_config["production_enabled"] is False
     assert "stripe_secret_key" not in config_payload
     assert "stripe_webhook_secret" not in config_payload
 
@@ -908,11 +908,9 @@ def test_super_admin_can_manage_paid_subscription_status(monkeypatch) -> None:
     previous_stripe_secret_key = settings.stripe_secret_key
     previous_stripe_publishable_key = settings.stripe_publishable_key
     previous_stripe_webhook_secret = settings.stripe_webhook_secret
-    previous_stripe_sandbox_mode = settings.stripe_sandbox_mode
-    settings.stripe_secret_key = "sk_test_123"
-    settings.stripe_publishable_key = "pk_test_123"
-    settings.stripe_webhook_secret = "whsec_test"
-    settings.stripe_sandbox_mode = True
+    settings.stripe_secret_key = "sk_live_123"
+    settings.stripe_publishable_key = "pk_live_123"
+    settings.stripe_webhook_secret = "whsec_live"
     try:
         configured_config = client.get("/admin/billing-config", headers=admin_headers)
         assert configured_config.status_code == 200
@@ -922,15 +920,14 @@ def test_super_admin_can_manage_paid_subscription_status(monkeypatch) -> None:
             if capability["provider"] == "STRIPE"
         )
         assert configured_stripe_config["provider_configured"] is True
-        assert configured_stripe_config["sandbox_enabled"] is True
+        assert configured_stripe_config["production_enabled"] is True
         assert configured_stripe_config["checkout_enabled"] is False
-        assert "sk_test_123" not in configured_config.text
-        assert "whsec_test" not in configured_config.text
+        assert "sk_live_123" not in configured_config.text
+        assert "whsec_live" not in configured_config.text
     finally:
         settings.stripe_secret_key = previous_stripe_secret_key
         settings.stripe_publishable_key = previous_stripe_publishable_key
         settings.stripe_webhook_secret = previous_stripe_webhook_secret
-        settings.stripe_sandbox_mode = previous_stripe_sandbox_mode
 
     missing_stripe_checkout = client.post(
         "/admin/stripe/checkout-session",
@@ -948,9 +945,9 @@ def test_super_admin_can_manage_paid_subscription_status(monkeypatch) -> None:
 
         def json(self) -> dict[str, object]:
             return {
-                "id": "cs_test_company",
-                "url": "https://checkout.stripe.com/c/pay/cs_test_company",
-                "livemode": False,
+                "id": "cs_live_company",
+                "url": "https://checkout.stripe.com/c/pay/cs_live_company",
+                "livemode": True,
             }
 
     def fake_stripe_post(url, **kwargs):
@@ -961,41 +958,38 @@ def test_super_admin_can_manage_paid_subscription_status(monkeypatch) -> None:
     previous_stripe_secret_key = settings.stripe_secret_key
     previous_stripe_publishable_key = settings.stripe_publishable_key
     previous_stripe_webhook_secret = settings.stripe_webhook_secret
-    previous_stripe_sandbox_mode = settings.stripe_sandbox_mode
     previous_stripe_success_url = settings.stripe_success_url
     previous_stripe_cancel_url = settings.stripe_cancel_url
     previous_stripe_price_id_company = settings.stripe_price_id_company
-    settings.stripe_secret_key = "sk_test_123"
-    settings.stripe_publishable_key = "pk_test_123"
-    settings.stripe_webhook_secret = "whsec_test"
-    settings.stripe_sandbox_mode = True
-    settings.stripe_success_url = "https://app.example.test/success"
-    settings.stripe_cancel_url = "https://app.example.test/cancel"
-    settings.stripe_price_id_company = "price_test_company"
+    settings.stripe_secret_key = "sk_live_123"
+    settings.stripe_publishable_key = "pk_live_123"
+    settings.stripe_webhook_secret = "whsec_live"
+    settings.stripe_success_url = "https://app.example.com/success"
+    settings.stripe_cancel_url = "https://app.example.com/cancel"
+    settings.stripe_price_id_company = "price_company"
     monkeypatch.setattr("app.services.stripe.httpx.post", fake_stripe_post)
     try:
         stripe_checkout = client.post(
             "/admin/stripe/checkout-session",
-            json={"user_id": company_id, "reason": "sandbox checkout test"},
+            json={"user_id": company_id, "reason": "admin checkout"},
             headers=admin_headers,
         )
         assert stripe_checkout.status_code == 200
         stripe_checkout_payload = stripe_checkout.json()
         assert stripe_checkout_payload["provider"] == "STRIPE"
-        assert stripe_checkout_payload["session_id"] == "cs_test_company"
+        assert stripe_checkout_payload["session_id"] == "cs_live_company"
         assert stripe_checkout_payload["checkout_url"].startswith("https://checkout.stripe.com/")
-        assert stripe_checkout_payload["live_mode"] is False
+        assert stripe_checkout_payload["live_mode"] is True
         assert captured_stripe_request["url"] == "https://api.stripe.com/v1/checkout/sessions"
-        assert captured_stripe_request["headers"]["Authorization"] == "Bearer sk_test_123"
+        assert captured_stripe_request["headers"]["Authorization"] == "Bearer sk_live_123"
         stripe_body = captured_stripe_request["content"]
         assert "mode=subscription" in stripe_body
         assert f"client_reference_id={company_id}" in stripe_body
-        assert "line_items%5B0%5D%5Bprice%5D=price_test_company" in stripe_body
+        assert "line_items%5B0%5D%5Bprice%5D=price_company" in stripe_body
     finally:
         settings.stripe_secret_key = previous_stripe_secret_key
         settings.stripe_publishable_key = previous_stripe_publishable_key
         settings.stripe_webhook_secret = previous_stripe_webhook_secret
-        settings.stripe_sandbox_mode = previous_stripe_sandbox_mode
         settings.stripe_success_url = previous_stripe_success_url
         settings.stripe_cancel_url = previous_stripe_cancel_url
         settings.stripe_price_id_company = previous_stripe_price_id_company

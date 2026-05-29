@@ -36,7 +36,7 @@ export default function AdminCommercialPlans() {
         <Text className="text-sm font-semibold tracking-[4px] text-mint">ADMIN</Text>
         <Text className="text-3xl font-semibold text-white">Planos comerciais</Text>
         <Text className="text-base leading-6 text-muted">
-          Catalogo interno por perfil. Precos sao placeholders administrativos e nao aparecem como checkout publico.
+          Catalogo interno por perfil. Precos sao administrativos e nao aparecem como checkout publico.
         </Text>
       </View>
 
@@ -46,7 +46,7 @@ export default function AdminCommercialPlans() {
       <Card>
         <Text className="text-base font-semibold text-white">Regra do MVP</Text>
         <Text className="text-sm leading-5 text-muted">
-          Usuario comum permanece gratuito. Perfis comerciais dependem de validacao, assinatura em teste ou ativa e
+          Usuario comum permanece gratuito. Perfis comerciais dependem de validacao, assinatura ativa e
           consentimento para qualquer dado sensivel. Esta tela nao vende e nao simula pagamento.
         </Text>
       </Card>
@@ -63,8 +63,9 @@ export default function AdminCommercialPlans() {
             </View>
 
             <View className="gap-1 rounded-2xl border border-white/10 bg-ink/40 p-3">
-              <Text className="text-sm font-semibold text-white">Preco interno placeholder</Text>
+              <Text className="text-sm font-semibold text-white">Preco interno</Text>
               <Text selectable className="text-sm text-muted">{plan.admin_price_placeholder}</Text>
+              <Text selectable className="text-sm text-muted">R$ {plan.price_brl.toFixed(2).replace(".", ",")}</Text>
               <Text selectable className="text-xs text-muted">{plan.billing_interval_placeholder}</Text>
             </View>
 

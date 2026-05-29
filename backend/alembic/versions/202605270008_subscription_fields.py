@@ -71,7 +71,7 @@ def upgrade() -> None:
         CASE
             WHEN role = 'USER' THEN 'FREE'
             WHEN role = 'SUPER_ADMIN' THEN 'ACTIVE'
-            WHEN status = 'ACTIVE' THEN 'TRIAL'
+            WHEN status = 'ACTIVE' THEN 'PENDING'
             WHEN status = 'REJECTED' THEN 'CANCELED'
             ELSE 'PENDING'
         END

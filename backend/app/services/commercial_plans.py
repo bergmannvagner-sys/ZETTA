@@ -10,7 +10,7 @@ class CommercialPlan:
     title: str
     description: str
     admin_price_placeholder: str
-    sandbox_price_brl: float
+    price_brl: float
     billing_interval_placeholder: str
     included_features: tuple[str, ...]
     checkout_public_enabled: bool = False
@@ -23,8 +23,8 @@ COMMERCIAL_PLANS: tuple[CommercialPlan, ...] = (
         plan=SubscriptionPlan.PSYCHOLOGIST_PRO,
         title="Psicologo Pro",
         description="Acompanhamento de usuarios que autorizaram compartilhamento emocional.",
-        admin_price_placeholder="Definir preco mensal profissional",
-        sandbox_price_brl=1.00,
+        admin_price_placeholder="Preco mensal profissional",
+        price_brl=149.90,
         billing_interval_placeholder="Mensal ou anual",
         included_features=(
             "Pacientes autorizados por consentimento",
@@ -38,8 +38,8 @@ COMMERCIAL_PLANS: tuple[CommercialPlan, ...] = (
         plan=SubscriptionPlan.COMPANY_NR1,
         title="Empresa NR-1",
         description="Saude emocional organizacional com indicadores agregados e governanca.",
-        admin_price_placeholder="Definir preco por faixa de colaboradores",
-        sandbox_price_brl=1.00,
+        admin_price_placeholder="Preco por faixa de colaboradores",
+        price_brl=499.90,
         billing_interval_placeholder="Mensal corporativo",
         included_features=(
             "Painel NR-1",
@@ -53,8 +53,8 @@ COMMERCIAL_PLANS: tuple[CommercialPlan, ...] = (
         plan=SubscriptionPlan.CLINIC,
         title="Clinica",
         description="Operacao clinica validada para equipe e dados autorizados.",
-        admin_price_placeholder="Definir preco institucional",
-        sandbox_price_brl=1.00,
+        admin_price_placeholder="Preco institucional",
+        price_brl=399.90,
         billing_interval_placeholder="Mensal institucional",
         included_features=(
             "Gestao institucional validada",
@@ -68,8 +68,8 @@ COMMERCIAL_PLANS: tuple[CommercialPlan, ...] = (
         plan=SubscriptionPlan.INSTITUTIONAL,
         title="Hospital",
         description="Apoio institucional para operacao clinica e acolhimento autorizado.",
-        admin_price_placeholder="Definir contrato institucional",
-        sandbox_price_brl=1.00,
+        admin_price_placeholder="Contrato institucional",
+        price_brl=799.90,
         billing_interval_placeholder="Contrato mensal ou anual",
         included_features=(
             "Fluxos institucionais",
@@ -83,8 +83,8 @@ COMMERCIAL_PLANS: tuple[CommercialPlan, ...] = (
         plan=SubscriptionPlan.INSTITUTIONAL,
         title="ONG",
         description="Acolhimento social com controle de consentimento e projetos autorizados.",
-        admin_price_placeholder="Definir valor social ou patrocinado",
-        sandbox_price_brl=1.00,
+        admin_price_placeholder="Valor social ou patrocinado",
+        price_brl=199.90,
         billing_interval_placeholder="Contrato social",
         included_features=(
             "Projetos de acolhimento",
@@ -98,8 +98,8 @@ COMMERCIAL_PLANS: tuple[CommercialPlan, ...] = (
         plan=SubscriptionPlan.INSTITUTIONAL,
         title="Instituicao publica",
         description="Base para SUS, UBS, CAPS e governo com governanca de dados.",
-        admin_price_placeholder="Definir contrato publico",
-        sandbox_price_brl=1.00,
+        admin_price_placeholder="Contrato publico",
+        price_brl=799.90,
         billing_interval_placeholder="Contrato administrativo",
         included_features=(
             "Atendimento institucional validado",
@@ -113,8 +113,8 @@ COMMERCIAL_PLANS: tuple[CommercialPlan, ...] = (
         plan=SubscriptionPlan.SPONSOR,
         title="Patrocinador",
         description="Apoio financeiro a iniciativas de cuidado sem acesso indevido a dados.",
-        admin_price_placeholder="Definir cota de patrocinio",
-        sandbox_price_brl=1.00,
+        admin_price_placeholder="Cota de patrocinio",
+        price_brl=299.90,
         billing_interval_placeholder="Cota mensal, campanha ou anual",
         included_features=(
             "Apoio a iniciativas sociais",

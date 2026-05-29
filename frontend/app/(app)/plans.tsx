@@ -26,7 +26,7 @@ function accessTitle(user?: AuthUser | null): string {
     return "Conta em analise";
   }
   if (user.subscription_status === "TRIAL") {
-    return "Teste liberado";
+    return "Assinatura pendente";
   }
   if (user.subscription_status === "ACTIVE") {
     return "Plano ativo";
@@ -40,16 +40,16 @@ function accessMessage(user?: AuthUser | null): string {
     return "O usuario comum usa o Bergmann gratuitamente. Psicologos, empresas e contas institucionais entram em planos pagos apos validacao.";
   }
   if (user.status === "PENDING_VERIFICATION" || user.subscription_status === "PENDING") {
-    return "Seu cadastro esta em validacao. A aprovacao libera um periodo de teste local; a cobranca real entra depois, sem simular pagamento falso.";
+    return "Seu cadastro esta em validacao. A aprovacao libera o fluxo comercial somente com assinatura real, sem simular pagamento falso.";
   }
   if (user.subscription_status === "TRIAL") {
-    return "Seu periodo de teste esta liberado. Use apenas dados autorizados e mantenha o consentimento como regra central.";
+    return "Este status legado nao libera acesso comercial. Regularize com assinatura ativa.";
   }
   if (user.subscription_status === "ACTIVE") {
     return "Seu plano esta ativo. O acesso continua limitado por permissao, status e consentimento do usuario.";
   }
   if (user.subscription_status === "PAST_DUE") {
-    return "O acesso pago esta suspenso ate regularizacao. Nao ha checkout real neste MVP local.";
+    return "O acesso pago esta suspenso ate regularizacao.";
   }
   return "Este acesso nao esta liberado. Procure a administracao da plataforma para revisar a conta.";
 }

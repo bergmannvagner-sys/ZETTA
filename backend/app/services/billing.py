@@ -1,7 +1,7 @@
 from app.models.user import SubscriptionPlan, SubscriptionStatus, User, UserRole
 
 
-PAID_ACCESS_STATUSES = {SubscriptionStatus.TRIAL, SubscriptionStatus.ACTIVE}
+PAID_ACCESS_STATUSES = {SubscriptionStatus.ACTIVE}
 
 
 def default_plan_for_role(role: UserRole) -> SubscriptionPlan:
@@ -31,7 +31,7 @@ def approval_subscription_status_for_role(role: UserRole) -> SubscriptionStatus:
         return SubscriptionStatus.FREE
     if role == UserRole.SUPER_ADMIN:
         return SubscriptionStatus.ACTIVE
-    return SubscriptionStatus.TRIAL
+    return SubscriptionStatus.PENDING
 
 
 def has_paid_access(user: User) -> bool:

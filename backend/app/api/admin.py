@@ -67,10 +67,9 @@ def provider_configured(provider: str) -> bool:
     return False
 
 
-def provider_sandbox_enabled(provider: str) -> bool:
-    settings = get_settings()
+def provider_production_enabled(provider: str) -> bool:
     if provider == "STRIPE":
-        return settings.stripe_sandbox_mode
+        return provider_configured(provider)
     return False
 
 
@@ -206,7 +205,7 @@ def commercial_plans(
             title=plan.title,
             description=plan.description,
             admin_price_placeholder=plan.admin_price_placeholder,
-            sandbox_price_brl=plan.sandbox_price_brl,
+            price_brl=plan.price_brl,
             billing_interval_placeholder=plan.billing_interval_placeholder,
             included_features=list(plan.included_features),
             checkout_public_enabled=plan.checkout_public_enabled,
@@ -235,7 +234,7 @@ def billing_config(
                 "provider": capability.provider,
                 "checkout_enabled": capability.checkout_enabled,
                 "provider_configured": provider_configured(capability.provider),
-                "sandbox_enabled": provider_sandbox_enabled(capability.provider),
+                "production_enabled": provider_production_enabled(capability.provider),
                 "webhook_signature_headers": list(capability.webhook_signature_headers),
                 "customer_reference_fields": list(capability.customer_reference_fields),
                 "event_reference_fields": list(capability.event_reference_fields),
@@ -316,7 +315,9 @@ def update_subscription_status(
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Paid account not found")
     if payload.subscription_status == SubscriptionStatus.FREE:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Paid account cannot use free status")
-    if payload.subscription_status in {SubscriptionStatus.TRIAL, SubscriptionStatus.ACTIVE}:
+    if payload.subscription_status == SubscriptionStatus.TRIAL:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Commercial trial status is disabled")
+    if payload.subscription_status == SubscriptionStatus.ACTIVE:
         if user.status != AccountStatus.ACTIVE:
             raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Account must be approved first")
 
@@ -442,7 +443,7 @@ def create_stripe_checkout(
             "provider": "STRIPE",
             "session_id": checkout["session_id"],
             "price_id": checkout["price_id"],
-            "sandbox": get_settings().stripe_sandbox_mode,
+            "production": provider_production_enabled("STRIPE"),
             "checkout_created": True,
         },
     )

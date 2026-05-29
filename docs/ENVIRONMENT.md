@@ -30,7 +30,6 @@ Recomendadas:
 - `STRIPE_SECRET_KEY`
 - `STRIPE_PUBLISHABLE_KEY`
 - `STRIPE_WEBHOOK_SECRET`
-- `STRIPE_SANDBOX_MODE=true`
 - `STRIPE_SUCCESS_URL`
 - `STRIPE_CANCEL_URL`
 - `STRIPE_PRICE_ID_PSYCHOLOGIST`
@@ -56,23 +55,22 @@ powershell -ExecutionPolicy Bypass -File .\scripts\prod-password-reset-smoke.ps1
 
 O smoke nao imprime token nem senha; depois dele, confirme manualmente se o email chegou.
 
-## Pagamento Stripe sandbox
+## Pagamento Stripe definitivo
 
-O MVP prepara Stripe em modo teste, sem checkout publico falso. Configure as variaveis
+O MVP usa Stripe como provedor definitivo de cobranca, sem checkout publico falso. Configure as variaveis
 do provider apenas no ambiente seguro do backend. A tela de super admin "Configuracao de pagamentos"
 mostra somente flags de readiness; tokens, chaves e segredos nunca sao retornados pela API.
 
 Variaveis:
 
-- `STRIPE_SECRET_KEY`: chave secreta de teste, deve comecar com `sk_test_`.
-- `STRIPE_PUBLISHABLE_KEY`: publishable key de teste, deve comecar com `pk_test_`.
+- `STRIPE_SECRET_KEY`: chave secreta real do Stripe.
+- `STRIPE_PUBLISHABLE_KEY`: publishable key real do Stripe.
 - `STRIPE_WEBHOOK_SECRET`: segredo de assinatura do webhook Stripe, geralmente `whsec_...`.
-- `STRIPE_SANDBOX_MODE=true`: manter `true` ate concluir smoke e validacao manual.
 - `STRIPE_SUCCESS_URL`: URL de retorno apos checkout concluido.
 - `STRIPE_CANCEL_URL`: URL de retorno apos checkout cancelado.
-- `STRIPE_PRICE_ID_*`: Price IDs de teste criados no Stripe para cada plano comercial.
+- `STRIPE_PRICE_ID_*`: Price IDs reais criados no Stripe para cada plano comercial.
 - `BILLING_WEBHOOK_SECRET`: segredo interno do endpoint `/billing/webhook`.
-- `BILLING_WEBHOOKS_ENABLED=false`: manter `false` ate a assinatura do webhook real estar validada.
+- `BILLING_WEBHOOKS_ENABLED=false`: manter `false` ate a assinatura do webhook estar validada.
 
 Para validar readiness em producao depois do deploy:
 
@@ -83,13 +81,12 @@ powershell -ExecutionPolicy Bypass -File .\scripts\prod-stripe-config-smoke.ps1
 Remove-Item Env:\ZETTA_ADMIN_PASSWORD
 ```
 
-Esse smoke confirma que Stripe esta configurado em sandbox e que checkout publico continua
+Esse smoke confirma que Stripe esta configurado para producao e que checkout publico continua
 desativado. Ele nao imprime secret key, publishable key, webhook secret ou senha.
 
-Depois do smoke passar, a tela de super admin "Assinaturas" pode gerar um checkout sandbox real
+Depois do smoke passar, a tela de super admin "Assinaturas" pode gerar um checkout Stripe real
 para uma conta comercial. Esse link nao aparece para usuarios comuns e nao ativa a assinatura por
-si so; a liberacao financeira continua dependendo do webhook validado ou da acao administrativa
-manual enquanto o MVP estiver em teste.
+si so; a liberacao financeira continua dependendo do webhook validado ou da acao administrativa.
 
 ## Frontend
 

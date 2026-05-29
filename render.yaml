@@ -62,8 +62,6 @@ services:
         sync: false
       - key: STRIPE_WEBHOOK_SECRET
         sync: false
-      - key: STRIPE_SANDBOX_MODE
-        value: "true"
       - key: STRIPE_SUCCESS_URL
         sync: false
       - key: STRIPE_CANCEL_URL

@@ -22,9 +22,8 @@ const roleFilters: Array<{ label: string; value?: UserRole }> = [
 ];
 
 const statusActions: Array<{ label: string; value: SubscriptionStatus; tone?: "primary" | "soft" | "danger" }> = [
-  { label: "Teste", value: "TRIAL" },
   { label: "Ativo", value: "ACTIVE" },
-  { label: "Pendente", value: "PAST_DUE", tone: "soft" },
+  { label: "Vencido", value: "PAST_DUE", tone: "soft" },
   { label: "Cancelar", value: "CANCELED", tone: "danger" }
 ];
 
@@ -107,7 +106,7 @@ function BillingReferenceForm({
         method: "POST",
         body: JSON.stringify({
           user_id: account.id,
-          reason: "admin sandbox checkout preference"
+          reason: "admin checkout session"
         })
       }),
     onSuccess: async (checkout) => {
@@ -174,13 +173,13 @@ function BillingReferenceForm({
       />
       <ErrorText message={createStripeCheckout.error?.message} />
       <Button
-        label="Criar checkout Stripe sandbox"
+        label="Criar checkout Stripe"
         tone="soft"
         loading={createStripeCheckout.isPending}
         onPress={() => createStripeCheckout.mutate()}
       />
       <Text className="text-xs leading-5 text-muted">
-        O link abre o Stripe Checkout em modo teste. A assinatura so deve virar ativa depois do webhook validado.
+        O link abre o Stripe Checkout real. A assinatura so deve virar ativa depois do webhook validado.
       </Text>
       {history.length > 0 ? (
         <View className="gap-2 rounded-xl border border-white/10 bg-surface/45 p-3">

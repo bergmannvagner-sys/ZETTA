@@ -12,8 +12,8 @@ from app.services.audit import write_audit_log
 
 
 STATUS_MAP: dict[str, SubscriptionStatus] = {
-    "trial": SubscriptionStatus.TRIAL,
-    "trialing": SubscriptionStatus.TRIAL,
+    "trial": SubscriptionStatus.PENDING,
+    "trialing": SubscriptionStatus.PENDING,
     "active": SubscriptionStatus.ACTIVE,
     "paid": SubscriptionStatus.ACTIVE,
     "approved": SubscriptionStatus.ACTIVE,

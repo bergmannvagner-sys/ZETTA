@@ -37,7 +37,6 @@ class Settings(BaseSettings):
     stripe_secret_key: str | None = None
     stripe_publishable_key: str | None = None
     stripe_webhook_secret: str | None = None
-    stripe_sandbox_mode: bool = True
     stripe_success_url: str | None = None
     stripe_cancel_url: str | None = None
     stripe_price_id_psychologist: str | None = None
@@ -67,10 +66,6 @@ class Settings(BaseSettings):
     @property
     def stripe_configured(self) -> bool:
         return bool(self.stripe_secret_key and self.stripe_publishable_key and self.stripe_webhook_secret)
-
-    @property
-    def stripe_secret_key_is_test(self) -> bool:
-        return bool(self.stripe_secret_key and self.stripe_secret_key.startswith("sk_test_"))
 
 
 @lru_cache

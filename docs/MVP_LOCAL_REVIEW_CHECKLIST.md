@@ -107,7 +107,7 @@ Profissional, empresa e admin:
 - [ ] `USER` nao acessa NR-1 ou rotas profissionais.
 - [ ] Perfil pendente ve tela de conta em analise.
 - [ ] `SUPER_ADMIN` ve area admin.
-- [ ] Perfis comerciais sem `TRIAL` ou `ACTIVE` veem bloqueio pago.
+- [ ] Perfis comerciais sem `ACTIVE` veem bloqueio pago.
 - [ ] Backend valida permissao mesmo que frontend esconda botao.
 
 ## 6. Consentimento, privacidade e LGPD
@@ -158,8 +158,8 @@ Profissional, empresa e admin:
 - [ ] `NONE` nao aceita IDs externos.
 - [ ] Stripe exige `cus_`, `sub_` e `evt_` quando evento existir.
 - [ ] Apenas Stripe aparece como provider ativo de pagamento.
-- [ ] Webhook fica desativado por env ate provider real ser ligado.
-- [ ] Idempotencia por `billing_last_event_id` esta coberta por teste.
+- [ ] Webhook fica desativado por env ate assinatura real estar validada.
+- [ ] Idempotencia por `billing_last_event_id` esta coberta por validacao automatizada.
 
 ## 11. Telas Expo a revisar no celular
 
@@ -238,7 +238,7 @@ Fluxo recomendado:
 - [ ] Criar `COMPANY` e confirmar conta em analise.
 - [ ] Entrar como `SUPER_ADMIN`.
 - [ ] Aprovar conta comercial.
-- [ ] Confirmar acesso `TRIAL`.
+- [ ] Confirmar bloqueio ate assinatura `ACTIVE`.
 - [ ] Ver bloqueio quando `PAST_DUE`.
 - [ ] Conferir planos comerciais admin sem checkout publico.
 - [ ] Conferir configuracao de pagamentos sem segredo.

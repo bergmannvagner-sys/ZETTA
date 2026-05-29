@@ -131,7 +131,7 @@ export default function AdminPendingAccounts() {
             </View>
             <Text className="text-xs leading-5 text-muted">
               A triagem ajuda a revisao, mas nao aprova sozinha. Ao aprovar, perfis pagos entram
-              como teste liberado ate integracao com pagamento real.
+              como pendentes de assinatura real antes do acesso comercial.
             </Text>
             <View className="gap-2">
               <Button

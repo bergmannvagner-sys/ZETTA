@@ -39,8 +39,8 @@ export default function Verification() {
         <Text className="text-base font-semibold text-white">Proximos passos</Text>
         <Text className="text-sm leading-5 text-muted">
           A equipe revisa seu perfil e libera o acesso quando os dados forem consistentes.
-          Perfis profissionais e institucionais usam plano pago; nesta fase local, a aprovacao libera
-          um periodo de teste ate a integracao com pagamento real.
+          Perfis profissionais e institucionais usam plano pago; a assinatura real precisa estar ativa
+          antes do acesso comercial.
         </Text>
       </Card>
       <View className="gap-3">

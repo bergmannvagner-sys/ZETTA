@@ -17,7 +17,7 @@ class PaymentAdapterCapabilities:
     provider: str
     checkout_enabled: bool
     provider_configured: bool
-    sandbox_enabled: bool
+    production_enabled: bool
     webhook_signature_headers: tuple[str, ...]
     customer_reference_fields: tuple[str, ...]
     event_reference_fields: tuple[str, ...]
@@ -32,7 +32,7 @@ class PaymentProviderAdapter(Protocol):
         self,
         *,
         provider_configured: bool = False,
-        sandbox_enabled: bool = False,
+        production_enabled: bool = False,
     ) -> PaymentAdapterCapabilities:
         ...
 
@@ -67,13 +67,13 @@ class LocalOnlyPaymentAdapter:
         self,
         *,
         provider_configured: bool = False,
-        sandbox_enabled: bool = False,
+        production_enabled: bool = False,
     ) -> PaymentAdapterCapabilities:
         return PaymentAdapterCapabilities(
             provider=self.provider,
             checkout_enabled=False,
             provider_configured=provider_configured,
-            sandbox_enabled=sandbox_enabled,
+            production_enabled=production_enabled,
             webhook_signature_headers=self.webhook_signature_headers,
             customer_reference_fields=self.customer_reference_fields,
             event_reference_fields=self.event_reference_fields,
@@ -112,7 +112,6 @@ class StripePaymentAdapter(LocalOnlyPaymentAdapter):
         "STRIPE_SECRET_KEY",
         "STRIPE_PUBLISHABLE_KEY",
         "STRIPE_WEBHOOK_SECRET",
-        "STRIPE_SANDBOX_MODE",
         "STRIPE_SUCCESS_URL",
         "STRIPE_CANCEL_URL",
         "STRIPE_PRICE_ID_PSYCHOLOGIST",
@@ -122,7 +121,7 @@ class StripePaymentAdapter(LocalOnlyPaymentAdapter):
         "STRIPE_PRICE_ID_SPONSOR",
     )
     activation_checkpoints = (
-        "Comecar em sandbox/teste com chaves sk_test_ e pk_test_.",
+        "Usar chaves definitivas do Stripe no ambiente seguro de producao.",
         "Configurar STRIPE_WEBHOOK_SECRET fora do repositorio.",
         "Validar Stripe-Signature usando SDK oficial antes de processar evento.",
         "Buscar customer e subscription reais no Stripe antes de liberar acesso pago.",

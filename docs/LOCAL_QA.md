@@ -145,7 +145,7 @@ Remove-Item Env:\ZETTA_PASSWORD_RESET_EMAIL
 
 The script checks `/admin/email-config`, confirms SMTP is configured, requests password reset, and requires a manual inbox check.
 
-validate production Stripe sandbox readiness without printing secrets:
+validate production Stripe readiness without printing secrets:
 
 ```powershell
 $env:ZETTA_ADMIN_EMAIL="admin@example.com"
@@ -154,8 +154,8 @@ powershell -ExecutionPolicy Bypass -File .\scripts\prod-stripe-config-smoke.ps1
 Remove-Item Env:\ZETTA_ADMIN_PASSWORD
 ```
 
-The script checks `/admin/billing-config`, confirms Stripe env readiness, keeps checkout public disabled, and requires sandbox/test mode before real payment integration.
+The script checks `/admin/billing-config`, confirms Stripe env readiness, and keeps checkout public disabled.
 
-After this smoke passes, the super admin can open "Assinaturas" and create a Stripe sandbox checkout
+After this smoke passes, the super admin can open "Assinaturas" and create a Stripe checkout
 for a paid account. The link is provider-real, admin-only, and does not mark the subscription active until
 webhook validation or manual admin confirmation is completed.

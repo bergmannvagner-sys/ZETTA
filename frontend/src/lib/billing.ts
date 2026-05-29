@@ -23,7 +23,7 @@ const planLabels: Record<SubscriptionPlan, string> = {
 const statusLabels: Record<SubscriptionStatus, string> = {
   FREE: "Gratuito",
   PENDING: "Aguardando aprovacao",
-  TRIAL: "Teste liberado",
+  TRIAL: "Assinatura pendente",
   ACTIVE: "Ativo",
   PAST_DUE: "Pagamento pendente",
   CANCELED: "Cancelado"
@@ -40,7 +40,7 @@ export function subscriptionStatusLabel(status?: SubscriptionStatus): string {
 export function hasPaidAccess(user?: AuthUser | null): boolean {
   if (!user) return false;
   if (!paidRoles.has(user.role)) return true;
-  return user.subscription_status === "TRIAL" || user.subscription_status === "ACTIVE";
+  return user.subscription_status === "ACTIVE";
 }
 
 export function isPaidRole(role?: UserRole): boolean {
@@ -85,7 +85,7 @@ export function paidAccessBlockMessage(user?: AuthUser | null): string {
   if (user.status === "REJECTED" || user.subscription_status === "CANCELED") {
     return "Este perfil comercial nao esta liberado para acessar recursos pagos. Fale com a administracao para revisar a situacao.";
   }
-  return "Este recurso exige perfil validado e assinatura em teste ou ativa.";
+  return "Este recurso exige perfil validado e assinatura ativa.";
 }
 
 export function paidAccessActionLabel(user?: AuthUser | null): string {

@@ -71,8 +71,8 @@ if (-not $stripe) {
 if (-not $stripe.provider_configured) {
   Fail "Stripe is not configured. Set STRIPE_SECRET_KEY, STRIPE_PUBLISHABLE_KEY, and STRIPE_WEBHOOK_SECRET in Render."
 }
-if (-not $stripe.sandbox_enabled) {
-  Fail "Stripe sandbox/test mode is not enabled. Keep STRIPE_SANDBOX_MODE=true for this MVP step."
+if (-not $stripe.production_enabled) {
+  Fail "Stripe production readiness is not enabled. Configure STRIPE_SECRET_KEY, STRIPE_PUBLISHABLE_KEY, STRIPE_WEBHOOK_SECRET, and Price IDs in Render."
 }
 if ($stripe.checkout_enabled) {
   Fail "Public checkout is unexpectedly enabled. This step must stay admin-only."
@@ -82,7 +82,7 @@ if (-not ($stripe.required_env_names -contains "STRIPE_SECRET_KEY")) {
 }
 
 Write-Host "stripe configured: ok"
-Write-Host "sandbox/test mode: ok"
+Write-Host "production readiness: ok"
 Write-Host "public checkout disabled: ok"
 Write-Host ""
 Write-Host "Stripe config smoke test passed." -ForegroundColor Green

@@ -36,8 +36,6 @@ def create_stripe_checkout_session(
 ) -> dict[str, Any]:
     if not settings.stripe_configured:
         raise StripeIntegrationError("Stripe credentials are not configured")
-    if settings.stripe_sandbox_mode and not settings.stripe_secret_key_is_test:
-        raise StripeIntegrationError("Stripe sandbox mode requires a sk_test_ secret key")
 
     price_id = stripe_price_id_for_plan(settings, user.subscription_plan)
     if not price_id:
