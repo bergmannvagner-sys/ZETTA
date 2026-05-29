@@ -73,5 +73,6 @@ npx expo start
 - Eventos sensíveis geram trilha em `audit_logs` sem tokens, senhas ou chaves.
 - Groq falhando retorna fallback seguro e registra erro sem expor chave.
 - Checklist final local: `docs/MVP_LOCAL_REVIEW_CHECKLIST.md`.
+- QA local sem depender do celular fisico: `docs/LOCAL_QA.md`.
 
 Leia também `docs/ENVIRONMENT.md`, `docs/RBAC.md`, `docs/DEPLOY_RENDER.md` e `docs/DEPLOY_EXPO_EAS.md`.
