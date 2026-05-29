@@ -81,6 +81,12 @@ After running the safe production seed:
 python -m app.seed_super_admin
 ```
 
+If the admin password was exposed or needs rotation, set a new `SUPER_ADMIN_PASSWORD` in Render and run:
+
+```bash
+python -m app.rotate_super_admin_password
+```
+
 validate admin auth without printing the password or token:
 
 ```powershell
