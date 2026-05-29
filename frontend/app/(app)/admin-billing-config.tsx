@@ -9,8 +9,9 @@ import { useAuthStore } from "@/store/auth-store";
 import { BillingConfig, PaymentAdapterCapability } from "@/types/auth";
 
 const checklist = [
-  "Criar conta real no Stripe ou Mercado Pago.",
+  "Criar conta real no Mercado Pago em modo sandbox/teste.",
   "Configurar produto e planos reais fora do app.",
+  "Definir MERCADO_PAGO_ACCESS_TOKEN, MERCADO_PAGO_PUBLIC_KEY e MERCADO_PAGO_WEBHOOK_SECRET no Render.",
   "Definir BILLING_WEBHOOK_SECRET com segredo forte no Render.",
   "Ativar BILLING_WEBHOOKS_ENABLED somente depois do teste de assinatura.",
   "Cadastrar a URL /billing/webhook no provedor.",
@@ -45,7 +46,7 @@ export default function AdminBillingConfig() {
         <Text className="text-sm font-semibold tracking-[4px] text-mint">ADMIN</Text>
         <Text className="text-3xl font-semibold text-white">Configuracao de pagamentos</Text>
         <Text className="text-base leading-6 text-muted">
-          Preparacao operacional para Stripe ou Mercado Pago. Esta tela nao exibe segredo e nao cria checkout.
+          Preparacao operacional para Mercado Pago sandbox e Stripe futuro. Esta tela nao exibe segredo e nao cria checkout publico.
         </Text>
       </View>
 
@@ -97,7 +98,15 @@ export default function AdminBillingConfig() {
                     active={capability.checkout_enabled}
                     label={capability.checkout_enabled ? "Checkout ativo" : "Sem checkout real"}
                   />
+                  <StatusPill
+                    active={capability.provider_configured}
+                    label={capability.provider_configured ? "Provider configurado" : "Provider pendente"}
+                  />
+                  {capability.sandbox_enabled ? <StatusPill active label="Sandbox/teste" /> : null}
                 </View>
+                <Text selectable className="text-xs leading-5 text-muted">
+                  Env obrigatorias: {capability.required_env_names.join(", ") || "nenhuma"}
+                </Text>
                 <Text selectable className="text-xs leading-5 text-muted">
                   Assinatura: {capability.webhook_signature_headers.join(", ") || "nao configurada"}
                 </Text>

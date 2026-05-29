@@ -16,16 +16,24 @@ class PaymentProviderNotConfigured(PaymentAdapterError):
 class PaymentAdapterCapabilities:
     provider: str
     checkout_enabled: bool
+    provider_configured: bool
+    sandbox_enabled: bool
     webhook_signature_headers: tuple[str, ...]
     customer_reference_fields: tuple[str, ...]
     event_reference_fields: tuple[str, ...]
+    required_env_names: tuple[str, ...]
     activation_checkpoints: tuple[str, ...]
 
 
 class PaymentProviderAdapter(Protocol):
     provider: str
 
-    def capabilities(self) -> PaymentAdapterCapabilities:
+    def capabilities(
+        self,
+        *,
+        provider_configured: bool = False,
+        sandbox_enabled: bool = False,
+    ) -> PaymentAdapterCapabilities:
         ...
 
     def verify_provider_signature(
@@ -52,15 +60,24 @@ class LocalOnlyPaymentAdapter:
     webhook_signature_headers: tuple[str, ...] = ()
     customer_reference_fields: tuple[str, ...] = ()
     event_reference_fields: tuple[str, ...] = ()
+    required_env_names: tuple[str, ...] = ()
     activation_checkpoints: tuple[str, ...] = ()
 
-    def capabilities(self) -> PaymentAdapterCapabilities:
+    def capabilities(
+        self,
+        *,
+        provider_configured: bool = False,
+        sandbox_enabled: bool = False,
+    ) -> PaymentAdapterCapabilities:
         return PaymentAdapterCapabilities(
             provider=self.provider,
             checkout_enabled=False,
+            provider_configured=provider_configured,
+            sandbox_enabled=sandbox_enabled,
             webhook_signature_headers=self.webhook_signature_headers,
             customer_reference_fields=self.customer_reference_fields,
             event_reference_fields=self.event_reference_fields,
+            required_env_names=self.required_env_names,
             activation_checkpoints=self.activation_checkpoints,
         )
 
@@ -91,6 +108,11 @@ class StripePaymentAdapter(LocalOnlyPaymentAdapter):
     webhook_signature_headers = ("Stripe-Signature",)
     customer_reference_fields = ("customer",)
     event_reference_fields = ("id", "type", "data.object.id")
+    required_env_names = (
+        "STRIPE_SECRET_KEY",
+        "STRIPE_WEBHOOK_SECRET",
+        "STRIPE_PRICE_IDS",
+    )
     activation_checkpoints = (
         "Configurar STRIPE_WEBHOOK_SECRET fora do repositorio.",
         "Validar Stripe-Signature usando SDK oficial antes de processar evento.",
@@ -116,7 +138,14 @@ class MercadoPagoPaymentAdapter(LocalOnlyPaymentAdapter):
     webhook_signature_headers = ("x-signature", "x-request-id")
     customer_reference_fields = ("payer.id", "external_reference")
     event_reference_fields = ("id", "type", "action", "data.id")
+    required_env_names = (
+        "MERCADO_PAGO_ACCESS_TOKEN",
+        "MERCADO_PAGO_PUBLIC_KEY",
+        "MERCADO_PAGO_WEBHOOK_SECRET",
+        "MERCADO_PAGO_SANDBOX_MODE",
+    )
     activation_checkpoints = (
+        "Comecar em sandbox/teste, sem checkout publico.",
         "Configurar segredo de webhook Mercado Pago fora do repositorio.",
         "Validar x-signature e x-request-id antes de processar evento.",
         "Consultar pagamento/preapproval no Mercado Pago para confirmar status real.",

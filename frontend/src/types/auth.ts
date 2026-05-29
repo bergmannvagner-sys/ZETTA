@@ -106,8 +106,11 @@ export type EmailConfig = {
 export type PaymentAdapterCapability = {
   provider: string;
   checkout_enabled: boolean;
+  provider_configured: boolean;
+  sandbox_enabled: boolean;
   webhook_signature_headers: string[];
   customer_reference_fields: string[];
   event_reference_fields: string[];
+  required_env_names: string[];
   activation_checkpoints: string[];
 };

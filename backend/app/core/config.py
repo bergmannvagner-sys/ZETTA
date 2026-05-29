@@ -33,6 +33,13 @@ class Settings(BaseSettings):
     password_reset_url: str = "bergmann://reset-password"
     billing_webhooks_enabled: bool = False
     billing_webhook_secret: str | None = None
+    mercado_pago_access_token: str | None = None
+    mercado_pago_public_key: str | None = None
+    mercado_pago_webhook_secret: str | None = None
+    mercado_pago_sandbox_mode: bool = True
+    mercado_pago_success_url: str | None = None
+    mercado_pago_failure_url: str | None = None
+    mercado_pago_pending_url: str | None = None
 
     @property
     def cors_origin_list(self) -> list[str]:
@@ -51,6 +58,14 @@ class Settings(BaseSettings):
     @property
     def smtp_configured(self) -> bool:
         return bool(self.smtp_host and self.smtp_from_email)
+
+    @property
+    def mercado_pago_configured(self) -> bool:
+        return bool(self.mercado_pago_access_token and self.mercado_pago_public_key)
+
+    @property
+    def mercado_pago_webhook_configured(self) -> bool:
+        return bool(self.mercado_pago_webhook_secret)
 
 
 @lru_cache

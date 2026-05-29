@@ -902,9 +902,45 @@ def test_super_admin_can_manage_paid_subscription_status() -> None:
     assert stripe_config["checkout_enabled"] is False
     assert "Stripe-Signature" in stripe_config["webhook_signature_headers"]
     assert "customer" in stripe_config["customer_reference_fields"]
+    assert "STRIPE_WEBHOOK_SECRET" in stripe_config["required_env_names"]
+    assert stripe_config["provider_configured"] is False
     assert mercado_pago_config["checkout_enabled"] is False
+    assert mercado_pago_config["provider_configured"] is False
+    assert mercado_pago_config["sandbox_enabled"] is True
     assert "x-signature" in mercado_pago_config["webhook_signature_headers"]
     assert "external_reference" in mercado_pago_config["customer_reference_fields"]
+    assert "MERCADO_PAGO_ACCESS_TOKEN" in mercado_pago_config["required_env_names"]
+    assert "MERCADO_PAGO_WEBHOOK_SECRET" in mercado_pago_config["required_env_names"]
+    assert "mercado_pago_access_token" not in config_payload
+    assert "mercado_pago_webhook_secret" not in config_payload
+
+    settings = get_settings()
+    previous_mp_access_token = settings.mercado_pago_access_token
+    previous_mp_public_key = settings.mercado_pago_public_key
+    previous_mp_webhook_secret = settings.mercado_pago_webhook_secret
+    previous_mp_sandbox_mode = settings.mercado_pago_sandbox_mode
+    settings.mercado_pago_access_token = "TEST-123"
+    settings.mercado_pago_public_key = "TEST-public-key"
+    settings.mercado_pago_webhook_secret = "test-webhook-secret"
+    settings.mercado_pago_sandbox_mode = True
+    try:
+        configured_config = client.get("/admin/billing-config", headers=admin_headers)
+        assert configured_config.status_code == 200
+        configured_mp_config = next(
+            capability
+            for capability in configured_config.json()["provider_capabilities"]
+            if capability["provider"] == "MERCADO_PAGO"
+        )
+        assert configured_mp_config["provider_configured"] is True
+        assert configured_mp_config["sandbox_enabled"] is True
+        assert configured_mp_config["checkout_enabled"] is False
+        assert "TEST-123" not in configured_config.text
+        assert "test-webhook-secret" not in configured_config.text
+    finally:
+        settings.mercado_pago_access_token = previous_mp_access_token
+        settings.mercado_pago_public_key = previous_mp_public_key
+        settings.mercado_pago_webhook_secret = previous_mp_webhook_secret
+        settings.mercado_pago_sandbox_mode = previous_mp_sandbox_mode
 
 
 def test_payment_provider_adapters_are_local_only_contracts() -> None:

@@ -78,9 +78,12 @@ class AuditLogResponse(BaseModel):
 class PaymentAdapterCapabilityResponse(BaseModel):
     provider: str
     checkout_enabled: bool
+    provider_configured: bool
+    sandbox_enabled: bool
     webhook_signature_headers: list[str]
     customer_reference_fields: list[str]
     event_reference_fields: list[str]
+    required_env_names: list[str]
     activation_checkpoints: list[str]
 
 

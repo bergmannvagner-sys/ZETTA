@@ -57,6 +57,20 @@ def parse_audit_metadata(metadata_json: str | None) -> dict[str, object] | None:
     return parsed if isinstance(parsed, dict) else None
 
 
+def provider_configured(provider: str) -> bool:
+    settings = get_settings()
+    if provider == "MERCADO_PAGO":
+        return settings.mercado_pago_configured and settings.mercado_pago_webhook_configured
+    return False
+
+
+def provider_sandbox_enabled(provider: str) -> bool:
+    settings = get_settings()
+    if provider == "MERCADO_PAGO":
+        return settings.mercado_pago_sandbox_mode
+    return False
+
+
 @router.get("/pending-accounts", response_model=list[PendingAccountResponse])
 def pending_accounts(
     _: Annotated[User, Depends(require_roles(UserRole.SUPER_ADMIN))],
@@ -216,9 +230,12 @@ def billing_config(
             {
                 "provider": capability.provider,
                 "checkout_enabled": capability.checkout_enabled,
+                "provider_configured": provider_configured(capability.provider),
+                "sandbox_enabled": provider_sandbox_enabled(capability.provider),
                 "webhook_signature_headers": list(capability.webhook_signature_headers),
                 "customer_reference_fields": list(capability.customer_reference_fields),
                 "event_reference_fields": list(capability.event_reference_fields),
+                "required_env_names": list(capability.required_env_names),
                 "activation_checkpoints": list(capability.activation_checkpoints),
             }
             for capability in list_payment_adapter_capabilities()
