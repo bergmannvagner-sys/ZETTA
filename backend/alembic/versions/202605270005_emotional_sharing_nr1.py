@@ -10,11 +10,34 @@ from collections.abc import Sequence
 import sqlalchemy as sa
 from alembic import op
 from sqlalchemy import inspect
+from sqlalchemy.dialects import postgresql
 
 revision: str = "202605270005"
 down_revision: str | None = "202605270004"
 branch_labels: str | Sequence[str] | None = None
 depends_on: str | Sequence[str] | None = None
+
+
+user_role = postgresql.ENUM(
+    "USER",
+    "PSYCHOLOGIST",
+    "COMPANY",
+    "NGO",
+    "HOSPITAL",
+    "CLINIC",
+    "SPONSOR",
+    "PUBLIC_INSTITUTION",
+    "SUPER_ADMIN",
+    name="userrole",
+    create_type=False,
+)
+report_audience = postgresql.ENUM(
+    "USER",
+    "PSYCHOLOGIST",
+    "COMPANY",
+    name="reportaudience",
+    create_type=False,
+)
 
 
 def _table_exists(table_name: str) -> bool:
@@ -28,6 +51,8 @@ def _index_exists(table_name: str, index_name: str) -> bool:
 
 
 def upgrade() -> None:
+    report_audience.create(op.get_bind(), checkfirst=True)
+
     if not _table_exists("bergmann_journal_entries"):
         op.create_table(
             "bergmann_journal_entries",
@@ -73,19 +98,7 @@ def upgrade() -> None:
             sa.Column("target_user_id", sa.String(length=36), nullable=False),
             sa.Column(
                 "target_role",
-                sa.Enum(
-                    "USER",
-                    "PSYCHOLOGIST",
-                    "COMPANY",
-                    "NGO",
-                    "HOSPITAL",
-                    "CLINIC",
-                    "SPONSOR",
-                    "PUBLIC_INSTITUTION",
-                    "SUPER_ADMIN",
-                    name="userrole",
-                    create_type=False,
-                ),
+                user_role,
                 nullable=False,
             ),
             sa.Column("categories_json", sa.Text(), nullable=False),
@@ -116,11 +129,7 @@ def upgrade() -> None:
             "bergmann_emotional_reports",
             sa.Column("id", sa.String(length=36), nullable=False),
             sa.Column("user_id", sa.String(length=36), nullable=False),
-            sa.Column(
-                "audience",
-                sa.Enum("USER", "PSYCHOLOGIST", "COMPANY", name="reportaudience"),
-                nullable=False,
-            ),
+            sa.Column("audience", report_audience, nullable=False),
             sa.Column("summary", sa.Text(), nullable=False),
             sa.Column("risk_level", sa.String(length=32), nullable=False),
             sa.Column("metadata_json", sa.Text(), nullable=True),
@@ -167,3 +176,4 @@ def downgrade() -> None:
                 op.drop_index(index_name, table_name=table_name)
         if _table_exists(table_name):
             op.drop_table(table_name)
+    report_audience.drop(op.get_bind(), checkfirst=True)
