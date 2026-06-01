@@ -1,4 +1,5 @@
 import * as SecureStore from "expo-secure-store";
+import { Platform } from "react-native";
 import { create } from "zustand";
 
 import { AuthUser } from "@/types/auth";
@@ -18,33 +19,68 @@ const ACCESS_KEY = "bergmann_access_token";
 const REFRESH_KEY = "bergmann_refresh_token";
 const USER_KEY = "bergmann_user";
 
+const isWeb = Platform.OS === "web";
+
+async function setStoredItem(key: string, value: string): Promise<void> {
+  if (isWeb) {
+    if (typeof window !== "undefined") {
+      window.localStorage.setItem(key, value);
+    }
+    return;
+  }
+
+  await SecureStore.setItemAsync(key, value);
+}
+
+async function getStoredItem(key: string): Promise<string | null> {
+  if (isWeb) {
+    if (typeof window === "undefined") {
+      return null;
+    }
+    return window.localStorage.getItem(key);
+  }
+
+  return SecureStore.getItemAsync(key);
+}
+
+async function deleteStoredItem(key: string): Promise<void> {
+  if (isWeb) {
+    if (typeof window !== "undefined") {
+      window.localStorage.removeItem(key);
+    }
+    return;
+  }
+
+  await SecureStore.deleteItemAsync(key);
+}
+
 export const useAuthStore = create<AuthState>((set) => ({
   accessToken: null,
   refreshToken: null,
   user: null,
   hydrated: false,
   setSession: async (accessToken, refreshToken, user) => {
-    await SecureStore.setItemAsync(ACCESS_KEY, accessToken);
-    await SecureStore.setItemAsync(REFRESH_KEY, refreshToken);
-    await SecureStore.setItemAsync(USER_KEY, JSON.stringify(user));
+    await setStoredItem(ACCESS_KEY, accessToken);
+    await setStoredItem(REFRESH_KEY, refreshToken);
+    await setStoredItem(USER_KEY, JSON.stringify(user));
     set({ accessToken, refreshToken, user });
   },
   updateUser: async (user) => {
-    await SecureStore.setItemAsync(USER_KEY, JSON.stringify(user));
+    await setStoredItem(USER_KEY, JSON.stringify(user));
     set({ user });
   },
   clearSession: async () => {
-    await SecureStore.deleteItemAsync(ACCESS_KEY);
-    await SecureStore.deleteItemAsync(REFRESH_KEY);
-    await SecureStore.deleteItemAsync(USER_KEY);
+    await deleteStoredItem(ACCESS_KEY);
+    await deleteStoredItem(REFRESH_KEY);
+    await deleteStoredItem(USER_KEY);
     set({ accessToken: null, refreshToken: null, user: null, hydrated: true });
   },
   hydrate: async () => {
     try {
       const [accessToken, refreshToken, rawUser] = await Promise.all([
-        SecureStore.getItemAsync(ACCESS_KEY),
-        SecureStore.getItemAsync(REFRESH_KEY),
-        SecureStore.getItemAsync(USER_KEY)
+        getStoredItem(ACCESS_KEY),
+        getStoredItem(REFRESH_KEY),
+        getStoredItem(USER_KEY)
       ]);
       set({
         accessToken,
@@ -53,9 +89,9 @@ export const useAuthStore = create<AuthState>((set) => ({
         hydrated: true
       });
     } catch {
-      await SecureStore.deleteItemAsync(ACCESS_KEY);
-      await SecureStore.deleteItemAsync(REFRESH_KEY);
-      await SecureStore.deleteItemAsync(USER_KEY);
+      await deleteStoredItem(ACCESS_KEY);
+      await deleteStoredItem(REFRESH_KEY);
+      await deleteStoredItem(USER_KEY);
       set({ accessToken: null, refreshToken: null, user: null, hydrated: true });
     }
   }
