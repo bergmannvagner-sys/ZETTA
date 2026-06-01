@@ -34,16 +34,12 @@ class Settings(BaseSettings):
     public_api_url: str | None = None
     billing_webhooks_enabled: bool = False
     billing_webhook_secret: str | None = None
-    stripe_secret_key: str | None = None
-    stripe_publishable_key: str | None = None
-    stripe_webhook_secret: str | None = None
-    stripe_success_url: str | None = None
-    stripe_cancel_url: str | None = None
-    stripe_price_id_psychologist: str | None = None
-    stripe_price_id_company: str | None = None
-    stripe_price_id_clinic: str | None = None
-    stripe_price_id_institutional: str | None = None
-    stripe_price_id_sponsor: str | None = None
+    mercado_pago_access_token: str | None = None
+    mercado_pago_public_key: str | None = None
+    mercado_pago_webhook_secret: str | None = None
+    mercado_pago_success_url: str | None = None
+    mercado_pago_pending_url: str | None = None
+    mercado_pago_failure_url: str | None = None
 
     @property
     def cors_origin_list(self) -> list[str]:
@@ -64,8 +60,12 @@ class Settings(BaseSettings):
         return bool(self.smtp_host and self.smtp_from_email)
 
     @property
-    def stripe_configured(self) -> bool:
-        return bool(self.stripe_secret_key and self.stripe_publishable_key and self.stripe_webhook_secret)
+    def mercado_pago_configured(self) -> bool:
+        return bool(
+            self.mercado_pago_access_token
+            and self.mercado_pago_public_key
+            and self.mercado_pago_webhook_secret
+        )
 
 
 @lru_cache

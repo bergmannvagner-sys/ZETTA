@@ -116,11 +116,10 @@ export type PaymentAdapterCapability = {
   activation_checkpoints: string[];
 };
 
-export type StripeCheckout = {
-  provider: "STRIPE";
-  session_id: string;
+export type MercadoPagoCheckout = {
+  provider: "MERCADO_PAGO";
+  preference_id: string;
   checkout_url: string;
   client_reference_id: string;
-  price_id: string;
-  live_mode: boolean;
+  price_brl: number;
 };

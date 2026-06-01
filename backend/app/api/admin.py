@@ -15,10 +15,10 @@ from app.schemas.user import (
     BillingReferenceUpdateRequest,
     CommercialPlanResponse,
     EmailConfigResponse,
+    MercadoPagoCheckoutRequest,
+    MercadoPagoCheckoutResponse,
     ModerationAccountRequest,
     PendingAccountResponse,
-    StripeCheckoutRequest,
-    StripeCheckoutResponse,
     SubscriptionAccountResponse,
     SubscriptionStatusUpdateRequest,
 )
@@ -26,8 +26,8 @@ from app.services.audit import write_audit_log
 from app.services.billing import approval_subscription_status_for_role
 from app.services.billing_webhooks import STATUS_MAP
 from app.services.commercial_plans import commercial_plan_for_role, list_commercial_plans
+from app.services.mercado_pago import MercadoPagoIntegrationError, create_mercado_pago_checkout_preference
 from app.services.payment_adapters import list_payment_adapter_capabilities, validate_billing_reference
-from app.services.stripe import StripeIntegrationError, create_stripe_checkout_session
 from app.services.verification import build_verification_triage
 
 router = APIRouter(prefix="/admin", tags=["admin"])
@@ -62,13 +62,13 @@ def parse_audit_metadata(metadata_json: str | None) -> dict[str, object] | None:
 
 def provider_configured(provider: str) -> bool:
     settings = get_settings()
-    if provider == "STRIPE":
-        return settings.stripe_configured
+    if provider == "MERCADO_PAGO":
+        return settings.mercado_pago_configured
     return False
 
 
 def provider_production_enabled(provider: str) -> bool:
-    if provider == "STRIPE":
+    if provider == "MERCADO_PAGO":
         return provider_configured(provider)
     return False
 
@@ -225,7 +225,7 @@ def billing_config(
         webhook_secret_configured=bool(settings.billing_webhook_secret),
         webhook_path="/billing/webhook",
         signature_header="X-Bergmann-Billing-Signature",
-        supported_providers=["STRIPE"],
+        supported_providers=["MERCADO_PAGO"],
         status_mapping={external: internal.value for external, internal in sorted(STATUS_MAP.items())},
         secret_env_name="BILLING_WEBHOOK_SECRET",
         enabled_env_name="BILLING_WEBHOOKS_ENABLED",
@@ -404,12 +404,12 @@ def update_billing_reference(
     }
 
 
-@router.post("/stripe/checkout-session", response_model=StripeCheckoutResponse)
-def create_stripe_checkout(
-    payload: StripeCheckoutRequest,
+@router.post("/mercado-pago/checkout-preference", response_model=MercadoPagoCheckoutResponse)
+def create_mercado_pago_checkout(
+    payload: MercadoPagoCheckoutRequest,
     admin: Annotated[User, Depends(require_roles(UserRole.SUPER_ADMIN))],
     db: Session = Depends(get_db),
-) -> StripeCheckoutResponse:
+) -> MercadoPagoCheckoutResponse:
     user = db.get(User, payload.user_id)
     if not user or user.role not in PAID_ADMIN_ROLES:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Paid account not found")
@@ -420,35 +420,36 @@ def create_stripe_checkout(
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="No commercial plan for role")
 
     try:
-        checkout = create_stripe_checkout_session(
+        checkout = create_mercado_pago_checkout_preference(
             settings=get_settings(),
             user=user,
         )
-    except StripeIntegrationError as exc:
+    except MercadoPagoIntegrationError as exc:
         raise HTTPException(status_code=status.HTTP_503_SERVICE_UNAVAILABLE, detail=str(exc)) from exc
 
-    user.billing_provider = "STRIPE"
-    user.billing_subscription_id = checkout["session_id"]
+    user.billing_provider = "MERCADO_PAGO"
+    user.billing_customer_id = user.email
+    user.billing_subscription_id = checkout["preference_id"]
     write_audit_log(
         db,
         action=AuditAction.SUBSCRIPTION_STATUS_UPDATED,
         actor_user_id=admin.id,
         target_user_id=user.id,
-        resource_type="stripe_checkout_session",
+        resource_type="mercado_pago_checkout_preference",
         resource_id=user.id,
         metadata={
             "reason": payload.reason,
             "role": user.role.value,
             "subscription_plan": user.subscription_plan.value,
-            "provider": "STRIPE",
-            "session_id": checkout["session_id"],
-            "price_id": checkout["price_id"],
-            "production": provider_production_enabled("STRIPE"),
+            "provider": "MERCADO_PAGO",
+            "preference_id": checkout["preference_id"],
+            "price_brl": checkout["price_brl"],
+            "production": provider_production_enabled("MERCADO_PAGO"),
             "checkout_created": True,
         },
     )
     db.commit()
-    return StripeCheckoutResponse(**checkout)
+    return MercadoPagoCheckoutResponse(**checkout)
 
 
 @router.post("/approve-account")

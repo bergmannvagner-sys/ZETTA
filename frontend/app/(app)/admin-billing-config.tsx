@@ -9,13 +9,13 @@ import { useAuthStore } from "@/store/auth-store";
 import { BillingConfig, PaymentAdapterCapability } from "@/types/auth";
 
 const checklist = [
-  "Criar conta real no Stripe.",
-  "Configurar produtos e Price IDs reais no Stripe.",
-  "Definir STRIPE_SECRET_KEY, STRIPE_PUBLISHABLE_KEY e STRIPE_WEBHOOK_SECRET no Render.",
-  "Definir STRIPE_PRICE_ID_* para cada plano comercial.",
+  "Criar conta real no Mercado Pago.",
+  "Obter Access Token, Public Key e segredo de webhook definitivos no Mercado Pago Developers.",
+  "Definir MERCADO_PAGO_ACCESS_TOKEN, MERCADO_PAGO_PUBLIC_KEY e MERCADO_PAGO_WEBHOOK_SECRET no Render.",
+  "Definir URLs de retorno MERCADO_PAGO_SUCCESS_URL, MERCADO_PAGO_PENDING_URL e MERCADO_PAGO_FAILURE_URL.",
   "Definir BILLING_WEBHOOK_SECRET com segredo forte no Render.",
   "Ativar BILLING_WEBHOOKS_ENABLED somente depois de validar assinatura do webhook.",
-  "Cadastrar a URL /billing/webhook no Stripe.",
+  "Cadastrar a URL /billing/webhook nas notificacoes do Mercado Pago.",
   "Confirmar eventos de assinatura ativa, vencida e cancelada.",
   "Verificar auditoria antes de liberar cobranca para clientes reais."
 ];
@@ -47,7 +47,7 @@ export default function AdminBillingConfig() {
         <Text className="text-sm font-semibold tracking-[4px] text-mint">ADMIN</Text>
         <Text className="text-3xl font-semibold text-white">Configuracao de pagamentos</Text>
         <Text className="text-base leading-6 text-muted">
-          Preparacao operacional para Stripe definitivo. Esta tela nao exibe segredo e nao cria checkout publico.
+          Preparacao operacional para Mercado Pago definitivo. Esta tela nao exibe segredo e nao cria checkout publico.
         </Text>
       </View>
 

@@ -8,7 +8,7 @@ import { Button, Card, ErrorText, Field } from "@/components/ui";
 import { apiRequest } from "@/lib/api";
 import { planLabel, subscriptionStatusLabel } from "@/lib/billing";
 import { useAuthStore } from "@/store/auth-store";
-import { AuditLogEntry, StripeCheckout, SubscriptionAccount, SubscriptionStatus, UserRole } from "@/types/auth";
+import { AuditLogEntry, MercadoPagoCheckout, SubscriptionAccount, SubscriptionStatus, UserRole } from "@/types/auth";
 
 const roleFilters: Array<{ label: string; value?: UserRole }> = [
   { label: "Todos" },
@@ -27,7 +27,7 @@ const statusActions: Array<{ label: string; value: SubscriptionStatus; tone?: "p
   { label: "Cancelar", value: "CANCELED", tone: "danger" }
 ];
 
-const providerOptions = ["NONE", "STRIPE"] as const;
+const providerOptions = ["NONE", "MERCADO_PAGO"] as const;
 type BillingProviderOption = (typeof providerOptions)[number];
 
 function subscriptionsPath(search: string, role?: UserRole): string {
@@ -58,10 +58,9 @@ function validateBillingReferenceForm(
   const errors: string[] = [];
   if (!customer) errors.push("Informe o Customer ID externo.");
   if (!subscription) errors.push("Informe o Subscription ID externo.");
-  if (provider === "STRIPE") {
-    if (customer && !customer.startsWith("cus_")) errors.push("Stripe Customer ID deve comecar com cus_.");
-    if (subscription && !subscription.startsWith("sub_")) errors.push("Stripe Subscription ID deve comecar com sub_.");
-    if (event && !event.startsWith("evt_")) errors.push("Stripe Event ID deve comecar com evt_.");
+  if (provider === "MERCADO_PAGO") {
+    if (customer.length > 150) errors.push("Referencia de cliente Mercado Pago muito longa.");
+    if (event.length > 160) errors.push("ID de evento Mercado Pago muito longo.");
   }
   return errors;
 }
@@ -100,13 +99,13 @@ function BillingReferenceForm({
       queryClient.invalidateQueries({ queryKey: ["billing-reference-audit"] });
     }
   });
-  const createStripeCheckout = useMutation({
+  const createMercadoPagoCheckout = useMutation({
     mutationFn: () =>
-      apiRequest<StripeCheckout>("/admin/stripe/checkout-session", {
+      apiRequest<MercadoPagoCheckout>("/admin/mercado-pago/checkout-preference", {
         method: "POST",
         body: JSON.stringify({
           user_id: account.id,
-          reason: "admin checkout session"
+          reason: "admin checkout preference"
         })
       }),
     onSuccess: async (checkout) => {
@@ -120,7 +119,7 @@ function BillingReferenceForm({
     <View className="gap-3 rounded-2xl border border-white/10 bg-ink/35 p-3">
       <Text className="text-sm font-semibold text-white">Referencia externa futura</Text>
       <Text className="text-xs leading-5 text-muted">
-        Apenas vincula IDs de Stripe. Esta tela nao confirma pagamento sem webhook ou acao administrativa.
+        Vincula referencias do Mercado Pago. Esta tela nao confirma pagamento sem webhook ou acao administrativa.
       </Text>
       <View className="flex-row flex-wrap gap-2">
         {providerOptions.map((option) => {
@@ -171,15 +170,15 @@ function BillingReferenceForm({
         disabled={!canSave}
         onPress={() => updateReference.mutate()}
       />
-      <ErrorText message={createStripeCheckout.error?.message} />
+      <ErrorText message={createMercadoPagoCheckout.error?.message} />
       <Button
-        label="Criar checkout Stripe"
+        label="Criar checkout Mercado Pago"
         tone="soft"
-        loading={createStripeCheckout.isPending}
-        onPress={() => createStripeCheckout.mutate()}
+        loading={createMercadoPagoCheckout.isPending}
+        onPress={() => createMercadoPagoCheckout.mutate()}
       />
       <Text className="text-xs leading-5 text-muted">
-        O link abre o Stripe Checkout real. A assinatura so deve virar ativa depois do webhook validado.
+        O link abre o Checkout Pro real do Mercado Pago. A assinatura so deve virar ativa depois do webhook validado.
       </Text>
       {history.length > 0 ? (
         <View className="gap-2 rounded-xl border border-white/10 bg-surface/45 p-3">
@@ -252,7 +251,7 @@ export default function AdminSubscriptions() {
         <Text className="text-sm font-semibold tracking-[4px] text-mint">ADMIN</Text>
         <Text className="text-3xl font-semibold text-white">Assinaturas</Text>
         <Text className="text-base leading-6 text-muted">
-          Controle manual de planos pagos ate a integracao com gateway real.
+          Controle de planos pagos com Mercado Pago real, sem checkout publico.
         </Text>
       </View>
 

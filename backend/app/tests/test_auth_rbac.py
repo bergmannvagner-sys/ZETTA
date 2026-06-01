@@ -1,5 +1,7 @@
 import os
 import json
+import hmac
+from hashlib import sha256
 
 os.environ.setdefault("DATABASE_URL", "sqlite+pysqlite:///:memory:")
 os.environ.setdefault("JWT_SECRET_KEY", "test-secret-key-with-more-than-thirty-two-chars")
@@ -822,9 +824,9 @@ def test_super_admin_can_manage_paid_subscription_status(monkeypatch) -> None:
         json={
             "user_id": company_id,
             "billing_provider": "PAGSEGURO",
-            "billing_customer_id": "cus_test_company",
-            "billing_subscription_id": "sub_test_company",
-            "billing_last_event_id": "evt_test_company",
+            "billing_customer_id": "billing-company@example.com",
+            "billing_subscription_id": "123456789-company",
+            "billing_last_event_id": "123456789",
             "reason": "wrong provider ids",
         },
         headers=admin_headers,
@@ -835,32 +837,32 @@ def test_super_admin_can_manage_paid_subscription_status(monkeypatch) -> None:
         "/admin/billing-reference",
         json={
             "user_id": company_id,
-            "billing_provider": "STRIPE",
-            "billing_customer_id": "cus_test_company",
-            "billing_subscription_id": "sub_test_company",
-            "billing_last_event_id": "evt_test_company",
+            "billing_provider": "MERCADO_PAGO",
+            "billing_customer_id": "billing-company@example.com",
+            "billing_subscription_id": "123456789-company",
+            "billing_last_event_id": "123456789",
             "reason": "external provider linked",
         },
         headers=admin_headers,
     )
     assert reference.status_code == 200
-    assert reference.json()["billing_provider"] == "STRIPE"
-    assert reference.json()["billing_customer_id"] == "cus_test_company"
-    assert reference.json()["billing_subscription_id"] == "sub_test_company"
+    assert reference.json()["billing_provider"] == "MERCADO_PAGO"
+    assert reference.json()["billing_customer_id"] == "billing-company@example.com"
+    assert reference.json()["billing_subscription_id"] == "123456789-company"
 
     listed_after_reference = client.get("/admin/subscriptions", headers=admin_headers)
     assert listed_after_reference.status_code == 200
     company_payload = next(
         account for account in listed_after_reference.json() if account["email"] == "billing-company@example.com"
     )
-    assert company_payload["billing_provider"] == "STRIPE"
-    assert company_payload["billing_customer_id"] == "cus_test_company"
-    assert company_payload["billing_subscription_id"] == "sub_test_company"
+    assert company_payload["billing_provider"] == "MERCADO_PAGO"
+    assert company_payload["billing_customer_id"] == "billing-company@example.com"
+    assert company_payload["billing_subscription_id"] == "123456789-company"
 
     audit = client.get("/admin/audit-logs?resource_type=billing_reference&limit=10", headers=admin_headers)
     assert audit.status_code == 200
     billing_reference_log = next(entry for entry in audit.json() if entry["target_user_id"] == company_id)
-    assert billing_reference_log["metadata"]["billing_provider"] == "STRIPE"
+    assert billing_reference_log["metadata"]["billing_provider"] == "MERCADO_PAGO"
     assert billing_reference_log["metadata"]["previous"]["billing_provider"] is None
 
     config = client.get("/admin/billing-config", headers=admin_headers)
@@ -869,8 +871,7 @@ def test_super_admin_can_manage_paid_subscription_status(monkeypatch) -> None:
     assert config_payload["webhook_path"] == "/billing/webhook"
     assert config_payload["signature_header"] == "X-Bergmann-Billing-Signature"
     assert config_payload["secret_env_name"] == "BILLING_WEBHOOK_SECRET"
-    assert "STRIPE" in config_payload["supported_providers"]
-    assert "MERCADO_PAGO" not in config_payload["supported_providers"]
+    assert "MERCADO_PAGO" in config_payload["supported_providers"]
     assert "billing_webhook_secret" not in config_payload
 
     email_config = client.get("/admin/email-config", headers=admin_headers)
@@ -889,140 +890,134 @@ def test_super_admin_can_manage_paid_subscription_status(monkeypatch) -> None:
         "password_reset_url_configured",
         "required_env_names",
     }
-    stripe_config = next(
+    mercado_pago_config = next(
         capability
         for capability in config_payload["provider_capabilities"]
-        if capability["provider"] == "STRIPE"
+        if capability["provider"] == "MERCADO_PAGO"
     )
-    assert stripe_config["checkout_enabled"] is False
-    assert "Stripe-Signature" in stripe_config["webhook_signature_headers"]
-    assert "customer" in stripe_config["customer_reference_fields"]
-    assert "STRIPE_WEBHOOK_SECRET" in stripe_config["required_env_names"]
-    assert "STRIPE_SECRET_KEY" in stripe_config["required_env_names"]
-    assert stripe_config["provider_configured"] is False
-    assert stripe_config["production_enabled"] is False
-    assert "stripe_secret_key" not in config_payload
-    assert "stripe_webhook_secret" not in config_payload
+    assert mercado_pago_config["checkout_enabled"] is False
+    assert "x-signature" in mercado_pago_config["webhook_signature_headers"]
+    assert "x-request-id" in mercado_pago_config["webhook_signature_headers"]
+    assert "payer.email" in mercado_pago_config["customer_reference_fields"]
+    assert "MERCADO_PAGO_WEBHOOK_SECRET" in mercado_pago_config["required_env_names"]
+    assert "MERCADO_PAGO_ACCESS_TOKEN" in mercado_pago_config["required_env_names"]
+    assert mercado_pago_config["provider_configured"] is False
+    assert mercado_pago_config["production_enabled"] is False
+    assert "mercado_pago_access_token" not in config_payload
+    assert "mercado_pago_webhook_secret" not in config_payload
 
     settings = get_settings()
-    previous_stripe_secret_key = settings.stripe_secret_key
-    previous_stripe_publishable_key = settings.stripe_publishable_key
-    previous_stripe_webhook_secret = settings.stripe_webhook_secret
-    settings.stripe_secret_key = "sk_live_123"
-    settings.stripe_publishable_key = "pk_live_123"
-    settings.stripe_webhook_secret = "whsec_live"
+    previous_access_token = settings.mercado_pago_access_token
+    previous_public_key = settings.mercado_pago_public_key
+    previous_webhook_secret = settings.mercado_pago_webhook_secret
+    settings.mercado_pago_access_token = "APP_USR-live-token"
+    settings.mercado_pago_public_key = "APP_USR-live-public"
+    settings.mercado_pago_webhook_secret = "mp_webhook_secret"
     try:
         configured_config = client.get("/admin/billing-config", headers=admin_headers)
         assert configured_config.status_code == 200
-        configured_stripe_config = next(
+        configured_mercado_pago_config = next(
             capability
             for capability in configured_config.json()["provider_capabilities"]
-            if capability["provider"] == "STRIPE"
+            if capability["provider"] == "MERCADO_PAGO"
         )
-        assert configured_stripe_config["provider_configured"] is True
-        assert configured_stripe_config["production_enabled"] is True
-        assert configured_stripe_config["checkout_enabled"] is False
-        assert "sk_live_123" not in configured_config.text
-        assert "whsec_live" not in configured_config.text
+        assert configured_mercado_pago_config["provider_configured"] is True
+        assert configured_mercado_pago_config["production_enabled"] is True
+        assert configured_mercado_pago_config["checkout_enabled"] is False
+        assert "APP_USR-live-token" not in configured_config.text
+        assert "mp_webhook_secret" not in configured_config.text
     finally:
-        settings.stripe_secret_key = previous_stripe_secret_key
-        settings.stripe_publishable_key = previous_stripe_publishable_key
-        settings.stripe_webhook_secret = previous_stripe_webhook_secret
+        settings.mercado_pago_access_token = previous_access_token
+        settings.mercado_pago_public_key = previous_public_key
+        settings.mercado_pago_webhook_secret = previous_webhook_secret
 
-    missing_stripe_checkout = client.post(
-        "/admin/stripe/checkout-session",
+    missing_mercado_pago_checkout = client.post(
+        "/admin/mercado-pago/checkout-preference",
         json={"user_id": company_id},
         headers=admin_headers,
     )
-    assert missing_stripe_checkout.status_code == 503
-    assert "Stripe credentials are not configured" in missing_stripe_checkout.text
+    assert missing_mercado_pago_checkout.status_code == 503
+    assert "Mercado Pago credentials are not configured" in missing_mercado_pago_checkout.text
 
-    captured_stripe_request: dict[str, object] = {}
+    captured_mercado_pago_request: dict[str, object] = {}
 
-    class FakeStripeResponse:
+    class FakeMercadoPagoResponse:
         def raise_for_status(self) -> None:
             return None
 
         def json(self) -> dict[str, object]:
             return {
-                "id": "cs_live_company",
-                "url": "https://checkout.stripe.com/c/pay/cs_live_company",
-                "livemode": True,
+                "id": "123456789-company-preference",
+                "init_point": "https://www.mercadopago.com.br/checkout/v1/redirect?pref_id=123456789-company-preference",
             }
 
-    def fake_stripe_post(url, **kwargs):
-        captured_stripe_request["url"] = url
-        captured_stripe_request.update(kwargs)
-        return FakeStripeResponse()
+    def fake_mercado_pago_post(url, **kwargs):
+        captured_mercado_pago_request["url"] = url
+        captured_mercado_pago_request.update(kwargs)
+        return FakeMercadoPagoResponse()
 
-    previous_stripe_secret_key = settings.stripe_secret_key
-    previous_stripe_publishable_key = settings.stripe_publishable_key
-    previous_stripe_webhook_secret = settings.stripe_webhook_secret
-    previous_stripe_success_url = settings.stripe_success_url
-    previous_stripe_cancel_url = settings.stripe_cancel_url
-    previous_stripe_price_id_company = settings.stripe_price_id_company
-    settings.stripe_secret_key = "sk_live_123"
-    settings.stripe_publishable_key = "pk_live_123"
-    settings.stripe_webhook_secret = "whsec_live"
-    settings.stripe_success_url = "https://app.example.com/success"
-    settings.stripe_cancel_url = "https://app.example.com/cancel"
-    settings.stripe_price_id_company = "price_company"
-    monkeypatch.setattr("app.services.stripe.httpx.post", fake_stripe_post)
+    previous_access_token = settings.mercado_pago_access_token
+    previous_public_key = settings.mercado_pago_public_key
+    previous_webhook_secret = settings.mercado_pago_webhook_secret
+    previous_success_url = settings.mercado_pago_success_url
+    previous_pending_url = settings.mercado_pago_pending_url
+    previous_failure_url = settings.mercado_pago_failure_url
+    settings.mercado_pago_access_token = "APP_USR-live-token"
+    settings.mercado_pago_public_key = "APP_USR-live-public"
+    settings.mercado_pago_webhook_secret = "mp_webhook_secret"
+    settings.mercado_pago_success_url = "https://app.example.com/success"
+    settings.mercado_pago_pending_url = "https://app.example.com/pending"
+    settings.mercado_pago_failure_url = "https://app.example.com/failure"
+    monkeypatch.setattr("app.services.mercado_pago.httpx.post", fake_mercado_pago_post)
     try:
-        stripe_checkout = client.post(
-            "/admin/stripe/checkout-session",
+        mercado_pago_checkout = client.post(
+            "/admin/mercado-pago/checkout-preference",
             json={"user_id": company_id, "reason": "admin checkout"},
             headers=admin_headers,
         )
-        assert stripe_checkout.status_code == 200
-        stripe_checkout_payload = stripe_checkout.json()
-        assert stripe_checkout_payload["provider"] == "STRIPE"
-        assert stripe_checkout_payload["session_id"] == "cs_live_company"
-        assert stripe_checkout_payload["checkout_url"].startswith("https://checkout.stripe.com/")
-        assert stripe_checkout_payload["live_mode"] is True
-        assert captured_stripe_request["url"] == "https://api.stripe.com/v1/checkout/sessions"
-        assert captured_stripe_request["headers"]["Authorization"] == "Bearer sk_live_123"
-        stripe_body = captured_stripe_request["content"]
-        assert "mode=subscription" in stripe_body
-        assert f"client_reference_id={company_id}" in stripe_body
-        assert "line_items%5B0%5D%5Bprice%5D=price_company" in stripe_body
+        assert mercado_pago_checkout.status_code == 200
+        mercado_pago_payload = mercado_pago_checkout.json()
+        assert mercado_pago_payload["provider"] == "MERCADO_PAGO"
+        assert mercado_pago_payload["preference_id"] == "123456789-company-preference"
+        assert mercado_pago_payload["checkout_url"].startswith("https://www.mercadopago.com.br/")
+        assert captured_mercado_pago_request["url"] == "https://api.mercadopago.com/checkout/preferences"
+        assert captured_mercado_pago_request["headers"]["Authorization"] == "Bearer APP_USR-live-token"
+        mercado_pago_body = captured_mercado_pago_request["json"]
+        assert mercado_pago_body["external_reference"] == company_id
+        assert mercado_pago_body["items"][0]["currency_id"] == "BRL"
+        assert mercado_pago_body["back_urls"]["success"] == "https://app.example.com/success"
     finally:
-        settings.stripe_secret_key = previous_stripe_secret_key
-        settings.stripe_publishable_key = previous_stripe_publishable_key
-        settings.stripe_webhook_secret = previous_stripe_webhook_secret
-        settings.stripe_success_url = previous_stripe_success_url
-        settings.stripe_cancel_url = previous_stripe_cancel_url
-        settings.stripe_price_id_company = previous_stripe_price_id_company
+        settings.mercado_pago_access_token = previous_access_token
+        settings.mercado_pago_public_key = previous_public_key
+        settings.mercado_pago_webhook_secret = previous_webhook_secret
+        settings.mercado_pago_success_url = previous_success_url
+        settings.mercado_pago_pending_url = previous_pending_url
+        settings.mercado_pago_failure_url = previous_failure_url
 
 
 def test_payment_provider_adapters_are_local_only_contracts() -> None:
-    stripe = get_payment_adapter("stripe")
-    assert stripe.extract_event_reference({"id": "evt_123"}) == "evt_123"
+    mercado_pago = get_payment_adapter("mercado_pago")
+    assert mercado_pago.extract_event_reference({"data": {"id": "123456"}}) == "123456"
     assert (
-        stripe.extract_customer_reference(
-            {"data": {"object": {"customer": "cus_123", "subscription": "sub_123"}}}
+        mercado_pago.extract_customer_reference(
+            {"payer": {"email": "pagador@example.com"}, "external_reference": "user_123"}
         )
-        == "cus_123"
+        == "pagador@example.com"
     )
-    assert (
-        stripe.extract_subscription_reference(
-            {"data": {"object": {"customer": "cus_123", "subscription": "sub_123"}}}
-        )
-        == "sub_123"
-    )
+    assert mercado_pago.extract_subscription_reference({"preference_id": "123456789-pref"}) == "123456789-pref"
 
     try:
-        stripe.verify_provider_signature(raw_body=b"{}", headers={}, secret=None)
+        mercado_pago.verify_provider_signature(raw_body=b"{}", headers={}, secret=None)
     except PaymentProviderNotConfigured:
         pass
     else:
         raise AssertionError("Provider signature validation must stay disabled until integration")
 
     assert validate_billing_reference(
-        provider="STRIPE",
-        customer_id="cus_123",
-        subscription_id="sub_123",
-        last_event_id="evt_123",
+        provider="MERCADO_PAGO",
+        customer_id="pagador@example.com",
+        subscription_id="123456789-pref",
+        last_event_id="123456",
     ) == []
     assert validate_billing_reference(
         provider=None,
@@ -1064,9 +1059,9 @@ def test_billing_webhook_requires_valid_signature_and_is_idempotent() -> None:
                 status=AccountStatus.ACTIVE,
                 subscription_plan="COMPANY_NR1",
                 subscription_status=SubscriptionStatus.PAST_DUE,
-                billing_provider="STRIPE",
-                billing_customer_id="cus_webhook_company",
-                billing_subscription_id="sub_webhook_company",
+                billing_provider="MERCADO_PAGO",
+                billing_customer_id="webhook-company@example.com",
+                billing_subscription_id="123456789-webhook-company",
             )
             db.add(company)
             db.commit()
@@ -1074,12 +1069,13 @@ def test_billing_webhook_requires_valid_signature_and_is_idempotent() -> None:
         finally:
             db.close()
 
+        event_id = f"mp_{company_id}"
         payload = {
-            "provider": "STRIPE",
-            "event_id": "evt_webhook_paid",
+            "provider": "MERCADO_PAGO",
+            "event_id": event_id,
             "external_status": "active",
-            "customer_id": "cus_webhook_company",
-            "subscription_id": "sub_webhook_company",
+            "customer_id": "webhook-company@example.com",
+            "subscription_id": "123456789-webhook-company",
         }
         body = json.dumps(payload, separators=(",", ":")).encode("utf-8")
 
@@ -1115,7 +1111,7 @@ def test_billing_webhook_requires_valid_signature_and_is_idempotent() -> None:
             company = db.get(User, company_id)
             assert company is not None
             assert company.subscription_status == SubscriptionStatus.ACTIVE
-            assert company.billing_last_event_id == "evt_webhook_paid"
+            assert company.billing_last_event_id == event_id
             actions = {entry.action for entry in db.query(AuditLog).all()}
         finally:
             db.close()
@@ -1123,3 +1119,88 @@ def test_billing_webhook_requires_valid_signature_and_is_idempotent() -> None:
     finally:
         settings.billing_webhooks_enabled = previous_enabled
         settings.billing_webhook_secret = previous_secret
+
+
+def test_mercado_pago_webhook_validates_signature_and_updates_subscription(monkeypatch) -> None:
+    settings = get_settings()
+    previous_enabled = settings.billing_webhooks_enabled
+    previous_webhook_secret = settings.mercado_pago_webhook_secret
+    previous_access_token = settings.mercado_pago_access_token
+    settings.billing_webhooks_enabled = True
+    settings.mercado_pago_webhook_secret = "mp-webhook-secret"
+    settings.mercado_pago_access_token = "APP_USR-live-token"
+    try:
+        db = SessionLocal()
+        try:
+            company = User(
+                email="mp-webhook-company@example.com",
+                full_name="Empresa Mercado Pago",
+                password_hash=hash_password("strongpass123"),
+                role=UserRole.COMPANY,
+                status=AccountStatus.ACTIVE,
+                subscription_plan="COMPANY_NR1",
+                subscription_status=SubscriptionStatus.PAST_DUE,
+                billing_provider="MERCADO_PAGO",
+                billing_customer_id="mp-webhook-company@example.com",
+                billing_subscription_id="pref-mp-company",
+            )
+            db.add(company)
+            db.commit()
+            company_id = company.id
+        finally:
+            db.close()
+
+        payment_id = f"pay_{company_id}"
+        request_id = "request-id-123"
+        timestamp = "1710000000"
+        manifest = f"id:{payment_id};request-id:{request_id};ts:{timestamp};"
+        digest = hmac.new(settings.mercado_pago_webhook_secret.encode("utf-8"), manifest.encode("utf-8"), sha256)
+        signature = f"ts={timestamp},v1={digest.hexdigest()}"
+
+        class FakeMercadoPagoPaymentResponse:
+            def raise_for_status(self) -> None:
+                return None
+
+            def json(self) -> dict[str, object]:
+                return {
+                    "id": payment_id,
+                    "status": "approved",
+                    "external_reference": company_id,
+                    "payer": {"email": "mp-webhook-company@example.com"},
+                }
+
+        def fake_mercado_pago_get(url, **kwargs):
+            assert payment_id in url
+            assert kwargs["headers"]["Authorization"] == "Bearer APP_USR-live-token"
+            return FakeMercadoPagoPaymentResponse()
+
+        monkeypatch.setattr("app.services.mercado_pago.httpx.get", fake_mercado_pago_get)
+        response = client.post(
+            f"/billing/mercado-pago/webhook?data.id={payment_id}",
+            json={"data": {"id": payment_id}},
+            headers={"x-signature": signature, "x-request-id": request_id},
+        )
+        assert response.status_code == 200
+        assert response.json()["status"] == "processed"
+        assert response.json()["subscription_status"] == "ACTIVE"
+
+        duplicate = client.post(
+            f"/billing/mercado-pago/webhook?data.id={payment_id}",
+            json={"data": {"id": payment_id}},
+            headers={"x-signature": signature, "x-request-id": request_id},
+        )
+        assert duplicate.status_code == 200
+        assert duplicate.json()["status"] == "duplicate"
+
+        db = SessionLocal()
+        try:
+            company = db.get(User, company_id)
+            assert company is not None
+            assert company.subscription_status == SubscriptionStatus.ACTIVE
+            assert company.billing_last_event_id == payment_id
+        finally:
+            db.close()
+    finally:
+        settings.billing_webhooks_enabled = previous_enabled
+        settings.mercado_pago_webhook_secret = previous_webhook_secret
+        settings.mercado_pago_access_token = previous_access_token

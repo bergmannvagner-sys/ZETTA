@@ -27,16 +27,12 @@ Recomendadas:
 - `PUBLIC_API_URL=https://zetta-bergmann.onrender.com`
 - `BILLING_WEBHOOKS_ENABLED=false`
 - `BILLING_WEBHOOK_SECRET`
-- `STRIPE_SECRET_KEY`
-- `STRIPE_PUBLISHABLE_KEY`
-- `STRIPE_WEBHOOK_SECRET`
-- `STRIPE_SUCCESS_URL`
-- `STRIPE_CANCEL_URL`
-- `STRIPE_PRICE_ID_PSYCHOLOGIST`
-- `STRIPE_PRICE_ID_COMPANY`
-- `STRIPE_PRICE_ID_CLINIC`
-- `STRIPE_PRICE_ID_INSTITUTIONAL`
-- `STRIPE_PRICE_ID_SPONSOR`
+- `MERCADO_PAGO_ACCESS_TOKEN`
+- `MERCADO_PAGO_PUBLIC_KEY`
+- `MERCADO_PAGO_WEBHOOK_SECRET`
+- `MERCADO_PAGO_SUCCESS_URL`
+- `MERCADO_PAGO_PENDING_URL`
+- `MERCADO_PAGO_FAILURE_URL`
 
 Nunca versionar `.env`. Use `backend/.env.example` como referência.
 
@@ -55,20 +51,20 @@ powershell -ExecutionPolicy Bypass -File .\scripts\prod-password-reset-smoke.ps1
 
 O smoke nao imprime token nem senha; depois dele, confirme manualmente se o email chegou.
 
-## Pagamento Stripe definitivo
+## Pagamento Mercado Pago definitivo
 
-O MVP usa Stripe como provedor definitivo de cobranca, sem checkout publico falso. Configure as variaveis
+O MVP usa Mercado Pago como provedor definitivo de cobranca, sem checkout publico falso. Configure as variaveis
 do provider apenas no ambiente seguro do backend. A tela de super admin "Configuracao de pagamentos"
 mostra somente flags de readiness; tokens, chaves e segredos nunca sao retornados pela API.
 
 Variaveis:
 
-- `STRIPE_SECRET_KEY`: chave secreta real do Stripe.
-- `STRIPE_PUBLISHABLE_KEY`: publishable key real do Stripe.
-- `STRIPE_WEBHOOK_SECRET`: segredo de assinatura do webhook Stripe, geralmente `whsec_...`.
-- `STRIPE_SUCCESS_URL`: URL de retorno apos checkout concluido.
-- `STRIPE_CANCEL_URL`: URL de retorno apos checkout cancelado.
-- `STRIPE_PRICE_ID_*`: Price IDs reais criados no Stripe para cada plano comercial.
+- `MERCADO_PAGO_ACCESS_TOKEN`: access token definitivo do Mercado Pago.
+- `MERCADO_PAGO_PUBLIC_KEY`: public key definitiva do Mercado Pago.
+- `MERCADO_PAGO_WEBHOOK_SECRET`: segredo de assinatura do webhook Mercado Pago.
+- `MERCADO_PAGO_SUCCESS_URL`: URL de retorno para pagamento aprovado.
+- `MERCADO_PAGO_PENDING_URL`: URL de retorno para pagamento pendente.
+- `MERCADO_PAGO_FAILURE_URL`: URL de retorno para pagamento recusado.
 - `BILLING_WEBHOOK_SECRET`: segredo interno do endpoint `/billing/webhook`.
 - `BILLING_WEBHOOKS_ENABLED=false`: manter `false` ate a assinatura do webhook estar validada.
 
@@ -77,16 +73,18 @@ Para validar readiness em producao depois do deploy:
 ```powershell
 $env:ZETTA_ADMIN_EMAIL="admin@example.com"
 $env:ZETTA_ADMIN_PASSWORD="use-your-real-secret-locally"
-powershell -ExecutionPolicy Bypass -File .\scripts\prod-stripe-config-smoke.ps1
+powershell -ExecutionPolicy Bypass -File .\scripts\prod-mercado-pago-config-smoke.ps1
 Remove-Item Env:\ZETTA_ADMIN_PASSWORD
 ```
 
-Esse smoke confirma que Stripe esta configurado para producao e que checkout publico continua
-desativado. Ele nao imprime secret key, publishable key, webhook secret ou senha.
+Esse smoke confirma que Mercado Pago esta configurado para producao e que checkout publico continua
+desativado. Ele nao imprime access token, public key, webhook secret ou senha.
 
-Depois do smoke passar, a tela de super admin "Assinaturas" pode gerar um checkout Stripe real
+Depois do smoke passar, a tela de super admin "Assinaturas" pode gerar um Checkout Pro Mercado Pago real
 para uma conta comercial. Esse link nao aparece para usuarios comuns e nao ativa a assinatura por
 si so; a liberacao financeira continua dependendo do webhook validado ou da acao administrativa.
+Para notificacoes do Mercado Pago, cadastre a rota `/billing/mercado-pago/webhook`; a rota
+generica `/billing/webhook` continua reservada para payload interno assinado por `BILLING_WEBHOOK_SECRET`.
 
 ## Frontend
 

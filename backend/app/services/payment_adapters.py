@@ -1,6 +1,8 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+import hmac
+from hashlib import sha256
 from typing import Any, Mapping, Protocol
 
 
@@ -103,45 +105,67 @@ class LocalOnlyPaymentAdapter:
         return _as_text(payload.get("subscription_id") or payload.get("subscription"))
 
 
-class StripePaymentAdapter(LocalOnlyPaymentAdapter):
-    provider = "STRIPE"
-    webhook_signature_headers = ("Stripe-Signature",)
-    customer_reference_fields = ("customer",)
-    event_reference_fields = ("id", "type", "data.object.id")
+class MercadoPagoPaymentAdapter(LocalOnlyPaymentAdapter):
+    provider = "MERCADO_PAGO"
+    webhook_signature_headers = ("x-signature", "x-request-id")
+    customer_reference_fields = ("payer.email", "external_reference")
+    event_reference_fields = ("id", "data.id", "external_reference")
     required_env_names = (
-        "STRIPE_SECRET_KEY",
-        "STRIPE_PUBLISHABLE_KEY",
-        "STRIPE_WEBHOOK_SECRET",
-        "STRIPE_SUCCESS_URL",
-        "STRIPE_CANCEL_URL",
-        "STRIPE_PRICE_ID_PSYCHOLOGIST",
-        "STRIPE_PRICE_ID_COMPANY",
-        "STRIPE_PRICE_ID_CLINIC",
-        "STRIPE_PRICE_ID_INSTITUTIONAL",
-        "STRIPE_PRICE_ID_SPONSOR",
+        "MERCADO_PAGO_ACCESS_TOKEN",
+        "MERCADO_PAGO_PUBLIC_KEY",
+        "MERCADO_PAGO_WEBHOOK_SECRET",
+        "MERCADO_PAGO_SUCCESS_URL",
+        "MERCADO_PAGO_PENDING_URL",
+        "MERCADO_PAGO_FAILURE_URL",
     )
     activation_checkpoints = (
-        "Usar chaves definitivas do Stripe no ambiente seguro de producao.",
-        "Configurar STRIPE_WEBHOOK_SECRET fora do repositorio.",
-        "Validar Stripe-Signature usando SDK oficial antes de processar evento.",
-        "Buscar customer e subscription reais no Stripe antes de liberar acesso pago.",
-        "Aceitar apenas eventos de assinatura e pagamento previstos.",
+        "Usar credenciais definitivas do Mercado Pago no ambiente seguro de producao.",
+        "Configurar MERCADO_PAGO_WEBHOOK_SECRET fora do repositorio.",
+        "Validar x-signature e x-request-id antes de processar notificacoes.",
+        "Conferir pagamento real no Mercado Pago antes de liberar acesso pago.",
+        "Aceitar apenas status de pagamento previstos e manter idempotencia por evento.",
     )
 
+    def verify_provider_signature(
+        self,
+        *,
+        raw_body: bytes,
+        headers: Mapping[str, str],
+        secret: str | None,
+    ) -> bool:
+        if not secret:
+            raise PaymentProviderNotConfigured("Mercado Pago webhook secret is not configured")
+        signature = _header_value(headers, "x-signature")
+        request_id = _header_value(headers, "x-request-id")
+        if not signature or not request_id:
+            return False
+        signature_parts = _signature_parts(signature)
+        timestamp = signature_parts.get("ts")
+        expected_hash = signature_parts.get("v1")
+        if not timestamp or not expected_hash:
+            return False
+        data_id = _extract_data_id_from_body(raw_body)
+        manifest = f"id:{data_id};request-id:{request_id};ts:{timestamp};"
+        actual_hash = hmac.new(secret.encode("utf-8"), manifest.encode("utf-8"), sha256).hexdigest()
+        return hmac.compare_digest(actual_hash, expected_hash)
+
+    def extract_event_reference(self, payload: Mapping[str, Any]) -> str | None:
+        data = payload.get("data")
+        if isinstance(data, Mapping):
+            return _as_text(data.get("id")) or super().extract_event_reference(payload)
+        return super().extract_event_reference(payload)
+
     def extract_customer_reference(self, payload: Mapping[str, Any]) -> str | None:
-        data_object = _data_object(payload)
-        return _as_text(data_object.get("customer")) or super().extract_customer_reference(payload)
+        payer = payload.get("payer")
+        if isinstance(payer, Mapping):
+            return _as_text(payer.get("email")) or super().extract_customer_reference(payload)
+        return _as_text(payload.get("external_reference")) or super().extract_customer_reference(payload)
 
     def extract_subscription_reference(self, payload: Mapping[str, Any]) -> str | None:
-        data_object = _data_object(payload)
-        return (
-            _as_text(data_object.get("subscription"))
-            or _as_text(data_object.get("id"))
-            or super().extract_subscription_reference(payload)
-        )
+        return _as_text(payload.get("preference_id")) or _as_text(payload.get("id")) or super().extract_subscription_reference(payload)
 
 PAYMENT_ADAPTERS: dict[str, PaymentProviderAdapter] = {
-    "STRIPE": StripePaymentAdapter(),
+    "MERCADO_PAGO": MercadoPagoPaymentAdapter(),
 }
 
 
@@ -179,23 +203,13 @@ def validate_billing_reference(
     if not subscription_id:
         errors.append("Subscription ID is required for paid providers")
 
-    if normalized_provider == "STRIPE":
-        if customer_id and not customer_id.startswith("cus_"):
-            errors.append("Stripe Customer ID must start with cus_")
-        if subscription_id and not subscription_id.startswith("sub_"):
-            errors.append("Stripe Subscription ID must start with sub_")
-        if last_event_id and not last_event_id.startswith("evt_"):
-            errors.append("Stripe event ID must start with evt_")
+    if normalized_provider == "MERCADO_PAGO":
+        if customer_id and len(customer_id) > 150:
+            errors.append("Mercado Pago payer/customer reference is too long")
+        if last_event_id and len(last_event_id) > 160:
+            errors.append("Mercado Pago event ID is too long")
 
     return errors
-
-
-def _data_object(payload: Mapping[str, Any]) -> Mapping[str, Any]:
-    data = payload.get("data")
-    if not isinstance(data, Mapping):
-        return {}
-    data_object = data.get("object")
-    return data_object if isinstance(data_object, Mapping) else {}
 
 
 def _as_text(value: Any) -> str | None:
@@ -203,3 +217,34 @@ def _as_text(value: Any) -> str | None:
         return None
     text = str(value).strip()
     return text or None
+
+
+def _header_value(headers: Mapping[str, str], name: str) -> str | None:
+    lowered = name.lower()
+    for key, value in headers.items():
+        if key.lower() == lowered:
+            return value
+    return None
+
+
+def _signature_parts(signature: str) -> dict[str, str]:
+    parts: dict[str, str] = {}
+    for item in signature.split(","):
+        key, separator, value = item.partition("=")
+        if separator:
+            parts[key.strip()] = value.strip()
+    return parts
+
+
+def _extract_data_id_from_body(raw_body: bytes) -> str:
+    try:
+        import json
+
+        payload = json.loads(raw_body.decode("utf-8") or "{}")
+    except (UnicodeDecodeError, ValueError):
+        return ""
+    if isinstance(payload, Mapping):
+        data = payload.get("data")
+        if isinstance(data, Mapping):
+            return _as_text(data.get("id")) or ""
+    return ""

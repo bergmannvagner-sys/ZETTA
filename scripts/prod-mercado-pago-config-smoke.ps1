@@ -46,7 +46,7 @@ if (-not $AdminPassword) {
   Fail "Set ZETTA_ADMIN_PASSWORD or pass -AdminPassword. Do not commit or share this value."
 }
 
-Write-Host "ZETTA production Stripe config smoke test" -ForegroundColor Green
+Write-Host "ZETTA production Mercado Pago config smoke test" -ForegroundColor Green
 Write-Host "API: $ApiUrl"
 Write-Host "Admin email: $AdminEmail"
 
@@ -64,26 +64,26 @@ $headers = @{ Authorization = "Bearer $($adminLogin.access_token)" }
 Write-Host "admin auth: ok"
 
 $billingConfig = Invoke-Json -Method GET -Path "/admin/billing-config" -Headers $headers
-$stripe = $billingConfig.provider_capabilities | Where-Object { $_.provider -eq "STRIPE" } | Select-Object -First 1
-if (-not $stripe) {
-  Fail "STRIPE provider capability was not returned."
+$mercadoPago = $billingConfig.provider_capabilities | Where-Object { $_.provider -eq "MERCADO_PAGO" } | Select-Object -First 1
+if (-not $mercadoPago) {
+  Fail "MERCADO_PAGO provider capability was not returned."
 }
-if (-not $stripe.provider_configured) {
-  Fail "Stripe is not configured. Set STRIPE_SECRET_KEY, STRIPE_PUBLISHABLE_KEY, and STRIPE_WEBHOOK_SECRET in Render."
+if (-not $mercadoPago.provider_configured) {
+  Fail "Mercado Pago is not configured. Set MERCADO_PAGO_ACCESS_TOKEN, MERCADO_PAGO_PUBLIC_KEY, and MERCADO_PAGO_WEBHOOK_SECRET in Render."
 }
-if (-not $stripe.production_enabled) {
-  Fail "Stripe production readiness is not enabled. Configure STRIPE_SECRET_KEY, STRIPE_PUBLISHABLE_KEY, STRIPE_WEBHOOK_SECRET, and Price IDs in Render."
+if (-not $mercadoPago.production_enabled) {
+  Fail "Mercado Pago production readiness is not enabled. Configure Mercado Pago credentials and return URLs in Render."
 }
-if ($stripe.checkout_enabled) {
+if ($mercadoPago.checkout_enabled) {
   Fail "Public checkout is unexpectedly enabled. This step must stay admin-only."
 }
-if (-not ($stripe.required_env_names -contains "STRIPE_SECRET_KEY")) {
-  Fail "Stripe required env list is incomplete."
+if (-not ($mercadoPago.required_env_names -contains "MERCADO_PAGO_ACCESS_TOKEN")) {
+  Fail "Mercado Pago required env list is incomplete."
 }
 
-Write-Host "stripe configured: ok"
+Write-Host "mercado pago configured: ok"
 Write-Host "production readiness: ok"
 Write-Host "public checkout disabled: ok"
 Write-Host ""
-Write-Host "Stripe config smoke test passed." -ForegroundColor Green
-Write-Host "No secret key, publishable key, webhook secret, or admin password was printed."
+Write-Host "Mercado Pago config smoke test passed." -ForegroundColor Green
+Write-Host "No access token, public key, webhook secret, or admin password was printed."

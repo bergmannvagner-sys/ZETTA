@@ -156,8 +156,8 @@ Profissional, empresa e admin:
 - [ ] Todos os planos comerciais estao com `admin_only_pricing=true`.
 - [ ] `POST /admin/billing-reference` rejeita provider e IDs incompatíveis.
 - [ ] `NONE` nao aceita IDs externos.
-- [ ] Stripe exige `cus_`, `sub_` e `evt_` quando evento existir.
-- [ ] Apenas Stripe aparece como provider ativo de pagamento.
+- [ ] Mercado Pago exige referencias externas nao vazias e evento idempotente quando evento existir.
+- [ ] Apenas Mercado Pago aparece como provider ativo de pagamento.
 - [ ] Webhook fica desativado por env ate assinatura real estar validada.
 - [ ] Idempotencia por `billing_last_event_id` esta coberta por validacao automatizada.
 

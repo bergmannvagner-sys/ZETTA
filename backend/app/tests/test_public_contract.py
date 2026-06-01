@@ -23,6 +23,7 @@ def test_public_openapi_contract_matches_mobile_mvp() -> None:
     assert "/auth/password-reset/request" in paths
     assert "/auth/password-reset/confirm" in paths
     assert "/billing/webhook" in paths
+    assert "/billing/mercado-pago/webhook" in paths
     assert "/users/me" in paths
     assert "/privacy/consent" in paths
     assert "/chat/message" in paths
@@ -45,7 +46,7 @@ def test_public_openapi_contract_matches_mobile_mvp() -> None:
     assert "/admin/email-config" in paths
     assert "/admin/subscription-status" in paths
     assert "/admin/billing-reference" in paths
-    assert "/admin/stripe/checkout-session" in paths
+    assert "/admin/mercado-pago/checkout-preference" in paths
     assert "/admin/audit-logs" in paths
     assert "/admin/approve-account" in paths
     assert "/admin/reject-account" in paths

@@ -125,22 +125,21 @@ class SubscriptionStatusUpdateRequest(BaseModel):
 
 class BillingReferenceUpdateRequest(BaseModel):
     user_id: str
-    billing_provider: Literal["NONE", "STRIPE"]
+    billing_provider: Literal["NONE", "MERCADO_PAGO"]
     billing_customer_id: str | None = Field(default=None, max_length=120)
     billing_subscription_id: str | None = Field(default=None, max_length=120)
     billing_last_event_id: str | None = Field(default=None, max_length=160)
     reason: str | None = Field(default=None, max_length=240)
 
 
-class StripeCheckoutRequest(BaseModel):
+class MercadoPagoCheckoutRequest(BaseModel):
     user_id: str
     reason: str | None = Field(default=None, max_length=240)
 
 
-class StripeCheckoutResponse(BaseModel):
-    provider: Literal["STRIPE"]
-    session_id: str
+class MercadoPagoCheckoutResponse(BaseModel):
+    provider: Literal["MERCADO_PAGO"]
+    preference_id: str
     checkout_url: str
     client_reference_id: str
-    price_id: str
-    live_mode: bool
+    price_brl: float
