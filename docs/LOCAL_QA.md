@@ -228,3 +228,17 @@ Remove-Item Env:\ZETTA_BILLING_TARGET_EMAIL
 
 The script requires an `ACTIVE` paid account, creates one real Mercado Pago preference, validates the provider
 response, and does not print the full checkout URL or secrets.
+
+After a real Mercado Pago payment/webhook, validate that the commercial account billing state was updated:
+
+```powershell
+$env:ZETTA_ADMIN_EMAIL="admin@example.com"
+$env:ZETTA_ADMIN_PASSWORD="use-your-real-secret-locally"
+$env:ZETTA_BILLING_TARGET_EMAIL="empresa-ou-profissional@example.com"
+powershell -ExecutionPolicy Bypass -File .\scripts\prod-billing-status-smoke.ps1
+Remove-Item Env:\ZETTA_ADMIN_PASSWORD
+Remove-Item Env:\ZETTA_BILLING_TARGET_EMAIL
+```
+
+The script expects `subscription_status=ACTIVE`, provider `MERCADO_PAGO`, billing references, and a recorded
+webhook event id. Use `ZETTA_BILLING_EXPECTED_STATUS` only when intentionally validating another status.
