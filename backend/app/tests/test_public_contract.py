@@ -24,6 +24,9 @@ def test_public_openapi_contract_matches_mobile_mvp() -> None:
     assert "/auth/password-reset/confirm" in paths
     assert "/billing/webhook" in paths
     assert "/billing/mercado-pago/webhook" in paths
+    assert "/billing/success" in paths
+    assert "/billing/pending" in paths
+    assert "/billing/failure" in paths
     assert "/users/me" in paths
     assert "/privacy/consent" in paths
     assert "/chat/message" in paths
@@ -54,3 +57,11 @@ def test_public_openapi_contract_matches_mobile_mvp() -> None:
 
     assert "/chat" not in paths
     assert "/sos/events/opened" not in paths
+
+
+def test_billing_return_pages_do_not_claim_webhook_confirmation() -> None:
+    for path in ["/billing/success", "/billing/pending", "/billing/failure"]:
+        response = client.get(path)
+        assert response.status_code == 200
+        assert "ZETTA BERGMANN" in response.text
+        assert "webhook" in response.text.lower()
