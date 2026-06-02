@@ -162,6 +162,15 @@ webhook validation or manual admin confirmation is completed.
 Mercado Pago notifications must point to `/billing/mercado-pago/webhook`; `/billing/webhook` is the internal
 signed fallback endpoint.
 
+To find a valid commercial account email for checkout validation:
+
+```powershell
+$env:ZETTA_ADMIN_EMAIL="admin@example.com"
+$env:ZETTA_ADMIN_PASSWORD="use-your-real-secret-locally"
+powershell -ExecutionPolicy Bypass -File .\scripts\prod-billing-targets.ps1 -OnlyActive
+Remove-Item Env:\ZETTA_ADMIN_PASSWORD
+```
+
 To validate a real Checkout Pro preference for an approved commercial account:
 
 ```powershell
