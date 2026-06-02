@@ -177,6 +177,24 @@ Remove-Item Env:\ZETTA_COMMERCIAL_DOCUMENT
 
 The account starts as `PENDING_VERIFICATION`. Approve it as `SUPER_ADMIN` before creating a Mercado Pago checkout.
 
+To run the complete commercial QA flow with one command:
+
+```powershell
+$env:ZETTA_ADMIN_EMAIL="admin@example.com"
+$env:ZETTA_ADMIN_PASSWORD="use-your-real-secret-locally"
+$env:ZETTA_COMMERCIAL_EMAIL="empresa-ou-profissional@example.com"
+$env:ZETTA_COMMERCIAL_PASSWORD="use-a-real-strong-password-locally"
+$env:ZETTA_COMMERCIAL_FULL_NAME="Empresa ou Profissional QA"
+$env:ZETTA_COMMERCIAL_ROLE="COMPANY"
+$env:ZETTA_COMMERCIAL_DOCUMENT="valid-cnpj-or-crp"
+powershell -ExecutionPolicy Bypass -File .\scripts\prod-commercial-billing-flow.ps1
+Remove-Item Env:\ZETTA_ADMIN_PASSWORD
+Remove-Item Env:\ZETTA_COMMERCIAL_PASSWORD
+Remove-Item Env:\ZETTA_COMMERCIAL_DOCUMENT
+```
+
+Add `-CreateCheckout` only after the Mercado Pago env vars are configured in Render.
+
 To approve that commercial account by email without using the mobile UI:
 
 ```powershell
