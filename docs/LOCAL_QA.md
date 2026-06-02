@@ -161,3 +161,17 @@ for a paid account. The link is provider-real, admin-only, and does not mark the
 webhook validation or manual admin confirmation is completed.
 Mercado Pago notifications must point to `/billing/mercado-pago/webhook`; `/billing/webhook` is the internal
 signed fallback endpoint.
+
+To validate a real Checkout Pro preference for an approved commercial account:
+
+```powershell
+$env:ZETTA_ADMIN_EMAIL="admin@example.com"
+$env:ZETTA_ADMIN_PASSWORD="use-your-real-secret-locally"
+$env:ZETTA_BILLING_TARGET_EMAIL="empresa-ou-profissional@example.com"
+powershell -ExecutionPolicy Bypass -File .\scripts\prod-mercado-pago-checkout-smoke.ps1
+Remove-Item Env:\ZETTA_ADMIN_PASSWORD
+Remove-Item Env:\ZETTA_BILLING_TARGET_EMAIL
+```
+
+The script requires an `ACTIVE` paid account, creates one real Mercado Pago preference, validates the provider
+response, and does not print the full checkout URL or secrets.

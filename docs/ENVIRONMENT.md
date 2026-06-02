@@ -86,6 +86,20 @@ si so; a liberacao financeira continua dependendo do webhook validado ou da acao
 Para notificacoes do Mercado Pago, cadastre a rota `/billing/mercado-pago/webhook`; a rota
 generica `/billing/webhook` continua reservada para payload interno assinado por `BILLING_WEBHOOK_SECRET`.
 
+Para validar a criacao real de uma preferencia de checkout para uma conta comercial ja aprovada:
+
+```powershell
+$env:ZETTA_ADMIN_EMAIL="admin@example.com"
+$env:ZETTA_ADMIN_PASSWORD="use-your-real-secret-locally"
+$env:ZETTA_BILLING_TARGET_EMAIL="empresa-ou-profissional@example.com"
+powershell -ExecutionPolicy Bypass -File .\scripts\prod-mercado-pago-checkout-smoke.ps1
+Remove-Item Env:\ZETTA_ADMIN_PASSWORD
+Remove-Item Env:\ZETTA_BILLING_TARGET_EMAIL
+```
+
+Esse smoke exige uma conta comercial `ACTIVE`, cria uma preferencia real no Mercado Pago e nao imprime o
+link completo do checkout, access token, webhook secret ou senha.
+
 ## Frontend
 
 - `EXPO_PUBLIC_API_URL`: URL pública da API.
