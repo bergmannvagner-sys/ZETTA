@@ -74,10 +74,12 @@ if (-not $mercadoPago) {
   Fail "MERCADO_PAGO provider capability was not returned."
 }
 if (-not $mercadoPago.provider_configured) {
-  Fail "Mercado Pago is not configured in Render."
+  $requiredEnv = ($mercadoPago.required_env_names -join ", ")
+  Fail "Mercado Pago is not configured in Render. Check these env vars: $requiredEnv."
 }
 if (-not $mercadoPago.production_enabled) {
-  Fail "Mercado Pago production readiness is not enabled in Render."
+  $requiredEnv = ($mercadoPago.required_env_names -join ", ")
+  Fail "Mercado Pago production readiness is not enabled in Render. Check credentials and return URLs: $requiredEnv."
 }
 if ($mercadoPago.checkout_enabled) {
   Fail "Public checkout is unexpectedly enabled. Checkout must stay admin-only."
