@@ -782,6 +782,26 @@ def test_super_admin_can_manage_paid_subscription_status(monkeypatch) -> None:
     assert admin_login.status_code == 200
     admin_headers = {"Authorization": f"Bearer {admin_login.json()['access_token']}"}
 
+    pending_register = client.post(
+        "/auth/register",
+        json={
+            "email": "billing-company-pending@example.com",
+            "full_name": "Empresa Billing Pendente",
+            "password": "strongpass123",
+            "role": "COMPANY",
+            "document": "12345678000276",
+            "lgpdConsent": True,
+        },
+    )
+    assert pending_register.status_code == 201
+    pending_checkout = client.post(
+        "/admin/mercado-pago/checkout-preference",
+        json={"user_id": pending_register.json()["user"]["id"]},
+        headers=admin_headers,
+    )
+    assert pending_checkout.status_code == 400
+    assert pending_checkout.json()["detail"] == "Account must be approved before checkout"
+
     listed = client.get("/admin/subscriptions", headers=admin_headers)
     assert listed.status_code == 200
     assert any(account["email"] == "billing-company@example.com" for account in listed.json())

@@ -415,6 +415,8 @@ def create_mercado_pago_checkout(
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Paid account not found")
     if user.status in {AccountStatus.REJECTED, AccountStatus.ARCHIVED}:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Account cannot receive checkout")
+    if user.status != AccountStatus.ACTIVE:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Account must be approved before checkout")
     plan = commercial_plan_for_role(user.role)
     if not plan:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="No commercial plan for role")

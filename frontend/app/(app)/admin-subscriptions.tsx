@@ -8,7 +8,15 @@ import { Button, Card, ErrorText, Field } from "@/components/ui";
 import { apiRequest } from "@/lib/api";
 import { planLabel, subscriptionStatusLabel } from "@/lib/billing";
 import { useAuthStore } from "@/store/auth-store";
-import { AuditLogEntry, MercadoPagoCheckout, SubscriptionAccount, SubscriptionStatus, UserRole } from "@/types/auth";
+import {
+  AuditLogEntry,
+  BillingConfig,
+  MercadoPagoCheckout,
+  PaymentAdapterCapability,
+  SubscriptionAccount,
+  SubscriptionStatus,
+  UserRole
+} from "@/types/auth";
 
 const roleFilters: Array<{ label: string; value?: UserRole }> = [
   { label: "Todos" },
@@ -67,10 +75,12 @@ function validateBillingReferenceForm(
 
 function BillingReferenceForm({
   account,
-  history
+  history,
+  mercadoPagoReady
 }: {
   account: SubscriptionAccount;
   history: AuditLogEntry[];
+  mercadoPagoReady: boolean;
 }) {
   const queryClient = useQueryClient();
   const [provider, setProvider] = useState<BillingProviderOption>(
@@ -81,6 +91,7 @@ function BillingReferenceForm({
   const [lastEventId, setLastEventId] = useState(account.billing_last_event_id ?? "");
   const validationErrors = validateBillingReferenceForm(provider, customerId, subscriptionId, lastEventId);
   const canSave = validationErrors.length === 0;
+  const canCreateCheckout = mercadoPagoReady && account.status === "ACTIVE";
   const updateReference = useMutation({
     mutationFn: () =>
       apiRequest("/admin/billing-reference", {
@@ -175,11 +186,18 @@ function BillingReferenceForm({
         label="Criar checkout Mercado Pago"
         tone="soft"
         loading={createMercadoPagoCheckout.isPending}
+        disabled={!canCreateCheckout}
         onPress={() => createMercadoPagoCheckout.mutate()}
       />
-      <Text className="text-xs leading-5 text-muted">
-        O link abre o Checkout Pro real do Mercado Pago. A assinatura so deve virar ativa depois do webhook validado.
-      </Text>
+      {canCreateCheckout ? (
+        <Text className="text-xs leading-5 text-muted">
+          O link abre o Checkout Pro real do Mercado Pago. A assinatura so deve virar ativa depois do webhook validado.
+        </Text>
+      ) : (
+        <Text className="text-xs leading-5 text-muted">
+          Checkout disponivel apenas com Mercado Pago configurado e conta comercial aprovada.
+        </Text>
+      )}
       {history.length > 0 ? (
         <View className="gap-2 rounded-xl border border-white/10 bg-surface/45 p-3">
           <Text className="text-xs font-semibold text-white">Historico recente</Text>
@@ -211,6 +229,11 @@ export default function AdminSubscriptions() {
     queryFn: () => apiRequest<AuditLogEntry[]>("/admin/audit-logs?resource_type=billing_reference&limit=100"),
     enabled: user?.role === "SUPER_ADMIN"
   });
+  const billingConfig = useQuery({
+    queryKey: ["admin-billing-config"],
+    queryFn: () => apiRequest<BillingConfig>("/admin/billing-config"),
+    enabled: user?.role === "SUPER_ADMIN"
+  });
 
   const updateStatus = useMutation({
     mutationFn: ({ userId, subscriptionStatus }: { userId: string; subscriptionStatus: SubscriptionStatus }) =>
@@ -240,6 +263,11 @@ export default function AdminSubscriptions() {
   });
 
   const accounts = subscriptions.data ?? [];
+  const mercadoPagoReady = Boolean(
+    billingConfig.data?.provider_capabilities.find(
+      (capability: PaymentAdapterCapability) => capability.provider === "MERCADO_PAGO" && capability.checkout_enabled
+    )
+  );
 
   if (user?.role !== "SUPER_ADMIN") {
     return <Redirect href="/(app)/home" />;
@@ -278,6 +306,15 @@ export default function AdminSubscriptions() {
       </View>
       <Field label="Motivo da alteracao" value={reason} onChangeText={setReason} />
       <ErrorText message={subscriptions.error?.message ?? updateStatus.error?.message ?? archiveAccount.error?.message} />
+      <ErrorText message={billingConfig.error?.message} />
+      <Card>
+        <Text className="text-base font-semibold text-white">Mercado Pago</Text>
+        <Text className="text-sm leading-5 text-muted">
+          {mercadoPagoReady
+            ? "Checkout administrativo real habilitado para contas comerciais aprovadas."
+            : "Checkout administrativo bloqueado ate configurar Mercado Pago no Render."}
+        </Text>
+      </Card>
       {subscriptions.isLoading ? <Text className="text-muted">Carregando...</Text> : null}
       {accounts.length === 0 && !subscriptions.isLoading ? (
         <Text className="text-muted">Nenhuma conta paga encontrada.</Text>
@@ -315,6 +352,7 @@ export default function AdminSubscriptions() {
             </Text>
             <BillingReferenceForm
               account={account}
+              mercadoPagoReady={mercadoPagoReady}
               history={(billingReferenceAudit.data ?? []).filter(
                 (entry: AuditLogEntry) => entry.target_user_id === account.id
               )}
