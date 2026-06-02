@@ -162,6 +162,21 @@ webhook validation or manual admin confirmation is completed.
 Mercado Pago notifications must point to `/billing/mercado-pago/webhook`; `/billing/webhook` is the internal
 signed fallback endpoint.
 
+If production has no commercial account yet, create one through the API before validating checkout:
+
+```powershell
+$env:ZETTA_COMMERCIAL_EMAIL="empresa-ou-profissional@example.com"
+$env:ZETTA_COMMERCIAL_PASSWORD="use-a-real-strong-password-locally"
+$env:ZETTA_COMMERCIAL_FULL_NAME="Empresa ou Profissional QA"
+$env:ZETTA_COMMERCIAL_ROLE="COMPANY"
+$env:ZETTA_COMMERCIAL_DOCUMENT="valid-cnpj-or-crp"
+powershell -ExecutionPolicy Bypass -File .\scripts\prod-create-commercial-account.ps1
+Remove-Item Env:\ZETTA_COMMERCIAL_PASSWORD
+Remove-Item Env:\ZETTA_COMMERCIAL_DOCUMENT
+```
+
+The account starts as `PENDING_VERIFICATION`. Approve it as `SUPER_ADMIN` before creating a Mercado Pago checkout.
+
 To find a valid commercial account email for checkout validation:
 
 ```powershell
