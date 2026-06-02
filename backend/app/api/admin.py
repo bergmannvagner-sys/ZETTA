@@ -13,6 +13,7 @@ from app.schemas.user import (
     AuditLogResponse,
     BillingConfigResponse,
     BillingReferenceUpdateRequest,
+    BillingWebhookMonitorResponse,
     CommercialPlanResponse,
     EmailConfigResponse,
     MercadoPagoCheckoutRequest,
@@ -76,6 +77,19 @@ def audit_external_status(log: AuditLog | None) -> str | None:
     return str(value).strip() if value else None
 
 
+def audit_metadata_text(metadata: dict[str, object] | None, key: str) -> str | None:
+    if not metadata:
+        return None
+    value = metadata.get(key)
+    return str(value).strip() if value is not None else None
+
+
+def audit_metadata_bool(metadata: dict[str, object] | None, key: str) -> bool:
+    if not metadata:
+        return False
+    return bool(metadata.get(key))
+
+
 def latest_audit_logs_by_user(
     db: Session,
     *,
@@ -95,6 +109,31 @@ def latest_audit_logs_by_user(
         if log.target_user_id and log.target_user_id not in latest:
             latest[log.target_user_id] = log
     return latest
+
+
+def billing_webhook_monitor_response(
+    log: AuditLog,
+    users_by_id: dict[str, User],
+) -> BillingWebhookMonitorResponse:
+    metadata = parse_audit_metadata(log.metadata_json) or {}
+    linked_user = users_by_id.get(log.target_user_id or "")
+    processing_status = audit_metadata_text(metadata, "processing_status")
+    if not processing_status:
+        processing_status = "error" if metadata.get("error") else "processed"
+    return BillingWebhookMonitorResponse(
+        id=log.id,
+        provider=audit_metadata_text(metadata, "provider"),
+        processing_status=processing_status,
+        event_id=audit_metadata_text(metadata, "event_id"),
+        external_status=audit_metadata_text(metadata, "external_status"),
+        subscription_status=audit_metadata_text(metadata, "subscription_status"),
+        linked_user_id=linked_user.id if linked_user else log.target_user_id,
+        linked_user_email=linked_user.email if linked_user else None,
+        linked_user_name=linked_user.full_name if linked_user else None,
+        duplicate=audit_metadata_bool(metadata, "duplicate"),
+        error=audit_metadata_text(metadata, "error"),
+        received_at=log.created_at.isoformat(),
+    )
 
 
 def billing_activation_source(
@@ -357,6 +396,28 @@ def billing_config(
             for capability in list_payment_adapter_capabilities()
         ],
     )
+
+
+@router.get("/billing-webhooks", response_model=list[BillingWebhookMonitorResponse])
+def billing_webhooks(
+    _: Annotated[User, Depends(require_roles(UserRole.SUPER_ADMIN))],
+    processing_status: str | None = Query(default=None, max_length=24),
+    provider: str | None = Query(default=None, max_length=32),
+    limit: int = Query(default=80, ge=1, le=100),
+    db: Session = Depends(get_db),
+) -> list[BillingWebhookMonitorResponse]:
+    query = db.query(AuditLog).filter(AuditLog.resource_type == "billing_webhook")
+    logs = query.order_by(AuditLog.created_at.desc()).limit(limit).all()
+    target_ids = sorted({log.target_user_id for log in logs if log.target_user_id})
+    users_by_id = {user.id: user for user in db.query(User).filter(User.id.in_(target_ids)).all()} if target_ids else {}
+    responses = [billing_webhook_monitor_response(log, users_by_id) for log in logs]
+    if processing_status:
+        normalized_status = processing_status.strip().lower()
+        responses = [entry for entry in responses if entry.processing_status.lower() == normalized_status]
+    if provider:
+        normalized_provider = provider.strip().upper()
+        responses = [entry for entry in responses if (entry.provider or "").upper() == normalized_provider]
+    return responses
 
 
 @router.get("/email-config", response_model=EmailConfigResponse)

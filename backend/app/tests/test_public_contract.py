@@ -46,6 +46,7 @@ def test_public_openapi_contract_matches_mobile_mvp() -> None:
     assert "/admin/subscriptions" in paths
     assert "/admin/commercial-plans" in paths
     assert "/admin/billing-config" in paths
+    assert "/admin/billing-webhooks" in paths
     assert "/admin/email-config" in paths
     assert "/admin/subscription-status" in paths
     assert "/admin/billing-reference" in paths

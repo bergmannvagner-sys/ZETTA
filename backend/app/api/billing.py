@@ -9,7 +9,7 @@ from sqlalchemy.orm import Session
 from app.core.config import get_settings
 from app.db.session import get_db
 from app.schemas.billing import BillingWebhookPayload, BillingWebhookResponse
-from app.services.billing_webhooks import apply_billing_webhook, verify_signature
+from app.services.billing_webhooks import apply_billing_webhook, record_billing_webhook_error, verify_signature
 from app.services.mercado_pago import (
     MercadoPagoIntegrationError,
     billing_payload_from_mercado_pago_payment,
@@ -77,8 +77,26 @@ async def billing_webhook(
     try:
         user, duplicate = apply_billing_webhook(db, payload)
     except LookupError as exc:
+        record_billing_webhook_error(
+            db,
+            provider=payload.provider,
+            event_id=payload.event_id,
+            external_status=payload.external_status,
+            customer_id=payload.customer_id,
+            subscription_id=payload.subscription_id,
+            error="Billing account not found",
+        )
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Billing account not found") from exc
     except ValueError as exc:
+        record_billing_webhook_error(
+            db,
+            provider=payload.provider,
+            event_id=payload.event_id,
+            external_status=payload.external_status,
+            customer_id=payload.customer_id,
+            subscription_id=payload.subscription_id,
+            error="Unsupported billing status",
+        )
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Unsupported billing status") from exc
 
     return BillingWebhookResponse(
@@ -119,10 +137,34 @@ async def mercado_pago_webhook(
         payload = billing_payload_from_mercado_pago_payment(payment)
         user, duplicate = apply_billing_webhook(db, payload)
     except MercadoPagoIntegrationError as exc:
+        record_billing_webhook_error(
+            db,
+            provider="MERCADO_PAGO",
+            event_id=data_id,
+            error=str(exc),
+        )
         raise HTTPException(status_code=status.HTTP_502_BAD_GATEWAY, detail=str(exc)) from exc
     except LookupError as exc:
+        record_billing_webhook_error(
+            db,
+            provider=payload.provider,
+            event_id=payload.event_id,
+            external_status=payload.external_status,
+            customer_id=payload.customer_id,
+            subscription_id=payload.subscription_id,
+            error="Billing account not found",
+        )
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Billing account not found") from exc
     except ValueError as exc:
+        record_billing_webhook_error(
+            db,
+            provider=payload.provider,
+            event_id=payload.event_id,
+            external_status=payload.external_status,
+            customer_id=payload.customer_id,
+            subscription_id=payload.subscription_id,
+            error="Unsupported billing status",
+        )
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Unsupported billing status") from exc
 
     return BillingWebhookResponse(

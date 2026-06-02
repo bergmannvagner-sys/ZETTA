@@ -1081,6 +1081,15 @@ def test_billing_webhook_requires_valid_signature_and_is_idempotent() -> None:
     try:
         db = SessionLocal()
         try:
+            admin = User(
+                email="webhook-monitor-admin@example.com",
+                full_name="Webhook Monitor Admin",
+                password_hash=hash_password("strongpass123"),
+                role=UserRole.SUPER_ADMIN,
+                status=AccountStatus.ACTIVE,
+                subscription_plan="INTERNAL",
+                subscription_status=SubscriptionStatus.ACTIVE,
+            )
             company = User(
                 email="webhook-company@example.com",
                 full_name="Empresa Webhook",
@@ -1093,6 +1102,7 @@ def test_billing_webhook_requires_valid_signature_and_is_idempotent() -> None:
                 billing_customer_id="webhook-company@example.com",
                 billing_subscription_id="123456789-webhook-company",
             )
+            db.add(admin)
             db.add(company)
             db.commit()
             company_id = company.id
@@ -1135,6 +1145,39 @@ def test_billing_webhook_requires_valid_signature_and_is_idempotent() -> None:
         assert duplicate.status_code == 200
         assert duplicate.json()["status"] == "duplicate"
         assert duplicate.json()["duplicate"] is True
+
+        missing_account_payload = {
+            "provider": "MERCADO_PAGO",
+            "event_id": f"missing_{company_id}",
+            "external_status": "active",
+            "customer_id": "missing-webhook-company@example.com",
+            "subscription_id": "missing-webhook-subscription",
+        }
+        missing_body = json.dumps(missing_account_payload, separators=(",", ":")).encode("utf-8")
+        missing_signature = build_signature(missing_body, settings.billing_webhook_secret)
+        missing = client.post(
+            "/billing/webhook",
+            content=missing_body,
+            headers={"Content-Type": "application/json", "X-Bergmann-Billing-Signature": missing_signature},
+        )
+        assert missing.status_code == 404
+        assert missing.json()["detail"] == "Billing account not found"
+
+        admin_login = client.post(
+            "/auth/login",
+            json={"email": "webhook-monitor-admin@example.com", "password": "strongpass123"},
+        )
+        assert admin_login.status_code == 200
+        admin_headers = {"Authorization": f"Bearer {admin_login.json()['access_token']}"}
+        monitor = client.get("/admin/billing-webhooks", headers=admin_headers)
+        assert monitor.status_code == 200
+        monitor_payload = monitor.json()
+        assert any(entry["event_id"] == event_id and entry["processing_status"] == "processed" for entry in monitor_payload)
+        assert any(entry["event_id"] == event_id and entry["processing_status"] == "duplicate" for entry in monitor_payload)
+        missing_entry = next(entry for entry in monitor_payload if entry["event_id"] == f"missing_{company_id}")
+        assert missing_entry["processing_status"] == "error"
+        assert missing_entry["error"] == "Billing account not found"
+        assert missing_entry["linked_user_email"] is None
 
         db = SessionLocal()
         try:

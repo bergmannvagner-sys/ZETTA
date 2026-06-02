@@ -109,6 +109,21 @@ class BillingConfigResponse(BaseModel):
     provider_capabilities: list[PaymentAdapterCapabilityResponse]
 
 
+class BillingWebhookMonitorResponse(BaseModel):
+    id: str
+    provider: str | None = None
+    processing_status: str
+    event_id: str | None = None
+    external_status: str | None = None
+    subscription_status: str | None = None
+    linked_user_id: str | None = None
+    linked_user_email: EmailStr | None = None
+    linked_user_name: str | None = None
+    duplicate: bool
+    error: str | None = None
+    received_at: str
+
+
 class EmailConfigResponse(BaseModel):
     smtp_configured: bool
     smtp_host_configured: bool

@@ -101,6 +101,21 @@ export type BillingConfig = {
   provider_capabilities: PaymentAdapterCapability[];
 };
 
+export type BillingWebhookMonitorEntry = {
+  id: string;
+  provider?: string | null;
+  processing_status: "processed" | "duplicate" | "error" | string;
+  event_id?: string | null;
+  external_status?: string | null;
+  subscription_status?: string | null;
+  linked_user_id?: string | null;
+  linked_user_email?: string | null;
+  linked_user_name?: string | null;
+  duplicate: boolean;
+  error?: string | null;
+  received_at: string;
+};
+
 export type EmailConfig = {
   smtp_configured: boolean;
   smtp_host_configured: boolean;

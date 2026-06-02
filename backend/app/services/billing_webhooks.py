@@ -59,6 +59,22 @@ def find_duplicate_event_user(db: Session, event_id: str) -> User | None:
 def apply_billing_webhook(db: Session, payload: BillingWebhookPayload) -> tuple[User, bool]:
     duplicate = find_duplicate_event_user(db, payload.event_id)
     if duplicate:
+        write_audit_log(
+            db,
+            action=AuditAction.BILLING_WEBHOOK_PROCESSED,
+            target_user_id=duplicate.id,
+            resource_type="billing_webhook",
+            resource_id=duplicate.id,
+            metadata={
+                "provider": payload.provider,
+                "event_id": payload.event_id,
+                "external_status": payload.external_status,
+                "subscription_status": duplicate.subscription_status.value,
+                "processing_status": "duplicate",
+                "duplicate": True,
+            },
+        )
+        db.commit()
         return duplicate, True
 
     user = find_billing_user(db, payload)
@@ -88,7 +104,38 @@ def apply_billing_webhook(db: Session, payload: BillingWebhookPayload) -> tuple[
             "external_status": payload.external_status,
             "previous_status": previous_status.value,
             "subscription_status": user.subscription_status.value,
+            "processing_status": "processed",
+            "duplicate": False,
         },
     )
     db.commit()
     return user, False
+
+
+def record_billing_webhook_error(
+    db: Session,
+    *,
+    provider: str,
+    event_id: str | None,
+    external_status: str | None = None,
+    customer_id: str | None = None,
+    subscription_id: str | None = None,
+    error: str,
+) -> None:
+    write_audit_log(
+        db,
+        action=AuditAction.BILLING_WEBHOOK_PROCESSED,
+        resource_type="billing_webhook",
+        resource_id=None,
+        metadata={
+            "provider": provider,
+            "event_id": event_id,
+            "external_status": external_status,
+            "has_customer_id": bool(customer_id),
+            "has_subscription_id": bool(subscription_id),
+            "processing_status": "error",
+            "duplicate": False,
+            "error": error,
+        },
+    )
+    db.commit()

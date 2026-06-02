@@ -65,6 +65,11 @@ export default function Profile() {
             onPress={() => router.push("/(app)/admin-billing-config" as never)}
           />
           <Button
+            label="Monitorar webhooks"
+            tone="soft"
+            onPress={() => router.push("/(app)/admin-billing-webhooks" as never)}
+          />
+          <Button
             label="Configurar email"
             tone="soft"
             onPress={() => router.push("/(app)/admin-email-config" as never)}
