@@ -81,8 +81,8 @@ if (-not $mercadoPago.production_enabled) {
   $requiredEnv = ($mercadoPago.required_env_names -join ", ")
   Fail "Mercado Pago production readiness is not enabled in Render. Check credentials and return URLs: $requiredEnv."
 }
-if ($mercadoPago.checkout_enabled) {
-  Fail "Public checkout is unexpectedly enabled. Checkout must stay admin-only."
+if (-not $mercadoPago.checkout_enabled) {
+  Fail "Mercado Pago admin checkout is not enabled. Check provider configuration in Render."
 }
 Write-Host "mercado pago config: ok"
 

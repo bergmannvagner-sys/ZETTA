@@ -74,8 +74,8 @@ if (-not $mercadoPago.provider_configured) {
 if (-not $mercadoPago.production_enabled) {
   Fail "Mercado Pago production readiness is not enabled. Configure Mercado Pago credentials and return URLs in Render."
 }
-if ($mercadoPago.checkout_enabled) {
-  Fail "Public checkout is unexpectedly enabled. This step must stay admin-only."
+if (-not $mercadoPago.checkout_enabled) {
+  Fail "Mercado Pago checkout is not enabled for admin billing. Check provider configuration in Render."
 }
 if (-not ($mercadoPago.required_env_names -contains "MERCADO_PAGO_ACCESS_TOKEN")) {
   Fail "Mercado Pago required env list is incomplete."
@@ -83,7 +83,7 @@ if (-not ($mercadoPago.required_env_names -contains "MERCADO_PAGO_ACCESS_TOKEN")
 
 Write-Host "mercado pago configured: ok"
 Write-Host "production readiness: ok"
-Write-Host "public checkout disabled: ok"
+Write-Host "admin checkout enabled: ok"
 Write-Host ""
 Write-Host "Mercado Pago config smoke test passed." -ForegroundColor Green
 Write-Host "No access token, public key, webhook secret, or admin password was printed."

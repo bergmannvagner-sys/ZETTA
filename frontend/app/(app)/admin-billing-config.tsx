@@ -13,9 +13,9 @@ const checklist = [
   "Obter Access Token, Public Key e segredo de webhook definitivos no Mercado Pago Developers.",
   "Definir MERCADO_PAGO_ACCESS_TOKEN, MERCADO_PAGO_PUBLIC_KEY e MERCADO_PAGO_WEBHOOK_SECRET no Render.",
   "Definir URLs de retorno MERCADO_PAGO_SUCCESS_URL, MERCADO_PAGO_PENDING_URL e MERCADO_PAGO_FAILURE_URL.",
-  "Definir BILLING_WEBHOOK_SECRET com segredo forte no Render.",
+  "Definir MERCADO_PAGO_WEBHOOK_SECRET com segredo forte no Render.",
   "Ativar BILLING_WEBHOOKS_ENABLED somente depois de validar assinatura do webhook.",
-  "Cadastrar a URL /billing/webhook nas notificacoes do Mercado Pago.",
+  "Cadastrar a URL /billing/mercado-pago/webhook nas notificacoes do Mercado Pago.",
   "Confirmar eventos de assinatura ativa, vencida e cancelada.",
   "Verificar auditoria antes de liberar cobranca para clientes reais."
 ];

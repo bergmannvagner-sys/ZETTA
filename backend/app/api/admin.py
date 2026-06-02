@@ -222,17 +222,17 @@ def billing_config(
     settings = get_settings()
     return BillingConfigResponse(
         webhooks_enabled=settings.billing_webhooks_enabled,
-        webhook_secret_configured=bool(settings.billing_webhook_secret),
-        webhook_path="/billing/webhook",
-        signature_header="X-Bergmann-Billing-Signature",
+        webhook_secret_configured=bool(settings.mercado_pago_webhook_secret),
+        webhook_path="/billing/mercado-pago/webhook",
+        signature_header="x-signature, x-request-id",
         supported_providers=["MERCADO_PAGO"],
         status_mapping={external: internal.value for external, internal in sorted(STATUS_MAP.items())},
-        secret_env_name="BILLING_WEBHOOK_SECRET",
+        secret_env_name="MERCADO_PAGO_WEBHOOK_SECRET",
         enabled_env_name="BILLING_WEBHOOKS_ENABLED",
         provider_capabilities=[
             {
                 "provider": capability.provider,
-                "checkout_enabled": capability.checkout_enabled,
+                "checkout_enabled": capability.provider == "MERCADO_PAGO" and provider_configured(capability.provider),
                 "provider_configured": provider_configured(capability.provider),
                 "production_enabled": provider_production_enabled(capability.provider),
                 "webhook_signature_headers": list(capability.webhook_signature_headers),

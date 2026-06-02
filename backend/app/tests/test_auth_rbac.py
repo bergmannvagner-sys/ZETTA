@@ -793,7 +793,7 @@ def test_super_admin_can_manage_paid_subscription_status(monkeypatch) -> None:
     assert all(plan["admin_only_pricing"] is True for plan in plans_payload)
     company_plan = next(plan for plan in plans_payload if plan["role"] == "COMPANY")
     assert company_plan["plan"] == "COMPANY_NR1"
-    assert company_plan["price_brl"] == 499.9
+    assert company_plan["price_brl"] == 299.0
     assert "Painel NR-1" in company_plan["included_features"]
 
     public_plans = client.get("/admin/commercial-plans")
@@ -868,9 +868,9 @@ def test_super_admin_can_manage_paid_subscription_status(monkeypatch) -> None:
     config = client.get("/admin/billing-config", headers=admin_headers)
     assert config.status_code == 200
     config_payload = config.json()
-    assert config_payload["webhook_path"] == "/billing/webhook"
-    assert config_payload["signature_header"] == "X-Bergmann-Billing-Signature"
-    assert config_payload["secret_env_name"] == "BILLING_WEBHOOK_SECRET"
+    assert config_payload["webhook_path"] == "/billing/mercado-pago/webhook"
+    assert config_payload["signature_header"] == "x-signature, x-request-id"
+    assert config_payload["secret_env_name"] == "MERCADO_PAGO_WEBHOOK_SECRET"
     assert "MERCADO_PAGO" in config_payload["supported_providers"]
     assert "billing_webhook_secret" not in config_payload
 
@@ -923,7 +923,7 @@ def test_super_admin_can_manage_paid_subscription_status(monkeypatch) -> None:
         )
         assert configured_mercado_pago_config["provider_configured"] is True
         assert configured_mercado_pago_config["production_enabled"] is True
-        assert configured_mercado_pago_config["checkout_enabled"] is False
+        assert configured_mercado_pago_config["checkout_enabled"] is True
         assert "APP_USR-live-token" not in configured_config.text
         assert "mp_webhook_secret" not in configured_config.text
     finally:
