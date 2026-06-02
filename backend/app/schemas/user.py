@@ -49,6 +49,15 @@ class SubscriptionAccountResponse(BaseModel):
     billing_subscription_id: str | None = None
     billing_last_event_id: str | None = None
     billing_last_event_at: str | None = None
+    billing_last_checkout_preference_id: str | None = None
+    billing_last_checkout_at: str | None = None
+    billing_last_webhook_event_id: str | None = None
+    billing_last_webhook_status: str | None = None
+    billing_last_webhook_at: str | None = None
+    billing_last_payment_event_id: str | None = None
+    billing_last_payment_received_at: str | None = None
+    billing_activation_source: str
+    billing_activation_blocker: str | None = None
     created_at: str
 
 

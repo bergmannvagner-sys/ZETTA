@@ -53,6 +53,15 @@ export type SubscriptionAccount = AuthUser & {
   billing_subscription_id?: string | null;
   billing_last_event_id?: string | null;
   billing_last_event_at?: string | null;
+  billing_last_checkout_preference_id?: string | null;
+  billing_last_checkout_at?: string | null;
+  billing_last_webhook_event_id?: string | null;
+  billing_last_webhook_status?: string | null;
+  billing_last_webhook_at?: string | null;
+  billing_last_payment_event_id?: string | null;
+  billing_last_payment_received_at?: string | null;
+  billing_activation_source: "WEBHOOK_PAYMENT" | "ADMIN_OR_MANUAL" | "NOT_ACTIVE" | string;
+  billing_activation_blocker?: string | null;
   created_at: string;
 };
 

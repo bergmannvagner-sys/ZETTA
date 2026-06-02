@@ -50,6 +50,57 @@ function displayValue(value?: string | null): string {
   return value?.trim() ? value : "Nao vinculado";
 }
 
+function displayDate(value?: string | null): string {
+  return value ? new Date(value).toLocaleString() : "Sem registro";
+}
+
+function activationSourceLabel(value?: string): string {
+  if (value === "WEBHOOK_PAYMENT") return "Webhook de pagamento";
+  if (value === "ADMIN_OR_MANUAL") return "Administrativo/manual";
+  return "Nao ativa";
+}
+
+function ActivationEvidence({ account }: { account: SubscriptionAccount }) {
+  return (
+    <View className="gap-2 rounded-2xl border border-white/10 bg-ink/35 p-3">
+      <View className="flex-row flex-wrap items-center justify-between gap-2">
+        <Text className="text-sm font-semibold text-white">Ativacao financeira</Text>
+        <Text className="rounded-full border border-white/10 bg-surface/70 px-3 py-1 text-xs font-semibold text-muted">
+          {activationSourceLabel(account.billing_activation_source)}
+        </Text>
+      </View>
+      <Text selectable className="text-xs leading-5 text-muted">
+        Ultima cobranca: {displayDate(account.billing_last_checkout_at)}
+      </Text>
+      <Text selectable className="text-xs leading-5 text-muted">
+        Checkout: {displayValue(account.billing_last_checkout_preference_id)}
+      </Text>
+      <Text selectable className="text-xs leading-5 text-muted">
+        Ultimo webhook: {displayDate(account.billing_last_webhook_at)}
+      </Text>
+      <Text selectable className="text-xs leading-5 text-muted">
+        Evento webhook: {displayValue(account.billing_last_webhook_event_id)}
+      </Text>
+      <Text selectable className="text-xs leading-5 text-muted">
+        Status externo: {displayValue(account.billing_last_webhook_status)}
+      </Text>
+      <Text selectable className="text-xs leading-5 text-muted">
+        Pagamento recebido: {displayDate(account.billing_last_payment_received_at)}
+      </Text>
+      {account.billing_activation_blocker ? (
+        <View className="rounded-xl border border-violet/30 bg-violet/15 px-4 py-3">
+          <Text className="text-xs font-semibold text-white">Motivo sem ativacao</Text>
+          <Text className="mt-1 text-xs leading-5 text-muted">{account.billing_activation_blocker}</Text>
+        </View>
+      ) : (
+        <Text className="text-xs leading-5 text-muted">
+          Nenhum bloqueio financeiro atual registrado para esta assinatura.
+        </Text>
+      )}
+    </View>
+  );
+}
+
 function validateBillingReferenceForm(
   provider: BillingProviderOption,
   customerId: string,
@@ -346,6 +397,7 @@ export default function AdminSubscriptions() {
                 Ultimo evento: {displayValue(account.billing_last_event_id)}
               </Text>
             </View>
+            <ActivationEvidence account={account} />
             <Text className="text-xs leading-5 text-muted">
               Trial e Ativo liberam recursos pagos. Pendente e Cancelado bloqueiam acesso pago sem afetar
               dados do usuario.

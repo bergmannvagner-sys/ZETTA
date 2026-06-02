@@ -805,6 +805,11 @@ def test_super_admin_can_manage_paid_subscription_status(monkeypatch) -> None:
     listed = client.get("/admin/subscriptions", headers=admin_headers)
     assert listed.status_code == 200
     assert any(account["email"] == "billing-company@example.com" for account in listed.json())
+    pending_company_payload = next(
+        account for account in listed.json() if account["email"] == "billing-company-pending@example.com"
+    )
+    assert pending_company_payload["billing_activation_source"] == "NOT_ACTIVE"
+    assert "ainda nao aprovada" in pending_company_payload["billing_activation_blocker"]
 
     plans = client.get("/admin/commercial-plans", headers=admin_headers)
     assert plans.status_code == 200
@@ -878,6 +883,11 @@ def test_super_admin_can_manage_paid_subscription_status(monkeypatch) -> None:
     assert company_payload["billing_provider"] == "MERCADO_PAGO"
     assert company_payload["billing_customer_id"] == "billing-company@example.com"
     assert company_payload["billing_subscription_id"] == "123456789-company"
+    assert company_payload["billing_activation_source"] == "ADMIN_OR_MANUAL"
+    assert company_payload["billing_activation_blocker"] is None
+    assert company_payload["billing_last_payment_received_at"] is None
+    assert "billing_last_checkout_at" in company_payload
+    assert "billing_last_webhook_status" in company_payload
 
     audit = client.get("/admin/audit-logs?resource_type=billing_reference&limit=10", headers=admin_headers)
     assert audit.status_code == 200

@@ -60,6 +60,129 @@ def parse_audit_metadata(metadata_json: str | None) -> dict[str, object] | None:
     return parsed if isinstance(parsed, dict) else None
 
 
+def audit_event_id(log: AuditLog | None) -> str | None:
+    metadata = parse_audit_metadata(log.metadata_json if log else None)
+    if not metadata:
+        return None
+    value = metadata.get("event_id") or metadata.get("preference_id")
+    return str(value).strip() if value else None
+
+
+def audit_external_status(log: AuditLog | None) -> str | None:
+    metadata = parse_audit_metadata(log.metadata_json if log else None)
+    if not metadata:
+        return None
+    value = metadata.get("external_status")
+    return str(value).strip() if value else None
+
+
+def latest_audit_logs_by_user(
+    db: Session,
+    *,
+    user_ids: list[str],
+    resource_type: str,
+) -> dict[str, AuditLog]:
+    if not user_ids:
+        return {}
+    logs = (
+        db.query(AuditLog)
+        .filter(AuditLog.target_user_id.in_(user_ids), AuditLog.resource_type == resource_type)
+        .order_by(AuditLog.created_at.desc())
+        .all()
+    )
+    latest: dict[str, AuditLog] = {}
+    for log in logs:
+        if log.target_user_id and log.target_user_id not in latest:
+            latest[log.target_user_id] = log
+    return latest
+
+
+def billing_activation_source(
+    user: User,
+    latest_webhook: AuditLog | None,
+) -> str:
+    if user.subscription_status != SubscriptionStatus.ACTIVE:
+        return "NOT_ACTIVE"
+    webhook_status = audit_external_status(latest_webhook)
+    if webhook_status and STATUS_MAP.get(webhook_status.strip().lower()) == SubscriptionStatus.ACTIVE:
+        return "WEBHOOK_PAYMENT"
+    return "ADMIN_OR_MANUAL"
+
+
+def billing_activation_blocker(
+    user: User,
+    *,
+    latest_checkout: AuditLog | None,
+    latest_webhook: AuditLog | None,
+) -> str | None:
+    if user.subscription_status == SubscriptionStatus.ACTIVE:
+        return None
+    if user.status != AccountStatus.ACTIVE:
+        return "Conta comercial ainda nao aprovada para ativacao paga."
+    if not user.billing_provider:
+        return "Provider de pagamento ainda nao vinculado."
+    if user.billing_provider != "MERCADO_PAGO":
+        return "Provider de pagamento nao suportado para ativacao automatica."
+    if not latest_checkout and not user.billing_subscription_id:
+        return "Checkout Mercado Pago ainda nao foi criado para esta conta."
+    if not latest_webhook:
+        return "Nenhum webhook de pagamento validado foi recebido ainda."
+    webhook_status = audit_external_status(latest_webhook) or "desconhecido"
+    mapped = STATUS_MAP.get(webhook_status.strip().lower())
+    if mapped is None:
+        return f"Ultimo webhook recebido com status nao mapeado: {webhook_status}."
+    if mapped == SubscriptionStatus.PAST_DUE:
+        return f"Ultimo pagamento nao ativou acesso: status Mercado Pago {webhook_status}."
+    if mapped == SubscriptionStatus.CANCELED:
+        return f"Assinatura cancelada pelo status Mercado Pago {webhook_status}."
+    if mapped == SubscriptionStatus.PENDING:
+        return f"Pagamento ainda pendente no Mercado Pago: {webhook_status}."
+    return "Assinatura ainda nao ativa apesar de webhook recebido; revisar manualmente."
+
+
+def subscription_account_response(
+    user: User,
+    *,
+    latest_checkout: AuditLog | None = None,
+    latest_webhook: AuditLog | None = None,
+) -> SubscriptionAccountResponse:
+    webhook_status = audit_external_status(latest_webhook)
+    webhook_event_id = audit_event_id(latest_webhook)
+    checkout_preference_id = audit_event_id(latest_checkout)
+    webhook_mapped_status = STATUS_MAP.get(webhook_status.strip().lower()) if webhook_status else None
+    payment_received = webhook_mapped_status == SubscriptionStatus.ACTIVE
+    return SubscriptionAccountResponse(
+        id=user.id,
+        email=user.email,
+        full_name=user.full_name,
+        role=user.role,
+        status=user.status,
+        document_type=user.document_type,
+        document_last4=user.document_last4,
+        subscription_plan=user.subscription_plan,
+        subscription_status=user.subscription_status,
+        billing_provider=user.billing_provider,
+        billing_customer_id=user.billing_customer_id,
+        billing_subscription_id=user.billing_subscription_id,
+        billing_last_event_id=user.billing_last_event_id,
+        billing_last_event_at=user.billing_last_event_at.isoformat() if user.billing_last_event_at else None,
+        billing_last_checkout_preference_id=checkout_preference_id,
+        billing_last_checkout_at=latest_checkout.created_at.isoformat() if latest_checkout else None,
+        billing_last_webhook_event_id=webhook_event_id,
+        billing_last_webhook_status=webhook_status,
+        billing_last_webhook_at=latest_webhook.created_at.isoformat() if latest_webhook else None,
+        billing_last_payment_event_id=webhook_event_id if payment_received else None,
+        billing_last_payment_received_at=latest_webhook.created_at.isoformat() if payment_received and latest_webhook else None,
+        billing_activation_source=billing_activation_source(user, latest_webhook),
+        billing_activation_blocker=billing_activation_blocker(
+            user,
+            latest_checkout=latest_checkout,
+            latest_webhook=latest_webhook,
+        ),
+        created_at=user.created_at.isoformat(),
+    )
+
+
 def provider_configured(provider: str) -> bool:
     settings = get_settings()
     if provider == "MERCADO_PAGO":
@@ -130,23 +253,18 @@ def subscriptions(
         like = f"%{q.strip().lower()}%"
         query = query.filter((User.email.ilike(like)) | (User.full_name.ilike(like)))
     users = query.order_by(User.created_at.desc()).all()
+    user_ids = [user.id for user in users]
+    latest_checkouts = latest_audit_logs_by_user(
+        db,
+        user_ids=user_ids,
+        resource_type="mercado_pago_checkout_preference",
+    )
+    latest_webhooks = latest_audit_logs_by_user(db, user_ids=user_ids, resource_type="billing_webhook")
     return [
-        SubscriptionAccountResponse(
-            id=user.id,
-            email=user.email,
-            full_name=user.full_name,
-            role=user.role,
-            status=user.status,
-            document_type=user.document_type,
-            document_last4=user.document_last4,
-            subscription_plan=user.subscription_plan,
-            subscription_status=user.subscription_status,
-            billing_provider=user.billing_provider,
-            billing_customer_id=user.billing_customer_id,
-            billing_subscription_id=user.billing_subscription_id,
-            billing_last_event_id=user.billing_last_event_id,
-            billing_last_event_at=user.billing_last_event_at.isoformat() if user.billing_last_event_at else None,
-            created_at=user.created_at.isoformat(),
+        subscription_account_response(
+            user,
+            latest_checkout=latest_checkouts.get(user.id),
+            latest_webhook=latest_webhooks.get(user.id),
         )
         for user in users
     ]
@@ -172,23 +290,18 @@ def moderated_accounts(
         like = f"%{q.strip().lower()}%"
         query = query.filter((User.email.ilike(like)) | (User.full_name.ilike(like)))
     users = query.order_by(User.updated_at.desc(), User.created_at.desc()).all()
+    user_ids = [user.id for user in users]
+    latest_checkouts = latest_audit_logs_by_user(
+        db,
+        user_ids=user_ids,
+        resource_type="mercado_pago_checkout_preference",
+    )
+    latest_webhooks = latest_audit_logs_by_user(db, user_ids=user_ids, resource_type="billing_webhook")
     return [
-        SubscriptionAccountResponse(
-            id=user.id,
-            email=user.email,
-            full_name=user.full_name,
-            role=user.role,
-            status=user.status,
-            document_type=user.document_type,
-            document_last4=user.document_last4,
-            subscription_plan=user.subscription_plan,
-            subscription_status=user.subscription_status,
-            billing_provider=user.billing_provider,
-            billing_customer_id=user.billing_customer_id,
-            billing_subscription_id=user.billing_subscription_id,
-            billing_last_event_id=user.billing_last_event_id,
-            billing_last_event_at=user.billing_last_event_at.isoformat() if user.billing_last_event_at else None,
-            created_at=user.created_at.isoformat(),
+        subscription_account_response(
+            user,
+            latest_checkout=latest_checkouts.get(user.id),
+            latest_webhook=latest_webhooks.get(user.id),
         )
         for user in users
     ]
