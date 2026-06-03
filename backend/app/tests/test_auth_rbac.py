@@ -306,6 +306,10 @@ def test_super_admin_can_archive_rejected_or_qa_accounts_and_login_is_blocked() 
     assert user_audit.status_code == 200
     assert any(entry["action"] == "ACCOUNT_ARCHIVED" for entry in user_audit.json())
 
+    searched_audit = client.get("/admin/audit-logs?q=ACCOUNT_ARCHIVED&limit=10", headers=admin_headers)
+    assert searched_audit.status_code == 200
+    assert any(entry["target_user_id"] == target_id for entry in searched_audit.json())
+
 
 def test_e2e_user_consent_chat_sos_and_audit() -> None:
     register = client.post(

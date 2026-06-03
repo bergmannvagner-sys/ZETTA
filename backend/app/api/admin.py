@@ -817,6 +817,7 @@ def audit_logs(
     action: AuditAction | None = Query(default=None),
     resource_type: str | None = Query(default=None, max_length=80),
     target_user_id: str | None = Query(default=None, max_length=36),
+    q: str | None = Query(default=None, max_length=120),
     limit: int = Query(default=50, ge=1, le=100),
     db: Session = Depends(get_db),
 ) -> list[AuditLogResponse]:
@@ -828,7 +829,7 @@ def audit_logs(
     if target_user_id:
         query = query.filter(AuditLog.target_user_id == target_user_id.strip())
     logs = query.order_by(AuditLog.created_at.desc()).limit(limit).all()
-    return [
+    responses = [
         AuditLogResponse(
             id=log.id,
             action=log.action.value,
@@ -841,6 +842,19 @@ def audit_logs(
         )
         for log in logs
     ]
+    if q:
+        term = q.strip().lower()
+        responses = [
+            entry
+            for entry in responses
+            if term in entry.action.lower()
+            or term in entry.resource_type.lower()
+            or term in (entry.resource_id or "").lower()
+            or term in (entry.actor_user_id or "").lower()
+            or term in (entry.target_user_id or "").lower()
+            or term in json.dumps(entry.metadata or {}, ensure_ascii=False).lower()
+        ]
+    return responses
 
 
 @router.post("/subscription-status")

@@ -1,9 +1,10 @@
 import { useQuery } from "@tanstack/react-query";
 import { Redirect } from "expo-router";
+import { useState } from "react";
 import { Text, View } from "react-native";
 
 import { Screen } from "@/components/screen";
-import { Card, ErrorText } from "@/components/ui";
+import { Card, ErrorText, Field } from "@/components/ui";
 import { apiRequest } from "@/lib/api";
 import { useAuthStore } from "@/store/auth-store";
 import { AuditLogEntry } from "@/types/auth";
@@ -27,9 +28,14 @@ function formatMetadataValue(value: unknown): string {
 
 export default function AdminAudit() {
   const user = useAuthStore((state) => state.user);
+  const [search, setSearch] = useState("");
   const auditLogs = useQuery({
-    queryKey: ["admin-audit-logs"],
-    queryFn: () => apiRequest<AuditLogEntry[]>("/admin/audit-logs?limit=80"),
+    queryKey: ["admin-audit-logs", search.trim()],
+    queryFn: () => {
+      const params = new URLSearchParams({ limit: "80" });
+      if (search.trim()) params.set("q", search.trim());
+      return apiRequest<AuditLogEntry[]>(`/admin/audit-logs?${params.toString()}`);
+    },
     enabled: user?.role === "SUPER_ADMIN"
   });
   const logs: AuditLogEntry[] = auditLogs.data ?? [];
@@ -47,6 +53,8 @@ export default function AdminAudit() {
           Eventos administrativos e de seguranca. Esta tela nao exibe conversas, diario ou conteudo emocional privado.
         </Text>
       </View>
+
+      <Field label="Buscar por acao, recurso, ID ou metadado" value={search} onChangeText={setSearch} />
 
       <ErrorText message={auditLogs.error?.message} />
       {auditLogs.isLoading ? <Text className="text-muted">Carregando...</Text> : null}
