@@ -17,6 +17,7 @@ from app.models.privacy import AuditAction, AuditLog
 from app.core.security import hash_password
 from app.core.config import get_settings
 from app.models.user import AccountStatus, SubscriptionStatus, User, UserRole
+from app.api.admin import recent_scheduled_billing_pending_alert_exists, run_billing_pending_alert
 from app.services.billing_webhooks import build_signature
 from app.services.payment_adapters import (
     PaymentProviderNotConfigured,
@@ -938,6 +939,14 @@ def test_super_admin_can_manage_paid_subscription_status(monkeypatch) -> None:
     assert pending_alerts_payload[0]["email_sent"] is True
     assert pending_alerts_payload[0]["alerted_accounts"] >= 1
 
+    db = SessionLocal()
+    try:
+        scheduled_alert = run_billing_pending_alert(db, days=0, limit=50, trigger="scheduled")
+        assert scheduled_alert.alerted_accounts >= 1
+        assert recent_scheduled_billing_pending_alert_exists(db, interval_hours=24) is True
+    finally:
+        db.close()
+
     config = client.get("/admin/billing-config", headers=admin_headers)
     assert config.status_code == 200
     config_payload = config.json()
@@ -961,9 +970,15 @@ def test_super_admin_can_manage_paid_subscription_status(monkeypatch) -> None:
         "smtp_use_tls",
         "smtp_port",
         "admin_alert_recipient_configured",
+        "billing_pending_alerts_auto_enabled",
+        "billing_pending_alerts_auto_days",
+        "billing_pending_alerts_auto_interval_hours",
+        "billing_pending_alerts_auto_limit",
         "password_reset_url_configured",
         "required_env_names",
     }
+    assert email_config_payload["billing_pending_alerts_auto_enabled"] is False
+    assert "BILLING_PENDING_ALERTS_AUTO_ENABLED" in email_config_payload["required_env_names"]
     mercado_pago_config = next(
         capability
         for capability in config_payload["provider_capabilities"]

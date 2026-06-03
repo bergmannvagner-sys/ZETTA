@@ -41,6 +41,10 @@ class Settings(BaseSettings):
     mercado_pago_success_url: str | None = None
     mercado_pago_pending_url: str | None = None
     mercado_pago_failure_url: str | None = None
+    billing_pending_alerts_auto_enabled: bool = False
+    billing_pending_alerts_auto_days: int = 7
+    billing_pending_alerts_auto_interval_hours: int = 24
+    billing_pending_alerts_auto_limit: int = 50
 
     @property
     def cors_origin_list(self) -> list[str]:

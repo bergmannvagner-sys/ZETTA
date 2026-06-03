@@ -150,6 +150,10 @@ export type EmailConfig = {
   smtp_use_tls: boolean;
   smtp_port: number;
   admin_alert_recipient_configured: boolean;
+  billing_pending_alerts_auto_enabled: boolean;
+  billing_pending_alerts_auto_days: number;
+  billing_pending_alerts_auto_interval_hours: number;
+  billing_pending_alerts_auto_limit: number;
   password_reset_url_configured: boolean;
   required_env_names: string[];
 };

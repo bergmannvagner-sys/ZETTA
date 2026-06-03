@@ -1,4 +1,5 @@
 import logging
+import asyncio
 from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
 
@@ -21,6 +22,7 @@ logger = logging.getLogger(__name__)
 
 @asynccontextmanager
 async def lifespan(_: FastAPI) -> AsyncIterator[None]:
+    billing_pending_alert_task: asyncio.Task[None] | None = None
     if settings.super_admin_bootstrap_on_startup:
         db = SessionLocal()
         try:
@@ -28,7 +30,54 @@ async def lifespan(_: FastAPI) -> AsyncIterator[None]:
             logger.info("Super admin bootstrap completed for configured email")
         finally:
             db.close()
-    yield
+    if settings.billing_pending_alerts_auto_enabled:
+        billing_pending_alert_task = asyncio.create_task(periodic_billing_pending_alerts())
+        logger.info("Automated billing pending alerts enabled")
+    try:
+        yield
+    finally:
+        if billing_pending_alert_task:
+            billing_pending_alert_task.cancel()
+            try:
+                await billing_pending_alert_task
+            except asyncio.CancelledError:
+                logger.info("Automated billing pending alerts stopped")
+
+
+async def periodic_billing_pending_alerts() -> None:
+    await asyncio.sleep(5)
+    interval_seconds = max(settings.billing_pending_alerts_auto_interval_hours, 1) * 60 * 60
+    while True:
+        try:
+            await asyncio.to_thread(run_billing_pending_alert_once)
+        except Exception as exc:
+            logger.error("Automated billing pending alert failed: %s", exc.__class__.__name__)
+        await asyncio.sleep(interval_seconds)
+
+
+def run_billing_pending_alert_once() -> None:
+    db = SessionLocal()
+    try:
+        if admin.recent_scheduled_billing_pending_alert_exists(
+            db,
+            interval_hours=settings.billing_pending_alerts_auto_interval_hours,
+        ):
+            logger.info("Automated billing pending alert skipped: recent scheduled alert exists")
+            return
+        result = admin.run_billing_pending_alert(
+            db,
+            days=settings.billing_pending_alerts_auto_days,
+            limit=settings.billing_pending_alerts_auto_limit,
+            trigger="scheduled",
+        )
+        logger.info(
+            "Automated billing pending alert completed: pending=%s alerted=%s email_sent=%s",
+            result.pending_accounts,
+            result.alerted_accounts,
+            result.email_sent,
+        )
+    finally:
+        db.close()
 
 
 app = FastAPI(title=settings.app_name, lifespan=lifespan)

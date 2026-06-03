@@ -407,6 +407,23 @@ def billing_pending_alerts(
     limit: int = Query(default=50, ge=1, le=100),
     db: Session = Depends(get_db),
 ) -> BillingPendingAlertResponse:
+    return run_billing_pending_alert(
+        db,
+        days=days,
+        limit=limit,
+        actor_user_id=admin.id,
+        trigger="manual",
+    )
+
+
+def run_billing_pending_alert(
+    db: Session,
+    *,
+    days: int,
+    limit: int,
+    actor_user_id: str | None = None,
+    trigger: str,
+) -> BillingPendingAlertResponse:
     users = (
         db.query(User)
         .filter(User.role.in_(PAID_ADMIN_ROLES), User.status == AccountStatus.ACTIVE)
@@ -454,11 +471,12 @@ def billing_pending_alerts(
         write_audit_log(
             db,
             action=AuditAction.SUBSCRIPTION_STATUS_UPDATED,
-            actor_user_id=admin.id,
+            actor_user_id=actor_user_id,
             resource_type="billing_pending_alert",
             metadata={
                 "alert_type": "PENDING_FINANCIAL",
                 "subject": "Bergmann: contas comerciais com pendencia financeira",
+                "trigger": trigger,
                 "days_threshold": days,
                 "checked_accounts": len(users),
                 "pending_accounts": len(pending_pairs),
@@ -504,6 +522,22 @@ def build_billing_pending_alert_body(accounts: list[SubscriptionAccountResponse]
         )
     lines.append("Abra Pendencias financeiras no admin do Bergmann para cobrar ou reenviar checkout.")
     return "\n".join(lines)
+
+
+def recent_scheduled_billing_pending_alert_exists(db: Session, *, interval_hours: int) -> bool:
+    if interval_hours <= 0:
+        return False
+    threshold = datetime.now(UTC) - timedelta(hours=interval_hours)
+    return (
+        db.query(AuditLog)
+        .filter(
+            AuditLog.resource_type == "billing_pending_alert",
+            AuditLog.created_at >= threshold,
+            AuditLog.metadata_json.contains('"trigger": "scheduled"'),
+        )
+        .first()
+        is not None
+    )
 
 
 @router.get("/alerts", response_model=list[AdminAlertResponse])
@@ -655,6 +689,10 @@ def email_config(
         smtp_use_tls=settings.smtp_use_tls,
         smtp_port=settings.smtp_port,
         admin_alert_recipient_configured=bool(settings.admin_alert_recipient),
+        billing_pending_alerts_auto_enabled=settings.billing_pending_alerts_auto_enabled,
+        billing_pending_alerts_auto_days=settings.billing_pending_alerts_auto_days,
+        billing_pending_alerts_auto_interval_hours=settings.billing_pending_alerts_auto_interval_hours,
+        billing_pending_alerts_auto_limit=settings.billing_pending_alerts_auto_limit,
         password_reset_url_configured=bool(settings.password_reset_url),
         required_env_names=[
             "SMTP_HOST",
@@ -664,6 +702,10 @@ def email_config(
             "SMTP_FROM_EMAIL",
             "SMTP_USE_TLS",
             "ADMIN_ALERT_EMAIL",
+            "BILLING_PENDING_ALERTS_AUTO_ENABLED",
+            "BILLING_PENDING_ALERTS_AUTO_DAYS",
+            "BILLING_PENDING_ALERTS_AUTO_INTERVAL_HOURS",
+            "BILLING_PENDING_ALERTS_AUTO_LIMIT",
             "PASSWORD_RESET_URL",
         ],
     )

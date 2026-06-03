@@ -158,6 +158,10 @@ class EmailConfigResponse(BaseModel):
     smtp_use_tls: bool
     smtp_port: int
     admin_alert_recipient_configured: bool
+    billing_pending_alerts_auto_enabled: bool
+    billing_pending_alerts_auto_days: int
+    billing_pending_alerts_auto_interval_hours: int
+    billing_pending_alerts_auto_limit: int
     password_reset_url_configured: bool
     required_env_names: list[str]
 

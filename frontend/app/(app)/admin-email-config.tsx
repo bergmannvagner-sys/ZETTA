@@ -61,6 +61,11 @@ export default function AdminEmailConfig() {
             <StatusLine label="SMTP_FROM_EMAIL" ok={data.smtp_from_email_configured} />
             <StatusLine label="ADMIN_ALERT_EMAIL ou SUPER_ADMIN_EMAIL" ok={data.admin_alert_recipient_configured} />
             <StatusLine label="PASSWORD_RESET_URL" ok={data.password_reset_url_configured} />
+            <StatusLine label="BILLING_PENDING_ALERTS_AUTO_ENABLED" ok={data.billing_pending_alerts_auto_enabled} />
+            <Text className="text-xs leading-5 text-muted">
+              Alertas financeiros: {data.billing_pending_alerts_auto_days} dia(s), intervalo de{" "}
+              {data.billing_pending_alerts_auto_interval_hours}h, limite {data.billing_pending_alerts_auto_limit}.
+            </Text>
           </Card>
 
           <Card>
