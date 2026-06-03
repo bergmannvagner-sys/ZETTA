@@ -3,6 +3,7 @@ from datetime import UTC, datetime, timedelta
 from typing import Annotated
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
+from sqlalchemy import String, cast, or_
 from sqlalchemy.orm import Session
 
 from app.api.deps import require_roles
@@ -131,6 +132,20 @@ def latest_audit_logs_by_user(
         if log.target_user_id and log.target_user_id not in latest:
             latest[log.target_user_id] = log
     return latest
+
+
+def filter_audit_query_by_text(query, term: str):
+    like = f"%{term.strip().lower()}%"
+    return query.filter(
+        or_(
+            cast(AuditLog.action, String).ilike(like),
+            AuditLog.resource_type.ilike(like),
+            AuditLog.resource_id.ilike(like),
+            AuditLog.actor_user_id.ilike(like),
+            AuditLog.target_user_id.ilike(like),
+            AuditLog.metadata_json.ilike(like),
+        )
+    )
 
 
 def aware_datetime(value: datetime) -> datetime:
@@ -697,13 +712,10 @@ def admin_alerts(
     limit: int = Query(default=80, ge=1, le=100),
     db: Session = Depends(get_db),
 ) -> list[AdminAlertResponse]:
-    logs = (
-        db.query(AuditLog)
-        .filter(AuditLog.resource_type.in_(["admin_email_alert", "billing_pending_alert"]))
-        .order_by(AuditLog.created_at.desc())
-        .limit(limit)
-        .all()
-    )
+    query = db.query(AuditLog).filter(AuditLog.resource_type.in_(["admin_email_alert", "billing_pending_alert"]))
+    if q:
+        query = filter_audit_query_by_text(query, q)
+    logs = query.order_by(AuditLog.created_at.desc()).limit(limit).all()
     alerts = [admin_alert_response(log) for log in logs]
     if alert_type:
         normalized_type = alert_type.strip().upper()
@@ -713,18 +725,6 @@ def admin_alerts(
     if trigger:
         normalized_trigger = trigger.strip().lower()
         alerts = [alert for alert in alerts if (alert.trigger or "").lower() == normalized_trigger]
-    if q:
-        term = q.strip().lower()
-        alerts = [
-            alert
-            for alert in alerts
-            if term in (alert.subject or "").lower()
-            or term in (alert.provider or "").lower()
-            or term in (alert.event_id or "").lower()
-            or term in (alert.error or "").lower()
-            or term in alert.source.lower()
-            or term in alert.alert_type.lower()
-        ]
     return alerts
 
 
@@ -827,6 +827,22 @@ def billing_webhooks(
     db: Session = Depends(get_db),
 ) -> list[BillingWebhookMonitorResponse]:
     query = db.query(AuditLog).filter(AuditLog.resource_type == "billing_webhook")
+    if q:
+        query = filter_audit_query_by_text(query, q)
+        like = f"%{q.strip().lower()}%"
+        matching_user_ids = [
+            user_id
+            for (user_id,) in db.query(User.id)
+            .filter((User.email.ilike(like)) | (User.full_name.ilike(like)))
+            .all()
+        ]
+        if matching_user_ids:
+            query = query.union(
+                db.query(AuditLog).filter(
+                    AuditLog.resource_type == "billing_webhook",
+                    AuditLog.target_user_id.in_(matching_user_ids),
+                )
+            )
     logs = query.order_by(AuditLog.created_at.desc()).limit(limit).all()
     target_ids = sorted({log.target_user_id for log in logs if log.target_user_id})
     users_by_id = {user.id: user for user in db.query(User).filter(User.id.in_(target_ids)).all()} if target_ids else {}
@@ -837,20 +853,6 @@ def billing_webhooks(
     if provider:
         normalized_provider = provider.strip().upper()
         responses = [entry for entry in responses if (entry.provider or "").upper() == normalized_provider]
-    if q:
-        term = q.strip().lower()
-        responses = [
-            entry
-            for entry in responses
-            if term in (entry.event_id or "").lower()
-            or term in (entry.external_status or "").lower()
-            or term in (entry.subscription_status or "").lower()
-            or term in (entry.linked_user_email or "").lower()
-            or term in (entry.linked_user_name or "").lower()
-            or term in (entry.linked_user_id or "").lower()
-            or term in (entry.error or "").lower()
-            or term in (entry.provider or "").lower()
-        ]
     return responses
 
 
@@ -907,8 +909,10 @@ def audit_logs(
         query = query.filter(AuditLog.resource_type == resource_type.strip())
     if target_user_id:
         query = query.filter(AuditLog.target_user_id == target_user_id.strip())
+    if q:
+        query = filter_audit_query_by_text(query, q)
     logs = query.order_by(AuditLog.created_at.desc()).limit(limit).all()
-    responses = [
+    return [
         AuditLogResponse(
             id=log.id,
             action=log.action.value,
@@ -921,19 +925,6 @@ def audit_logs(
         )
         for log in logs
     ]
-    if q:
-        term = q.strip().lower()
-        responses = [
-            entry
-            for entry in responses
-            if term in entry.action.lower()
-            or term in entry.resource_type.lower()
-            or term in (entry.resource_id or "").lower()
-            or term in (entry.actor_user_id or "").lower()
-            or term in (entry.target_user_id or "").lower()
-            or term in json.dumps(entry.metadata or {}, ensure_ascii=False).lower()
-        ]
-    return responses
 
 
 @router.post("/subscription-status")
