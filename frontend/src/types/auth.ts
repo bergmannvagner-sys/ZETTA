@@ -122,6 +122,10 @@ export type AdminAlertEntry = {
   email_sent: boolean;
   admin_recipient_configured: boolean;
   subject?: string | null;
+  trigger?: string | null;
+  days_threshold?: number | null;
+  checked_accounts?: number | null;
+  pending_accounts?: number | null;
   provider?: string | null;
   event_id?: string | null;
   error?: string | null;

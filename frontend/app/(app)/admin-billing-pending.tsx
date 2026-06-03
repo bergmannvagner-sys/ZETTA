@@ -10,6 +10,7 @@ import { planLabel, subscriptionStatusLabel } from "@/lib/billing";
 import { useAuthStore } from "@/store/auth-store";
 import {
   BillingPendingAlert,
+  BillingPendingAlertStatus,
   BillingConfig,
   MercadoPagoCheckout,
   PaymentAdapterCapability,
@@ -44,6 +45,12 @@ function displayDate(value?: string | null): string {
   return value ? new Date(value).toLocaleString() : "Sem registro";
 }
 
+function emailStatus(value?: boolean | null): string {
+  if (value === true) return "enviado";
+  if (value === false) return "nao enviado";
+  return "sem registro";
+}
+
 export default function AdminBillingPending() {
   const user = useAuthStore((state) => state.user);
   const [search, setSearch] = useState("");
@@ -57,6 +64,11 @@ export default function AdminBillingPending() {
   const billingConfig = useQuery({
     queryKey: ["admin-billing-config"],
     queryFn: () => apiRequest<BillingConfig>("/admin/billing-config"),
+    enabled: user?.role === "SUPER_ADMIN"
+  });
+  const alertStatus = useQuery({
+    queryKey: ["admin-billing-pending-alert-status"],
+    queryFn: () => apiRequest<BillingPendingAlertStatus>("/admin/billing-pending-alert-status"),
     enabled: user?.role === "SUPER_ADMIN"
   });
   const createCheckout = useMutation({
@@ -81,6 +93,7 @@ export default function AdminBillingPending() {
       })
   });
   const accounts: SubscriptionAccount[] = pendingAccounts.data ?? [];
+  const status = alertStatus.data;
   const mercadoPagoReady = Boolean(
     billingConfig.data?.provider_capabilities.find(
       (capability: PaymentAdapterCapability) => capability.provider === "MERCADO_PAGO" && capability.checkout_enabled
@@ -126,6 +139,28 @@ export default function AdminBillingPending() {
         </View>
       </Card>
 
+      {status ? (
+        <Card>
+          <Text className="text-base font-semibold text-white">Automacao de alerta</Text>
+          <Text className="text-sm leading-5 text-muted">
+            Rotina {status.auto_enabled ? "ativa" : "inativa"}: {status.days_threshold} dia(s), intervalo de{" "}
+            {status.interval_hours}h, limite {status.limit}.
+          </Text>
+          <Text className="text-sm leading-5 text-muted">
+            Ultima execucao: {displayDate(status.last_scheduled_alert_at)}. Email:{" "}
+            {emailStatus(status.last_scheduled_email_sent)}.
+          </Text>
+          <Text className="text-sm leading-5 text-muted">
+            Resultado: {status.last_scheduled_alerted_accounts ?? 0} alertada(s),{" "}
+            {status.last_scheduled_pending_accounts ?? 0} pendente(s),{" "}
+            {status.last_scheduled_checked_accounts ?? 0} verificada(s).
+          </Text>
+          <Text className="text-xs leading-5 text-muted">
+            Proximo disparo permitido: {displayDate(status.next_allowed_alert_at)}.
+          </Text>
+        </Card>
+      ) : null}
+
       <Field label="Buscar por nome ou email" value={search} onChangeText={setSearch} />
       <View className="flex-row flex-wrap gap-2" accessibilityRole="tablist">
         {roleFilters.map((filter) => {
@@ -152,6 +187,7 @@ export default function AdminBillingPending() {
         message={
           pendingAccounts.error?.message ??
           billingConfig.error?.message ??
+          alertStatus.error?.message ??
           createCheckout.error?.message ??
           sendPendingAlert.error?.message
         }

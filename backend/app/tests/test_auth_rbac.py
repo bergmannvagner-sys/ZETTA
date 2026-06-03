@@ -937,7 +937,15 @@ def test_super_admin_can_manage_paid_subscription_status(monkeypatch) -> None:
     pending_alerts_payload = pending_alerts.json()
     assert pending_alerts_payload[0]["alert_type"] == "PENDING_FINANCIAL"
     assert pending_alerts_payload[0]["email_sent"] is True
+    assert pending_alerts_payload[0]["trigger"] == "manual"
+    assert pending_alerts_payload[0]["days_threshold"] == 0
+    assert pending_alerts_payload[0]["checked_accounts"] >= 1
+    assert pending_alerts_payload[0]["pending_accounts"] >= 1
     assert pending_alerts_payload[0]["alerted_accounts"] >= 1
+
+    manual_pending_alerts = client.get("/admin/alerts?alert_type=PENDING_FINANCIAL&trigger=manual", headers=admin_headers)
+    assert manual_pending_alerts.status_code == 200
+    assert manual_pending_alerts.json()[0]["trigger"] == "manual"
 
     db = SessionLocal()
     try:
@@ -1176,6 +1184,18 @@ def test_scheduled_billing_pending_alert_records_noop_run() -> None:
     assert payload["last_scheduled_email_sent"] is False
     assert payload["last_scheduled_alerted_accounts"] == 0
     assert payload["recent_scheduled_alert_exists"] is True
+
+    alerts = client.get("/admin/alerts?alert_type=PENDING_FINANCIAL", headers=admin_headers)
+    assert alerts.status_code == 200
+    latest = alerts.json()[0]
+    assert latest["trigger"] == "scheduled"
+    assert latest["days_threshold"] == 365
+    assert latest["alerted_accounts"] == 0
+    assert latest["email_sent"] is False
+
+    scheduled_alerts = client.get("/admin/alerts?alert_type=PENDING_FINANCIAL&trigger=scheduled", headers=admin_headers)
+    assert scheduled_alerts.status_code == 200
+    assert scheduled_alerts.json()[0]["trigger"] == "scheduled"
 
 
 def test_billing_webhook_is_disabled_by_default() -> None:

@@ -168,7 +168,6 @@ def admin_alert_response(log: AuditLog) -> AdminAlertResponse:
     alert_type = audit_metadata_text(metadata, "alert_type")
     if not alert_type:
         alert_type = "PENDING_FINANCIAL" if log.resource_type == "billing_pending_alert" else "ADMIN_EMAIL"
-    alerted_accounts = metadata.get("alerted_accounts")
     return AdminAlertResponse(
         id=log.id,
         alert_type=alert_type,
@@ -176,10 +175,14 @@ def admin_alert_response(log: AuditLog) -> AdminAlertResponse:
         email_sent=audit_metadata_bool(metadata, "email_sent"),
         admin_recipient_configured=audit_metadata_bool(metadata, "admin_recipient_configured"),
         subject=audit_metadata_text(metadata, "subject"),
+        trigger=audit_metadata_text(metadata, "trigger"),
+        days_threshold=audit_metadata_int(metadata, "days_threshold"),
+        checked_accounts=audit_metadata_int(metadata, "checked_accounts"),
+        pending_accounts=audit_metadata_int(metadata, "pending_accounts"),
         provider=audit_metadata_text(metadata, "provider"),
         event_id=audit_metadata_text(metadata, "event_id"),
         error=audit_metadata_text(metadata, "error"),
-        alerted_accounts=alerted_accounts if isinstance(alerted_accounts, int) else None,
+        alerted_accounts=audit_metadata_int(metadata, "alerted_accounts"),
         created_at=log.created_at.isoformat(),
     )
 
@@ -610,6 +613,7 @@ def admin_alerts(
     _: Annotated[User, Depends(require_roles(UserRole.SUPER_ADMIN))],
     alert_type: str | None = Query(default=None, max_length=40),
     email_sent: bool | None = Query(default=None),
+    trigger: str | None = Query(default=None, max_length=40),
     limit: int = Query(default=80, ge=1, le=100),
     db: Session = Depends(get_db),
 ) -> list[AdminAlertResponse]:
@@ -626,6 +630,9 @@ def admin_alerts(
         alerts = [alert for alert in alerts if alert.alert_type.upper() == normalized_type]
     if email_sent is not None:
         alerts = [alert for alert in alerts if alert.email_sent is email_sent]
+    if trigger:
+        normalized_trigger = trigger.strip().lower()
+        alerts = [alert for alert in alerts if (alert.trigger or "").lower() == normalized_trigger]
     return alerts
 
 

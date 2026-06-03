@@ -118,6 +118,10 @@ class AdminAlertResponse(BaseModel):
     email_sent: bool
     admin_recipient_configured: bool
     subject: str | None = None
+    trigger: str | None = None
+    days_threshold: int | None = None
+    checked_accounts: int | None = None
+    pending_accounts: int | None = None
     provider: str | None = None
     event_id: str | None = None
     error: str | None = None
