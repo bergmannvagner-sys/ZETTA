@@ -66,6 +66,16 @@ export type SubscriptionAccount = AuthUser & {
   created_at: string;
 };
 
+export type BillingPendingAlert = {
+  checked_accounts: number;
+  pending_accounts: number;
+  alerted_accounts: number;
+  days_threshold: number;
+  email_sent: boolean;
+  admin_recipient_configured: boolean;
+  accounts: SubscriptionAccount[];
+};
+
 export type CommercialPlan = {
   role: UserRole;
   plan: SubscriptionPlan;
@@ -125,6 +135,7 @@ export type EmailConfig = {
   smtp_from_email_configured: boolean;
   smtp_use_tls: boolean;
   smtp_port: number;
+  admin_alert_recipient_configured: boolean;
   password_reset_url_configured: boolean;
   required_env_names: string[];
 };

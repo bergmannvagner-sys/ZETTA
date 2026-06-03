@@ -1,4 +1,5 @@
 import json
+from datetime import UTC, datetime, timedelta
 from typing import Annotated
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
@@ -12,6 +13,7 @@ from app.models.privacy import AuditAction, AuditLog
 from app.schemas.user import (
     AuditLogResponse,
     BillingConfigResponse,
+    BillingPendingAlertResponse,
     BillingReferenceUpdateRequest,
     BillingWebhookMonitorResponse,
     CommercialPlanResponse,
@@ -27,6 +29,7 @@ from app.services.audit import write_audit_log
 from app.services.billing import approval_subscription_status_for_role
 from app.services.billing_webhooks import STATUS_MAP
 from app.services.commercial_plans import commercial_plan_for_role, list_commercial_plans
+from app.services.email import send_admin_alert_email
 from app.services.mercado_pago import MercadoPagoIntegrationError, create_mercado_pago_checkout_preference
 from app.services.payment_adapters import list_payment_adapter_capabilities, validate_billing_reference
 from app.services.verification import build_verification_triage
@@ -109,6 +112,12 @@ def latest_audit_logs_by_user(
         if log.target_user_id and log.target_user_id not in latest:
             latest[log.target_user_id] = log
     return latest
+
+
+def aware_datetime(value: datetime) -> datetime:
+    if value.tzinfo is None:
+        return value.replace(tzinfo=UTC)
+    return value
 
 
 def billing_webhook_monitor_response(
@@ -369,6 +378,110 @@ def billing_pending_accounts(
     return [response for response in responses if response.billing_financial_pending_reason]
 
 
+@router.post("/billing-pending-alerts", response_model=BillingPendingAlertResponse)
+def billing_pending_alerts(
+    admin: Annotated[User, Depends(require_roles(UserRole.SUPER_ADMIN))],
+    days: int = Query(default=7, ge=0, le=365),
+    limit: int = Query(default=50, ge=1, le=100),
+    db: Session = Depends(get_db),
+) -> BillingPendingAlertResponse:
+    users = (
+        db.query(User)
+        .filter(User.role.in_(PAID_ADMIN_ROLES), User.status == AccountStatus.ACTIVE)
+        .order_by(User.updated_at.desc(), User.created_at.desc())
+        .all()
+    )
+    user_ids = [user.id for user in users]
+    latest_checkouts = latest_audit_logs_by_user(
+        db,
+        user_ids=user_ids,
+        resource_type="mercado_pago_checkout_preference",
+    )
+    latest_webhooks = latest_audit_logs_by_user(db, user_ids=user_ids, resource_type="billing_webhook")
+    pending_pairs = [
+        (
+            user,
+            subscription_account_response(
+                user,
+                latest_checkout=latest_checkouts.get(user.id),
+                latest_webhook=latest_webhooks.get(user.id),
+            ),
+        )
+        for user in users
+    ]
+    pending_pairs = [
+        (user, response) for user, response in pending_pairs if response.billing_financial_pending_reason
+    ]
+
+    threshold = datetime.now(UTC) - timedelta(days=days)
+    old_pending: list[SubscriptionAccountResponse] = []
+    for user, response in pending_pairs:
+        latest_checkout = latest_checkouts.get(user.id)
+        reference_date = latest_checkout.created_at if latest_checkout else user.updated_at
+        if aware_datetime(reference_date) <= threshold:
+            old_pending.append(response)
+
+    alert_accounts = old_pending[:limit]
+    settings = get_settings()
+    email_sent = False
+    if alert_accounts:
+        email_sent = send_admin_alert_email(
+            subject="Bergmann: contas comerciais com pendencia financeira",
+            body=build_billing_pending_alert_body(alert_accounts, days=days),
+        )
+        write_audit_log(
+            db,
+            action=AuditAction.SUBSCRIPTION_STATUS_UPDATED,
+            actor_user_id=admin.id,
+            resource_type="billing_pending_alert",
+            metadata={
+                "days_threshold": days,
+                "checked_accounts": len(users),
+                "pending_accounts": len(pending_pairs),
+                "alerted_accounts": len(alert_accounts),
+                "email_sent": email_sent,
+                "admin_recipient_configured": bool(settings.admin_alert_recipient),
+                "account_ids": [account.id for account in alert_accounts],
+            },
+        )
+        db.commit()
+
+    return BillingPendingAlertResponse(
+        checked_accounts=len(users),
+        pending_accounts=len(pending_pairs),
+        alerted_accounts=len(alert_accounts),
+        days_threshold=days,
+        email_sent=email_sent,
+        admin_recipient_configured=bool(settings.admin_alert_recipient),
+        accounts=alert_accounts,
+    )
+
+
+def build_billing_pending_alert_body(accounts: list[SubscriptionAccountResponse], *, days: int) -> str:
+    lines = [
+        "Existem contas comerciais aprovadas com pendencia financeira antiga.",
+        "",
+        f"Limite usado: {days} dia(s).",
+        f"Contas no alerta: {len(accounts)}.",
+        "",
+    ]
+    for account in accounts:
+        lines.extend(
+            [
+                f"- {account.full_name} <{account.email}>",
+                f"  Perfil: {account.role.value}",
+                f"  Plano: {account.subscription_plan.value}",
+                f"  Status assinatura: {account.subscription_status.value}",
+                f"  Motivo: {account.billing_financial_pending_reason or 'Sem pagamento confirmado.'}",
+                f"  Ultimo checkout: {account.billing_last_checkout_at or 'sem registro'}",
+                f"  Ultimo webhook: {account.billing_last_webhook_at or 'sem registro'}",
+                "",
+            ]
+        )
+    lines.append("Abra Pendencias financeiras no admin do Bergmann para cobrar ou reenviar checkout.")
+    return "\n".join(lines)
+
+
 @router.get("/moderated-accounts", response_model=list[SubscriptionAccountResponse])
 def moderated_accounts(
     _: Annotated[User, Depends(require_roles(UserRole.SUPER_ADMIN))],
@@ -493,6 +606,7 @@ def email_config(
         smtp_from_email_configured=bool(settings.smtp_from_email),
         smtp_use_tls=settings.smtp_use_tls,
         smtp_port=settings.smtp_port,
+        admin_alert_recipient_configured=bool(settings.admin_alert_recipient),
         password_reset_url_configured=bool(settings.password_reset_url),
         required_env_names=[
             "SMTP_HOST",
@@ -501,6 +615,7 @@ def email_config(
             "SMTP_PASSWORD",
             "SMTP_FROM_EMAIL",
             "SMTP_USE_TLS",
+            "ADMIN_ALERT_EMAIL",
             "PASSWORD_RESET_URL",
         ],
     )

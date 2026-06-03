@@ -59,6 +59,7 @@ export default function AdminEmailConfig() {
             <StatusLine label="SMTP_USERNAME" ok={data.smtp_username_configured} />
             <StatusLine label="SMTP_PASSWORD" ok={data.smtp_password_configured} />
             <StatusLine label="SMTP_FROM_EMAIL" ok={data.smtp_from_email_configured} />
+            <StatusLine label="ADMIN_ALERT_EMAIL ou SUPER_ADMIN_EMAIL" ok={data.admin_alert_recipient_configured} />
             <StatusLine label="PASSWORD_RESET_URL" ok={data.password_reset_url_configured} />
           </Card>
 

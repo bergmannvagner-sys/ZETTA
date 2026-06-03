@@ -900,11 +900,36 @@ def test_super_admin_can_manage_paid_subscription_status(monkeypatch) -> None:
     )
     assert company_pending_payload["billing_activation_source"] == "ADMIN_OR_MANUAL"
 
+    captured_admin_alert: dict[str, str] = {}
+
+    def fake_admin_alert_email(*, subject: str, body: str) -> bool:
+        captured_admin_alert["subject"] = subject
+        captured_admin_alert["body"] = body
+        return True
+
+    monkeypatch.setattr("app.api.admin.send_admin_alert_email", fake_admin_alert_email)
+    pending_alert = client.post("/admin/billing-pending-alerts?days=0", headers=admin_headers)
+    assert pending_alert.status_code == 200
+    pending_alert_payload = pending_alert.json()
+    assert pending_alert_payload["checked_accounts"] >= 1
+    assert pending_alert_payload["pending_accounts"] >= 1
+    assert pending_alert_payload["alerted_accounts"] >= 1
+    assert pending_alert_payload["email_sent"] is True
+    assert any(account["email"] == "billing-company@example.com" for account in pending_alert_payload["accounts"])
+    assert "billing-company@example.com" in captured_admin_alert["body"]
+    assert "pendencia financeira" in captured_admin_alert["subject"].lower()
+
     audit = client.get("/admin/audit-logs?resource_type=billing_reference&limit=10", headers=admin_headers)
     assert audit.status_code == 200
     billing_reference_log = next(entry for entry in audit.json() if entry["target_user_id"] == company_id)
     assert billing_reference_log["metadata"]["billing_provider"] == "MERCADO_PAGO"
     assert billing_reference_log["metadata"]["previous"]["billing_provider"] is None
+
+    alert_audit = client.get("/admin/audit-logs?resource_type=billing_pending_alert&limit=10", headers=admin_headers)
+    assert alert_audit.status_code == 200
+    alert_log = alert_audit.json()[0]
+    assert alert_log["metadata"]["email_sent"] is True
+    assert company_id in alert_log["metadata"]["account_ids"]
 
     config = client.get("/admin/billing-config", headers=admin_headers)
     assert config.status_code == 200
@@ -928,6 +953,7 @@ def test_super_admin_can_manage_paid_subscription_status(monkeypatch) -> None:
         "smtp_from_email_configured",
         "smtp_use_tls",
         "smtp_port",
+        "admin_alert_recipient_configured",
         "password_reset_url_configured",
         "required_env_names",
     }

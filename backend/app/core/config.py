@@ -30,6 +30,7 @@ class Settings(BaseSettings):
     smtp_password: str | None = None
     smtp_from_email: str | None = None
     smtp_use_tls: bool = True
+    admin_alert_email: str | None = None
     password_reset_url: str = "bergmann://reset-password"
     public_api_url: str | None = None
     billing_webhooks_enabled: bool = False
@@ -58,6 +59,14 @@ class Settings(BaseSettings):
     @property
     def smtp_configured(self) -> bool:
         return bool(self.smtp_host and self.smtp_from_email)
+
+    @property
+    def admin_alert_recipient(self) -> str | None:
+        if self.admin_alert_email:
+            return self.admin_alert_email
+        if self.super_admin_email != "admin@bergmann.local":
+            return self.super_admin_email
+        return None
 
     @property
     def mercado_pago_configured(self) -> bool:

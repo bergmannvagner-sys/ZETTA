@@ -9,6 +9,7 @@ import { apiRequest } from "@/lib/api";
 import { planLabel, subscriptionStatusLabel } from "@/lib/billing";
 import { useAuthStore } from "@/store/auth-store";
 import {
+  BillingPendingAlert,
   BillingConfig,
   MercadoPagoCheckout,
   PaymentAdapterCapability,
@@ -73,6 +74,12 @@ export default function AdminBillingPending() {
       await Linking.openURL(checkout.checkout_url);
     }
   });
+  const sendPendingAlert = useMutation({
+    mutationFn: () =>
+      apiRequest<BillingPendingAlert>("/admin/billing-pending-alerts?days=7", {
+        method: "POST"
+      })
+  });
   const accounts: SubscriptionAccount[] = pendingAccounts.data ?? [];
   const mercadoPagoReady = Boolean(
     billingConfig.data?.provider_capabilities.find(
@@ -101,6 +108,22 @@ export default function AdminBillingPending() {
             ? "Mercado Pago esta pronto para criar ou reenviar checkout administrativo."
             : "Checkout bloqueado ate Mercado Pago estar configurado no Render."}
         </Text>
+        <View className="gap-2">
+          <Button
+            label="Enviar alerta de pendencias antigas"
+            tone="soft"
+            disabled={sendPendingAlert.isPending}
+            loading={sendPendingAlert.isPending}
+            onPress={() => sendPendingAlert.mutate()}
+          />
+          {sendPendingAlert.data ? (
+            <Text className="text-xs leading-5 text-muted">
+              Alerta: {sendPendingAlert.data.alerted_accounts} conta(s) com mais de{" "}
+              {sendPendingAlert.data.days_threshold} dia(s). Email{" "}
+              {sendPendingAlert.data.email_sent ? "enviado" : "nao enviado"}.
+            </Text>
+          ) : null}
+        </View>
       </Card>
 
       <Field label="Buscar por nome ou email" value={search} onChangeText={setSearch} />
@@ -125,7 +148,14 @@ export default function AdminBillingPending() {
         })}
       </View>
 
-      <ErrorText message={pendingAccounts.error?.message ?? billingConfig.error?.message ?? createCheckout.error?.message} />
+      <ErrorText
+        message={
+          pendingAccounts.error?.message ??
+          billingConfig.error?.message ??
+          createCheckout.error?.message ??
+          sendPendingAlert.error?.message
+        }
+      />
       {pendingAccounts.isLoading ? <Text className="text-muted">Carregando...</Text> : null}
       {accounts.length === 0 && !pendingAccounts.isLoading ? (
         <Text className="text-muted">Nenhuma pendencia financeira encontrada.</Text>

@@ -62,6 +62,16 @@ class SubscriptionAccountResponse(BaseModel):
     created_at: str
 
 
+class BillingPendingAlertResponse(BaseModel):
+    checked_accounts: int
+    pending_accounts: int
+    alerted_accounts: int
+    days_threshold: int
+    email_sent: bool
+    admin_recipient_configured: bool
+    accounts: list[SubscriptionAccountResponse]
+
+
 class CommercialPlanResponse(BaseModel):
     role: UserRole
     plan: SubscriptionPlan
@@ -133,6 +143,7 @@ class EmailConfigResponse(BaseModel):
     smtp_from_email_configured: bool
     smtp_use_tls: bool
     smtp_port: int
+    admin_alert_recipient_configured: bool
     password_reset_url_configured: bool
     required_env_names: list[str]
 

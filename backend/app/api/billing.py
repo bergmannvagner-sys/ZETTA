@@ -10,6 +10,7 @@ from app.core.config import get_settings
 from app.db.session import get_db
 from app.schemas.billing import BillingWebhookPayload, BillingWebhookResponse
 from app.services.billing_webhooks import apply_billing_webhook, record_billing_webhook_error, verify_signature
+from app.services.email import send_admin_alert_email
 from app.services.mercado_pago import (
     MercadoPagoIntegrationError,
     billing_payload_from_mercado_pago_payment,
@@ -86,10 +87,26 @@ async def billing_webhook(
             subscription_id=payload.subscription_id,
             error="Billing account not found",
         )
+        send_billing_webhook_failure_alert(
+            provider=payload.provider,
+            event_id=payload.event_id,
+            external_status=payload.external_status,
+            customer_id=payload.customer_id,
+            subscription_id=payload.subscription_id,
+            error="Billing account not found",
+        )
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Billing account not found") from exc
     except ValueError as exc:
         record_billing_webhook_error(
             db,
+            provider=payload.provider,
+            event_id=payload.event_id,
+            external_status=payload.external_status,
+            customer_id=payload.customer_id,
+            subscription_id=payload.subscription_id,
+            error="Unsupported billing status",
+        )
+        send_billing_webhook_failure_alert(
             provider=payload.provider,
             event_id=payload.event_id,
             external_status=payload.external_status,
@@ -143,6 +160,14 @@ async def mercado_pago_webhook(
             event_id=data_id,
             error=str(exc),
         )
+        send_billing_webhook_failure_alert(
+            provider="MERCADO_PAGO",
+            event_id=data_id,
+            external_status=None,
+            customer_id=None,
+            subscription_id=None,
+            error=str(exc),
+        )
         raise HTTPException(status_code=status.HTTP_502_BAD_GATEWAY, detail=str(exc)) from exc
     except LookupError as exc:
         record_billing_webhook_error(
@@ -154,10 +179,26 @@ async def mercado_pago_webhook(
             subscription_id=payload.subscription_id,
             error="Billing account not found",
         )
+        send_billing_webhook_failure_alert(
+            provider=payload.provider,
+            event_id=payload.event_id,
+            external_status=payload.external_status,
+            customer_id=payload.customer_id,
+            subscription_id=payload.subscription_id,
+            error="Billing account not found",
+        )
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Billing account not found") from exc
     except ValueError as exc:
         record_billing_webhook_error(
             db,
+            provider=payload.provider,
+            event_id=payload.event_id,
+            external_status=payload.external_status,
+            customer_id=payload.customer_id,
+            subscription_id=payload.subscription_id,
+            error="Unsupported billing status",
+        )
+        send_billing_webhook_failure_alert(
             provider=payload.provider,
             event_id=payload.event_id,
             external_status=payload.external_status,
@@ -188,6 +229,34 @@ def _data_id_from_body(body: bytes) -> str | None:
                 text = str(value).strip()
                 return text or None
     return None
+
+
+def send_billing_webhook_failure_alert(
+    *,
+    provider: str,
+    event_id: str | None,
+    external_status: str | None,
+    customer_id: str | None,
+    subscription_id: str | None,
+    error: str,
+) -> bool:
+    return send_admin_alert_email(
+        subject="Bergmann: falha em webhook de pagamento",
+        body="\n".join(
+            [
+                "Um webhook de pagamento falhou e precisa de revisao administrativa.",
+                "",
+                f"Provider: {provider}",
+                f"Evento: {event_id or 'sem evento'}",
+                f"Status externo: {external_status or 'sem status'}",
+                f"Cliente informado: {'sim' if customer_id else 'nao'}",
+                f"Assinatura informada: {'sim' if subscription_id else 'nao'}",
+                f"Erro: {error}",
+                "",
+                "Abra o monitor de webhooks no admin do Bergmann para conferir os detalhes.",
+            ]
+        ),
+    )
 
 
 def _billing_return_page(*, title: str, message: str) -> HTMLResponse:
