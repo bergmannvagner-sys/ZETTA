@@ -3,6 +3,8 @@ import json
 import hmac
 from hashlib import sha256
 
+import pytest
+
 os.environ.setdefault("DATABASE_URL", "sqlite+pysqlite:///:memory:")
 os.environ.setdefault("JWT_SECRET_KEY", "test-secret-key-with-more-than-thirty-two-chars")
 os.environ.setdefault("CORS_ORIGINS", "http://localhost:8081")
@@ -24,9 +26,17 @@ from app.services.payment_adapters import (
     get_payment_adapter,
     validate_billing_reference,
 )
+from app.services.rate_limit import clear_rate_limits
 
 Base.metadata.create_all(bind=engine)
 client = TestClient(app)
+
+
+@pytest.fixture(autouse=True)
+def reset_rate_limiter():
+    clear_rate_limits()
+    yield
+    clear_rate_limits()
 
 
 def test_public_registration_blocks_super_admin() -> None:
@@ -384,6 +394,31 @@ def test_e2e_user_consent_chat_sos_and_audit() -> None:
     assert sos.status_code == 200
     assert "CVV" in sos.json()["safety_message"]
 
+    export = client.get("/privacy/export", headers=headers)
+    assert export.status_code == 200
+    export_payload = export.json()
+    assert export_payload["user"]["email"] == "e2e-user@example.com"
+    assert export_payload["chat_sessions"]
+    assert export_payload["sos_events"][0]["message"] == "Preciso de ajuda"
+    assert "password_hash" not in export.text
+    assert "document_value_hash" not in export.text
+
+    revoke = client.post("/privacy/consent/revoke", headers=headers)
+    assert revoke.status_code == 200
+    assert revoke.json()["accepted"] is False
+
+    revoked_status = client.get("/privacy/consent", headers=headers)
+    assert revoked_status.status_code == 200
+    assert revoked_status.json()["accepted"] is False
+
+    blocked_after_revoke = client.post(
+        "/chat/message",
+        json={"message": "Estou ansioso de novo"},
+        headers=headers,
+    )
+    assert blocked_after_revoke.status_code == 403
+    assert blocked_after_revoke.json()["detail"] == "LGPD consent required"
+
     db = SessionLocal()
     try:
         actions = {entry.action for entry in db.query(AuditLog).all()}
@@ -391,8 +426,28 @@ def test_e2e_user_consent_chat_sos_and_audit() -> None:
         db.close()
     assert AuditAction.USER_REGISTERED in actions
     assert AuditAction.CONSENT_ACCEPTED in actions
+    assert AuditAction.CONSENT_REVOKED in actions
+    assert AuditAction.DATA_EXPORT_REQUESTED in actions
     assert AuditAction.CHAT_MESSAGE_CREATED in actions
     assert AuditAction.SOS_EVENT_CREATED in actions
+
+
+def test_login_rate_limit_returns_429() -> None:
+    settings = get_settings()
+    previous_requests = settings.auth_rate_limit_requests
+    previous_window = settings.auth_rate_limit_window_seconds
+    settings.auth_rate_limit_requests = 1
+    settings.auth_rate_limit_window_seconds = 300
+    try:
+        first = client.post("/auth/login", json={"email": "limited@example.com", "password": "wrongpass123"})
+        assert first.status_code == 401
+        second = client.post("/auth/login", json={"email": "limited@example.com", "password": "wrongpass123"})
+        assert second.status_code == 429
+        assert "Retry-After" in second.headers
+    finally:
+        settings.auth_rate_limit_requests = previous_requests
+        settings.auth_rate_limit_window_seconds = previous_window
+        clear_rate_limits()
 
 
 def test_password_reset_flow_changes_password_and_revokes_old_refresh_tokens() -> None:

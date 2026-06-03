@@ -1,12 +1,30 @@
-import { useQuery } from "@tanstack/react-query";
-import { Text } from "react-native";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useState } from "react";
+import { Text, View } from "react-native";
 
 import { Screen } from "@/components/screen";
-import { Card } from "@/components/ui";
-import { getConsentStatus } from "@/lib/privacy";
+import { Button, Card, ErrorText } from "@/components/ui";
+import { exportPrivacyData, getConsentStatus, PrivacyExport, revokeConsent } from "@/lib/privacy";
+
+function formatDate(value?: string | null): string {
+  return value ? new Date(value).toLocaleString("pt-BR") : "Sem registro";
+}
 
 export default function Privacy() {
+  const queryClient = useQueryClient();
+  const [lastExport, setLastExport] = useState<PrivacyExport | null>(null);
   const consent = useQuery({ queryKey: ["lgpd-consent"], queryFn: getConsentStatus });
+  const exportData = useMutation({
+    mutationFn: exportPrivacyData,
+    onSuccess: (data) => setLastExport(data)
+  });
+  const revoke = useMutation({
+    mutationFn: revokeConsent,
+    onSuccess: () => {
+      setLastExport(null);
+      queryClient.invalidateQueries({ queryKey: ["lgpd-consent"] });
+    }
+  });
 
   return (
     <Screen>
@@ -25,7 +43,43 @@ export default function Privacy() {
         <Text selectable className="text-sm text-muted">
           Consentimento: {consent.data?.accepted ? "aceito" : "pendente"}
         </Text>
+        <Text selectable className="text-xs text-muted">
+          Politica: {consent.data?.policy_version} | aceite: {formatDate(consent.data?.accepted_at)}
+        </Text>
       </Card>
+
+      <Card>
+        <Text className="text-lg font-semibold text-white">Controle dos seus dados</Text>
+        <Text className="text-sm leading-5 text-muted">
+          Exporte seus registros pessoais ou revogue o consentimento. A revogacao bloqueia recursos emocionais ate um
+          novo aceite.
+        </Text>
+        <ErrorText message={exportData.error?.message ?? revoke.error?.message} />
+        <View className="gap-2">
+          <Button label="Exportar meus dados" tone="soft" loading={exportData.isPending} onPress={() => exportData.mutate()} />
+          <Button
+            label="Revogar consentimento"
+            tone="danger"
+            loading={revoke.isPending}
+            disabled={!consent.data?.accepted}
+            onPress={() => revoke.mutate()}
+          />
+        </View>
+      </Card>
+
+      {lastExport ? (
+        <Card>
+          <Text className="text-lg font-semibold text-white">Ultima exportacao</Text>
+          <Text selectable className="text-sm text-muted">Gerada em {formatDate(lastExport.exported_at)}</Text>
+          <Text className="text-sm leading-5 text-muted">
+            Diario: {lastExport.journal_entries.length} | Humor: {lastExport.emotion_logs.length} | Chat:{" "}
+            {lastExport.chat_sessions.length} | SOS: {lastExport.sos_events.length}
+          </Text>
+          <Text className="text-xs leading-5 text-muted">
+            O pacote completo fica em memoria nesta tela e nao inclui senha, tokens ou hash do documento.
+          </Text>
+        </Card>
+      ) : null}
     </Screen>
   );
 }

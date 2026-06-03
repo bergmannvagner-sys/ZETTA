@@ -45,6 +45,14 @@ class Settings(BaseSettings):
     billing_pending_alerts_auto_days: int = 7
     billing_pending_alerts_auto_interval_hours: int = 24
     billing_pending_alerts_auto_limit: int = 50
+    auth_rate_limit_requests: int = 20
+    auth_rate_limit_window_seconds: int = 300
+    password_reset_rate_limit_requests: int = 5
+    password_reset_rate_limit_window_seconds: int = 900
+    chat_rate_limit_requests: int = 30
+    chat_rate_limit_window_seconds: int = 60
+    sos_rate_limit_requests: int = 6
+    sos_rate_limit_window_seconds: int = 300
 
     @property
     def cors_origin_list(self) -> list[str]:

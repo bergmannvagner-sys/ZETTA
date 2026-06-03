@@ -40,3 +40,12 @@ def accept_lgpd_consent(db: Session, user_id: str, policy_version: str) -> Conse
     db.add(record)
     db.flush()
     return record
+
+
+def revoke_lgpd_consent(db: Session, user_id: str) -> ConsentRecord | None:
+    existing = get_active_lgpd_consent(db, user_id)
+    if not existing:
+        return None
+    existing.revoked_at = datetime.now(UTC)
+    db.flush()
+    return existing

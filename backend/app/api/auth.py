@@ -1,8 +1,9 @@
 import os
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, Request, status
 from sqlalchemy.orm import Session
 
+from app.core.config import get_settings
 from app.core.security import hash_password, verify_password
 from app.db.session import get_db
 from app.models.user import AccountStatus, User, UserRole
@@ -30,6 +31,7 @@ from app.services.identity import (
 from app.services.billing import default_plan_for_role, initial_subscription_status_for_role
 from app.services.email import send_password_reset_email
 from app.services.audit import write_audit_log
+from app.services.rate_limit import client_identifier, enforce_rate_limit, rate_limit_key
 from app.services.tokens import (
     issue_password_reset_token,
     issue_token_pair,
@@ -54,8 +56,18 @@ def _auth_user(user: User) -> AuthUserResponse:
     )
 
 
+def _settings():
+    return get_settings()
+
+
 @router.post("/register", response_model=AuthResponse, status_code=status.HTTP_201_CREATED)
-def register(payload: RegisterRequest, db: Session = Depends(get_db)) -> AuthResponse:
+def register(payload: RegisterRequest, request: Request, db: Session = Depends(get_db)) -> AuthResponse:
+    settings = _settings()
+    enforce_rate_limit(
+        key=rate_limit_key("auth-register", client_identifier(request)),
+        max_requests=settings.auth_rate_limit_requests,
+        window_seconds=settings.auth_rate_limit_window_seconds,
+    )
     if payload.role not in PUBLIC_REGISTER_ROLES or payload.role == UserRole.SUPER_ADMIN:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Role not allowed")
     if not payload.lgpdConsent:
@@ -110,7 +122,13 @@ def register(payload: RegisterRequest, db: Session = Depends(get_db)) -> AuthRes
 
 
 @router.post("/login", response_model=AuthResponse)
-def login(payload: LoginRequest, db: Session = Depends(get_db)) -> AuthResponse:
+def login(payload: LoginRequest, request: Request, db: Session = Depends(get_db)) -> AuthResponse:
+    settings = _settings()
+    enforce_rate_limit(
+        key=rate_limit_key("auth-login", client_identifier(request), payload.email),
+        max_requests=settings.auth_rate_limit_requests,
+        window_seconds=settings.auth_rate_limit_window_seconds,
+    )
     user = db.query(User).filter(User.email == payload.email.lower()).first()
     if not user or not verify_password(payload.password, user.password_hash):
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid credentials")
@@ -148,8 +166,15 @@ def refresh(payload: RefreshRequest, db: Session = Depends(get_db)) -> TokenResp
 @router.post("/password-reset/request", response_model=PasswordResetRequestResponse)
 def request_password_reset(
     payload: PasswordResetRequest,
+    request: Request,
     db: Session = Depends(get_db),
 ) -> PasswordResetRequestResponse:
+    settings = _settings()
+    enforce_rate_limit(
+        key=rate_limit_key("password-reset", client_identifier(request), payload.email),
+        max_requests=settings.password_reset_rate_limit_requests,
+        window_seconds=settings.password_reset_rate_limit_window_seconds,
+    )
     user = db.query(User).filter(User.email == payload.email.lower()).first()
     reset_token = issue_password_reset_token(db, user) if user else None
     if user and reset_token:
@@ -163,8 +188,15 @@ def request_password_reset(
 @router.post("/password-reset/confirm", response_model=PasswordResetConfirmResponse)
 def confirm_password_reset(
     payload: PasswordResetConfirmRequest,
+    request: Request,
     db: Session = Depends(get_db),
 ) -> PasswordResetConfirmResponse:
+    settings = _settings()
+    enforce_rate_limit(
+        key=rate_limit_key("password-reset-confirm", client_identifier(request)),
+        max_requests=settings.password_reset_rate_limit_requests * 2,
+        window_seconds=settings.password_reset_rate_limit_window_seconds,
+    )
     if not reset_password_with_token(db, payload.token, payload.new_password):
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid or expired reset token")
     return PasswordResetConfirmResponse(message="Senha atualizada com seguranca.")

@@ -29,6 +29,8 @@ def test_public_openapi_contract_matches_mobile_mvp() -> None:
     assert "/billing/failure" in paths
     assert "/users/me" in paths
     assert "/privacy/consent" in paths
+    assert "/privacy/consent/revoke" in paths
+    assert "/privacy/export" in paths
     assert "/chat/message" in paths
     assert "/sos/event" in paths
     assert "/journal/entries" in paths
@@ -56,6 +58,7 @@ def test_public_openapi_contract_matches_mobile_mvp() -> None:
     assert "/admin/billing-reference" in paths
     assert "/admin/mercado-pago/checkout-preference" in paths
     assert "/admin/audit-logs" in paths
+    assert "/admin/operations-summary" in paths
     assert "/admin/approve-account" in paths
     assert "/admin/reject-account" in paths
     assert "/admin/archive-account" in paths
