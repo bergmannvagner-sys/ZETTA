@@ -100,6 +100,20 @@ export type AuditLogEntry = {
   created_at: string;
 };
 
+export type AdminAlertEntry = {
+  id: string;
+  alert_type: "WEBHOOK_FAILURE" | "PENDING_FINANCIAL" | string;
+  source: string;
+  email_sent: boolean;
+  admin_recipient_configured: boolean;
+  subject?: string | null;
+  provider?: string | null;
+  event_id?: string | null;
+  error?: string | null;
+  alerted_accounts?: number | null;
+  created_at: string;
+};
+
 export type BillingConfig = {
   webhooks_enabled: boolean;
   webhook_secret_configured: boolean;

@@ -11,6 +11,7 @@ from app.db.session import get_db
 from app.models.user import AccountStatus, SubscriptionStatus, User, UserRole
 from app.models.privacy import AuditAction, AuditLog
 from app.schemas.user import (
+    AdminAlertResponse,
     AuditLogResponse,
     BillingConfigResponse,
     BillingPendingAlertResponse,
@@ -142,6 +143,27 @@ def billing_webhook_monitor_response(
         duplicate=audit_metadata_bool(metadata, "duplicate"),
         error=audit_metadata_text(metadata, "error"),
         received_at=log.created_at.isoformat(),
+    )
+
+
+def admin_alert_response(log: AuditLog) -> AdminAlertResponse:
+    metadata = parse_audit_metadata(log.metadata_json) or {}
+    alert_type = audit_metadata_text(metadata, "alert_type")
+    if not alert_type:
+        alert_type = "PENDING_FINANCIAL" if log.resource_type == "billing_pending_alert" else "ADMIN_EMAIL"
+    alerted_accounts = metadata.get("alerted_accounts")
+    return AdminAlertResponse(
+        id=log.id,
+        alert_type=alert_type,
+        source=log.resource_type,
+        email_sent=audit_metadata_bool(metadata, "email_sent"),
+        admin_recipient_configured=audit_metadata_bool(metadata, "admin_recipient_configured"),
+        subject=audit_metadata_text(metadata, "subject"),
+        provider=audit_metadata_text(metadata, "provider"),
+        event_id=audit_metadata_text(metadata, "event_id"),
+        error=audit_metadata_text(metadata, "error"),
+        alerted_accounts=alerted_accounts if isinstance(alerted_accounts, int) else None,
+        created_at=log.created_at.isoformat(),
     )
 
 
@@ -435,6 +457,8 @@ def billing_pending_alerts(
             actor_user_id=admin.id,
             resource_type="billing_pending_alert",
             metadata={
+                "alert_type": "PENDING_FINANCIAL",
+                "subject": "Bergmann: contas comerciais com pendencia financeira",
                 "days_threshold": days,
                 "checked_accounts": len(users),
                 "pending_accounts": len(pending_pairs),
@@ -480,6 +504,30 @@ def build_billing_pending_alert_body(accounts: list[SubscriptionAccountResponse]
         )
     lines.append("Abra Pendencias financeiras no admin do Bergmann para cobrar ou reenviar checkout.")
     return "\n".join(lines)
+
+
+@router.get("/alerts", response_model=list[AdminAlertResponse])
+def admin_alerts(
+    _: Annotated[User, Depends(require_roles(UserRole.SUPER_ADMIN))],
+    alert_type: str | None = Query(default=None, max_length=40),
+    email_sent: bool | None = Query(default=None),
+    limit: int = Query(default=80, ge=1, le=100),
+    db: Session = Depends(get_db),
+) -> list[AdminAlertResponse]:
+    logs = (
+        db.query(AuditLog)
+        .filter(AuditLog.resource_type.in_(["admin_email_alert", "billing_pending_alert"]))
+        .order_by(AuditLog.created_at.desc())
+        .limit(limit)
+        .all()
+    )
+    alerts = [admin_alert_response(log) for log in logs]
+    if alert_type:
+        normalized_type = alert_type.strip().upper()
+        alerts = [alert for alert in alerts if alert.alert_type.upper() == normalized_type]
+    if email_sent is not None:
+        alerts = [alert for alert in alerts if alert.email_sent is email_sent]
+    return alerts
 
 
 @router.get("/moderated-accounts", response_model=list[SubscriptionAccountResponse])

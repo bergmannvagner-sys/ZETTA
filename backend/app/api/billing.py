@@ -8,7 +8,9 @@ from sqlalchemy.orm import Session
 
 from app.core.config import get_settings
 from app.db.session import get_db
+from app.models.privacy import AuditAction
 from app.schemas.billing import BillingWebhookPayload, BillingWebhookResponse
+from app.services.audit import write_audit_log
 from app.services.billing_webhooks import apply_billing_webhook, record_billing_webhook_error, verify_signature
 from app.services.email import send_admin_alert_email
 from app.services.mercado_pago import (
@@ -88,6 +90,7 @@ async def billing_webhook(
             error="Billing account not found",
         )
         send_billing_webhook_failure_alert(
+            db,
             provider=payload.provider,
             event_id=payload.event_id,
             external_status=payload.external_status,
@@ -107,6 +110,7 @@ async def billing_webhook(
             error="Unsupported billing status",
         )
         send_billing_webhook_failure_alert(
+            db,
             provider=payload.provider,
             event_id=payload.event_id,
             external_status=payload.external_status,
@@ -161,6 +165,7 @@ async def mercado_pago_webhook(
             error=str(exc),
         )
         send_billing_webhook_failure_alert(
+            db,
             provider="MERCADO_PAGO",
             event_id=data_id,
             external_status=None,
@@ -180,6 +185,7 @@ async def mercado_pago_webhook(
             error="Billing account not found",
         )
         send_billing_webhook_failure_alert(
+            db,
             provider=payload.provider,
             event_id=payload.event_id,
             external_status=payload.external_status,
@@ -199,6 +205,7 @@ async def mercado_pago_webhook(
             error="Unsupported billing status",
         )
         send_billing_webhook_failure_alert(
+            db,
             provider=payload.provider,
             event_id=payload.event_id,
             external_status=payload.external_status,
@@ -232,6 +239,7 @@ def _data_id_from_body(body: bytes) -> str | None:
 
 
 def send_billing_webhook_failure_alert(
+    db: Session,
     *,
     provider: str,
     event_id: str | None,
@@ -240,8 +248,9 @@ def send_billing_webhook_failure_alert(
     subscription_id: str | None,
     error: str,
 ) -> bool:
-    return send_admin_alert_email(
-        subject="Bergmann: falha em webhook de pagamento",
+    subject = "Bergmann: falha em webhook de pagamento"
+    email_sent = send_admin_alert_email(
+        subject=subject,
         body="\n".join(
             [
                 "Um webhook de pagamento falhou e precisa de revisao administrativa.",
@@ -257,6 +266,26 @@ def send_billing_webhook_failure_alert(
             ]
         ),
     )
+    settings = get_settings()
+    write_audit_log(
+        db,
+        action=AuditAction.BILLING_WEBHOOK_PROCESSED,
+        resource_type="admin_email_alert",
+        metadata={
+            "alert_type": "WEBHOOK_FAILURE",
+            "subject": subject,
+            "provider": provider,
+            "event_id": event_id,
+            "external_status": external_status,
+            "has_customer_id": bool(customer_id),
+            "has_subscription_id": bool(subscription_id),
+            "error": error,
+            "email_sent": email_sent,
+            "admin_recipient_configured": bool(settings.admin_alert_recipient),
+        },
+    )
+    db.commit()
+    return email_sent
 
 
 def _billing_return_page(*, title: str, message: str) -> HTMLResponse:

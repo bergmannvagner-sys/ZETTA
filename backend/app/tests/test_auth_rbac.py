@@ -931,6 +931,13 @@ def test_super_admin_can_manage_paid_subscription_status(monkeypatch) -> None:
     assert alert_log["metadata"]["email_sent"] is True
     assert company_id in alert_log["metadata"]["account_ids"]
 
+    pending_alerts = client.get("/admin/alerts?alert_type=PENDING_FINANCIAL", headers=admin_headers)
+    assert pending_alerts.status_code == 200
+    pending_alerts_payload = pending_alerts.json()
+    assert pending_alerts_payload[0]["alert_type"] == "PENDING_FINANCIAL"
+    assert pending_alerts_payload[0]["email_sent"] is True
+    assert pending_alerts_payload[0]["alerted_accounts"] >= 1
+
     config = client.get("/admin/billing-config", headers=admin_headers)
     assert config.status_code == 200
     config_payload = config.json()
@@ -1215,6 +1222,16 @@ def test_billing_webhook_requires_valid_signature_and_is_idempotent() -> None:
         assert missing_entry["processing_status"] == "error"
         assert missing_entry["error"] == "Billing account not found"
         assert missing_entry["linked_user_email"] is None
+
+        alerts = client.get("/admin/alerts?alert_type=WEBHOOK_FAILURE", headers=admin_headers)
+        assert alerts.status_code == 200
+        alert_payload = alerts.json()
+        missing_alert = next(entry for entry in alert_payload if entry["event_id"] == f"missing_{company_id}")
+        assert missing_alert["alert_type"] == "WEBHOOK_FAILURE"
+        assert missing_alert["source"] == "admin_email_alert"
+        assert missing_alert["email_sent"] is False
+        assert missing_alert["admin_recipient_configured"] is False
+        assert missing_alert["error"] == "Billing account not found"
 
         db = SessionLocal()
         try:

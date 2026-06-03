@@ -58,6 +58,7 @@ export default function AppLayout() {
       <Stack.Screen name="admin-commercial-plans" options={{ title: "Planos comerciais" }} />
       <Stack.Screen name="admin-billing-config" options={{ title: "Pagamentos" }} />
       <Stack.Screen name="admin-billing-webhooks" options={{ title: "Webhooks" }} />
+      <Stack.Screen name="admin-alerts" options={{ title: "Alertas" }} />
       <Stack.Screen name="admin-email-config" options={{ title: "Email" }} />
       <Stack.Screen name="admin-audit" options={{ title: "Auditoria" }} />
     </Stack>

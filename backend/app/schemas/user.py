@@ -96,6 +96,20 @@ class AuditLogResponse(BaseModel):
     created_at: str
 
 
+class AdminAlertResponse(BaseModel):
+    id: str
+    alert_type: str
+    source: str
+    email_sent: bool
+    admin_recipient_configured: bool
+    subject: str | None = None
+    provider: str | None = None
+    event_id: str | None = None
+    error: str | None = None
+    alerted_accounts: int | None = None
+    created_at: str
+
+
 class PaymentAdapterCapabilityResponse(BaseModel):
     provider: str
     checkout_enabled: bool
