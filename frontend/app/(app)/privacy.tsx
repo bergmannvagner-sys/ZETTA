@@ -4,25 +4,50 @@ import { Text, View } from "react-native";
 
 import { Screen } from "@/components/screen";
 import { Button, Card, ErrorText } from "@/components/ui";
-import { exportPrivacyData, getConsentStatus, PrivacyExport, revokeConsent } from "@/lib/privacy";
+import {
+  exportPrivacyData,
+  getConsentStatus,
+  getPrivacyAudit,
+  PrivacyAuditEntry,
+  PrivacyExport,
+  revokeConsent
+} from "@/lib/privacy";
 
 function formatDate(value?: string | null): string {
   return value ? new Date(value).toLocaleString("pt-BR") : "Sem registro";
+}
+
+function auditLabel(action: string): string {
+  const labels: Record<string, string> = {
+    CONSENT_ACCEPTED: "Consentimento aceito",
+    CONSENT_REVOKED: "Consentimento revogado",
+    DATA_EXPORT_REQUESTED: "Exportacao solicitada",
+    CHAT_MESSAGE_CREATED: "Mensagem registrada",
+    SOS_EVENT_CREATED: "SOS registrado",
+    SHARING_CONSENT_GRANTED: "Compartilhamento autorizado",
+    SHARING_CONSENT_REVOKED: "Compartilhamento revogado"
+  };
+  return labels[action] ?? action.replace(/_/gu, " ");
 }
 
 export default function Privacy() {
   const queryClient = useQueryClient();
   const [lastExport, setLastExport] = useState<PrivacyExport | null>(null);
   const consent = useQuery({ queryKey: ["lgpd-consent"], queryFn: getConsentStatus });
+  const audit = useQuery({ queryKey: ["privacy-audit"], queryFn: getPrivacyAudit });
   const exportData = useMutation({
     mutationFn: exportPrivacyData,
-    onSuccess: (data) => setLastExport(data)
+    onSuccess: (data) => {
+      setLastExport(data);
+      queryClient.invalidateQueries({ queryKey: ["privacy-audit"] });
+    }
   });
   const revoke = useMutation({
     mutationFn: revokeConsent,
     onSuccess: () => {
       setLastExport(null);
       queryClient.invalidateQueries({ queryKey: ["lgpd-consent"] });
+      queryClient.invalidateQueries({ queryKey: ["privacy-audit"] });
     }
   });
 
@@ -80,6 +105,24 @@ export default function Privacy() {
           </Text>
         </Card>
       ) : null}
+
+      <Card>
+        <Text className="text-lg font-semibold text-white">Historico recente</Text>
+        {audit.data?.length ? (
+          <View className="gap-3">
+            {audit.data.map((entry: PrivacyAuditEntry) => (
+              <View key={entry.id} className="gap-1 border-b border-white/10 pb-3">
+                <Text className="text-sm font-semibold text-white">{auditLabel(entry.action)}</Text>
+                <Text className="text-xs text-muted">{formatDate(entry.created_at)}</Text>
+              </View>
+            ))}
+          </View>
+        ) : (
+          <Text className="text-sm text-muted">
+            {audit.isLoading ? "Carregando eventos..." : "Nenhum evento de privacidade recente."}
+          </Text>
+        )}
+      </Card>
     </Screen>
   );
 }

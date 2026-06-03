@@ -33,8 +33,23 @@ export type PrivacyExport = {
   care_reminders: Record<string, unknown>[];
 };
 
+export type PrivacyAuditEntry = {
+  id: string;
+  action: string;
+  actor_user_id?: string | null;
+  target_user_id?: string | null;
+  resource_type: string;
+  resource_id?: string | null;
+  metadata?: unknown;
+  created_at: string;
+};
+
 export async function getConsentStatus() {
   return apiRequest<ConsentStatus>("/privacy/consent");
+}
+
+export async function getPrivacyAudit() {
+  return apiRequest<PrivacyAuditEntry[]>("/privacy/audit?limit=8");
 }
 
 export async function acceptConsent(policyVersion: string) {

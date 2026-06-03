@@ -36,3 +36,14 @@ class PrivacyExportResponse(BaseModel):
     chat_sessions: list[dict[str, object]]
     sos_events: list[dict[str, object]]
     care_reminders: list[dict[str, object]]
+
+
+class PrivacyAuditEntry(BaseModel):
+    id: str
+    action: str
+    actor_user_id: str | None = None
+    target_user_id: str | None = None
+    resource_type: str
+    resource_id: str | None = None
+    metadata: dict[str, object] | list[object] | str | None = None
+    created_at: str

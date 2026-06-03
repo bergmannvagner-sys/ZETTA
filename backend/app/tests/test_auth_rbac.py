@@ -422,6 +422,12 @@ def test_e2e_user_consent_chat_sos_and_audit() -> None:
     assert revoked_status.status_code == 200
     assert revoked_status.json()["accepted"] is False
 
+    my_audit = client.get("/privacy/audit", headers=headers)
+    assert my_audit.status_code == 200
+    my_audit_actions = {entry["action"] for entry in my_audit.json()}
+    assert "DATA_EXPORT_REQUESTED" in my_audit_actions
+    assert "CONSENT_REVOKED" in my_audit_actions
+
     blocked_after_revoke = client.post(
         "/chat/message",
         json={"message": "Estou ansioso de novo"},

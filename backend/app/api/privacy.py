@@ -2,7 +2,8 @@ import json
 from datetime import UTC, datetime
 from typing import Annotated, Any
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, Query, status
+from sqlalchemy import or_
 from sqlalchemy.orm import Session
 
 from app.api.deps import require_active_user
@@ -10,13 +11,14 @@ from app.db.session import get_db
 from app.models.assistant import CareReminder
 from app.models.chat import ChatMessage, ChatSession
 from app.models.emotional import EmotionalReport, EmotionLog, JournalEntry, UserSharingConsent
-from app.models.privacy import AuditAction, ConsentRecord, ConsentType
+from app.models.privacy import AuditAction, AuditLog, ConsentRecord, ConsentType
 from app.models.sos import SOSEvent
 from app.models.user import User
 from app.schemas.privacy import (
     AcceptConsentRequest,
     AcceptConsentResponse,
     ConsentStatusResponse,
+    PrivacyAuditEntry,
     PrivacyExportResponse,
     RevokeConsentResponse,
 )
@@ -112,6 +114,34 @@ def revoke_consent(
         policy_version=record.policy_version,
         revoked_at=record.revoked_at.isoformat() if record.revoked_at else datetime.now(UTC).isoformat(),
     )
+
+
+@router.get("/audit", response_model=list[PrivacyAuditEntry])
+def get_my_privacy_audit(
+    user: Annotated[User, Depends(require_active_user)],
+    db: Session = Depends(get_db),
+    limit: int = Query(default=20, ge=1, le=100),
+) -> list[PrivacyAuditEntry]:
+    logs = (
+        db.query(AuditLog)
+        .filter(or_(AuditLog.actor_user_id == user.id, AuditLog.target_user_id == user.id))
+        .order_by(AuditLog.created_at.desc())
+        .limit(limit)
+        .all()
+    )
+    return [
+        PrivacyAuditEntry(
+            id=log.id,
+            action=log.action.value,
+            actor_user_id=log.actor_user_id,
+            target_user_id=log.target_user_id,
+            resource_type=log.resource_type,
+            resource_id=log.resource_id,
+            metadata=_json_value(log.metadata_json),
+            created_at=log.created_at.isoformat(),
+        )
+        for log in logs
+    ]
 
 
 @router.get("/export", response_model=PrivacyExportResponse)
