@@ -1125,6 +1125,59 @@ def test_payment_provider_adapters_are_local_only_contracts() -> None:
     ) == ["Provider NONE cannot keep external billing IDs"]
 
 
+def test_scheduled_billing_pending_alert_records_noop_run() -> None:
+    db = SessionLocal()
+    try:
+        admin = User(
+            email="noop-alert-admin@example.com",
+            full_name="Noop Alert Admin",
+            password_hash=hash_password("strongpass123"),
+            role=UserRole.SUPER_ADMIN,
+            status=AccountStatus.ACTIVE,
+            subscription_plan="INTERNAL",
+            subscription_status=SubscriptionStatus.ACTIVE,
+        )
+        company = User(
+            email="noop-alert-company@example.com",
+            full_name="Empresa Sem Pendencia",
+            password_hash=hash_password("strongpass123"),
+            role=UserRole.COMPANY,
+            status=AccountStatus.ACTIVE,
+            subscription_plan="COMPANY_NR1",
+            subscription_status=SubscriptionStatus.ACTIVE,
+            billing_provider="MERCADO_PAGO",
+            billing_customer_id="noop-alert-company@example.com",
+            billing_subscription_id="noop-alert-subscription",
+            billing_last_event_id="noop-alert-event",
+        )
+        db.add(admin)
+        db.add(company)
+        db.commit()
+        admin_email = admin.email
+    finally:
+        db.close()
+
+    admin_login = client.post("/auth/login", json={"email": admin_email, "password": "strongpass123"})
+    assert admin_login.status_code == 200
+    admin_headers = {"Authorization": f"Bearer {admin_login.json()['access_token']}"}
+
+    db = SessionLocal()
+    try:
+        result = run_billing_pending_alert(db, days=365, limit=50, trigger="scheduled")
+        assert result.alerted_accounts == 0
+        assert result.email_sent is False
+        assert recent_scheduled_billing_pending_alert_exists(db, interval_hours=24) is True
+    finally:
+        db.close()
+
+    alert_status = client.get("/admin/billing-pending-alert-status", headers=admin_headers)
+    assert alert_status.status_code == 200
+    payload = alert_status.json()
+    assert payload["last_scheduled_email_sent"] is False
+    assert payload["last_scheduled_alerted_accounts"] == 0
+    assert payload["recent_scheduled_alert_exists"] is True
+
+
 def test_billing_webhook_is_disabled_by_default() -> None:
     settings = get_settings()
     previous_enabled = settings.billing_webhooks_enabled

@@ -485,25 +485,26 @@ def run_billing_pending_alert(
             subject="Bergmann: contas comerciais com pendencia financeira",
             body=build_billing_pending_alert_body(alert_accounts, days=days),
         )
-        write_audit_log(
-            db,
-            action=AuditAction.SUBSCRIPTION_STATUS_UPDATED,
-            actor_user_id=actor_user_id,
-            resource_type="billing_pending_alert",
-            metadata={
-                "alert_type": "PENDING_FINANCIAL",
-                "subject": "Bergmann: contas comerciais com pendencia financeira",
-                "trigger": trigger,
-                "days_threshold": days,
-                "checked_accounts": len(users),
-                "pending_accounts": len(pending_pairs),
-                "alerted_accounts": len(alert_accounts),
-                "email_sent": email_sent,
-                "admin_recipient_configured": bool(settings.admin_alert_recipient),
-                "account_ids": [account.id for account in alert_accounts],
-            },
-        )
-        db.commit()
+
+    write_audit_log(
+        db,
+        action=AuditAction.SUBSCRIPTION_STATUS_UPDATED,
+        actor_user_id=actor_user_id,
+        resource_type="billing_pending_alert",
+        metadata={
+            "alert_type": "PENDING_FINANCIAL",
+            "subject": "Bergmann: contas comerciais com pendencia financeira",
+            "trigger": trigger,
+            "days_threshold": days,
+            "checked_accounts": len(users),
+            "pending_accounts": len(pending_pairs),
+            "alerted_accounts": len(alert_accounts),
+            "email_sent": email_sent,
+            "admin_recipient_configured": bool(settings.admin_alert_recipient),
+            "account_ids": [account.id for account in alert_accounts],
+        },
+    )
+    db.commit()
 
     return BillingPendingAlertResponse(
         checked_accounts=len(users),
