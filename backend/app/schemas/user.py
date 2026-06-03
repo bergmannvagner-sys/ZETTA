@@ -185,6 +185,25 @@ class EmailConfigResponse(BaseModel):
     required_env_names: list[str]
 
 
+class AdminOperationsSummaryResponse(BaseModel):
+    pending_financial_accounts: int
+    recent_webhook_events: int
+    webhook_error_events: int
+    duplicate_webhook_events: int
+    recent_alerts: int
+    unsent_alerts: int
+    last_webhook_error: str | None = None
+    last_webhook_error_at: str | None = None
+    last_alert_error: str | None = None
+    last_alert_error_at: str | None = None
+    billing_alert_auto_enabled: bool
+    billing_last_scheduled_alert_at: str | None = None
+    mercado_pago_ready: bool
+    billing_webhooks_enabled: bool
+    smtp_configured: bool
+    admin_alert_recipient_configured: bool
+
+
 class ModerationAccountRequest(BaseModel):
     user_id: str
     reason: str | None = None

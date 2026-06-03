@@ -177,6 +177,25 @@ export type EmailConfig = {
   required_env_names: string[];
 };
 
+export type AdminOperationsSummary = {
+  pending_financial_accounts: number;
+  recent_webhook_events: number;
+  webhook_error_events: number;
+  duplicate_webhook_events: number;
+  recent_alerts: number;
+  unsent_alerts: number;
+  last_webhook_error?: string | null;
+  last_webhook_error_at?: string | null;
+  last_alert_error?: string | null;
+  last_alert_error_at?: string | null;
+  billing_alert_auto_enabled: boolean;
+  billing_last_scheduled_alert_at?: string | null;
+  mercado_pago_ready: boolean;
+  billing_webhooks_enabled: boolean;
+  smtp_configured: boolean;
+  admin_alert_recipient_configured: boolean;
+};
+
 export type PaymentAdapterCapability = {
   provider: string;
   checkout_enabled: boolean;

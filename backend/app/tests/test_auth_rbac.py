@@ -975,6 +975,15 @@ def test_super_admin_can_manage_paid_subscription_status(monkeypatch) -> None:
     assert alert_status_payload["recent_scheduled_alert_exists"] is True
     assert alert_status_payload["next_allowed_alert_at"]
 
+    operations_summary = client.get("/admin/operations-summary", headers=admin_headers)
+    assert operations_summary.status_code == 200
+    operations_summary_payload = operations_summary.json()
+    assert operations_summary_payload["pending_financial_accounts"] >= 1
+    assert operations_summary_payload["recent_alerts"] >= 1
+    assert operations_summary_payload["unsent_alerts"] >= 0
+    assert operations_summary_payload["billing_alert_auto_enabled"] is False
+    assert operations_summary_payload["smtp_configured"] is False
+
     config = client.get("/admin/billing-config", headers=admin_headers)
     assert config.status_code == 200
     config_payload = config.json()

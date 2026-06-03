@@ -11,6 +11,7 @@ from app.db.session import get_db
 from app.models.user import AccountStatus, SubscriptionStatus, User, UserRole
 from app.models.privacy import AuditAction, AuditLog
 from app.schemas.user import (
+    AdminOperationsSummaryResponse,
     AdminAlertResponse,
     AuditLogResponse,
     BillingConfigResponse,
@@ -312,6 +313,31 @@ def provider_production_enabled(provider: str) -> bool:
     return False
 
 
+def current_billing_pending_accounts(db: Session) -> list[SubscriptionAccountResponse]:
+    users = (
+        db.query(User)
+        .filter(User.role.in_(PAID_ADMIN_ROLES), User.status == AccountStatus.ACTIVE)
+        .order_by(User.updated_at.desc(), User.created_at.desc())
+        .all()
+    )
+    user_ids = [user.id for user in users]
+    latest_checkouts = latest_audit_logs_by_user(
+        db,
+        user_ids=user_ids,
+        resource_type="mercado_pago_checkout_preference",
+    )
+    latest_webhooks = latest_audit_logs_by_user(db, user_ids=user_ids, resource_type="billing_webhook")
+    responses = [
+        subscription_account_response(
+            user,
+            latest_checkout=latest_checkouts.get(user.id),
+            latest_webhook=latest_webhooks.get(user.id),
+        )
+        for user in users
+    ]
+    return [response for response in responses if response.billing_financial_pending_reason]
+
+
 @router.get("/pending-accounts", response_model=list[PendingAccountResponse])
 def pending_accounts(
     _: Annotated[User, Depends(require_roles(UserRole.SUPER_ADMIN))],
@@ -605,6 +631,59 @@ def billing_pending_alert_status(
             interval_hours=settings.billing_pending_alerts_auto_interval_hours,
         ),
         next_allowed_alert_at=next_allowed_alert_at,
+    )
+
+
+@router.get("/operations-summary", response_model=AdminOperationsSummaryResponse)
+def operations_summary(
+    _: Annotated[User, Depends(require_roles(UserRole.SUPER_ADMIN))],
+    db: Session = Depends(get_db),
+) -> AdminOperationsSummaryResponse:
+    settings = get_settings()
+    pending_accounts = current_billing_pending_accounts(db)
+
+    webhook_logs = (
+        db.query(AuditLog)
+        .filter(AuditLog.resource_type == "billing_webhook")
+        .order_by(AuditLog.created_at.desc())
+        .limit(100)
+        .all()
+    )
+    target_ids = sorted({log.target_user_id for log in webhook_logs if log.target_user_id})
+    users_by_id = {user.id: user for user in db.query(User).filter(User.id.in_(target_ids)).all()} if target_ids else {}
+    webhook_entries = [billing_webhook_monitor_response(log, users_by_id) for log in webhook_logs]
+    webhook_errors = [entry for entry in webhook_entries if entry.processing_status == "error"]
+    duplicate_webhooks = [entry for entry in webhook_entries if entry.duplicate]
+
+    alert_logs = (
+        db.query(AuditLog)
+        .filter(AuditLog.resource_type.in_(["admin_email_alert", "billing_pending_alert"]))
+        .order_by(AuditLog.created_at.desc())
+        .limit(100)
+        .all()
+    )
+    alerts = [admin_alert_response(log) for log in alert_logs]
+    unsent_alerts = [alert for alert in alerts if not alert.email_sent]
+    alert_errors = [alert for alert in alerts if alert.error]
+    latest_alert = latest_scheduled_billing_pending_alert(db)
+
+    return AdminOperationsSummaryResponse(
+        pending_financial_accounts=len(pending_accounts),
+        recent_webhook_events=len(webhook_entries),
+        webhook_error_events=len(webhook_errors),
+        duplicate_webhook_events=len(duplicate_webhooks),
+        recent_alerts=len(alerts),
+        unsent_alerts=len(unsent_alerts),
+        last_webhook_error=webhook_errors[0].error if webhook_errors else None,
+        last_webhook_error_at=webhook_errors[0].received_at if webhook_errors else None,
+        last_alert_error=alert_errors[0].error if alert_errors else None,
+        last_alert_error_at=alert_errors[0].created_at if alert_errors else None,
+        billing_alert_auto_enabled=settings.billing_pending_alerts_auto_enabled,
+        billing_last_scheduled_alert_at=latest_alert.created_at.isoformat() if latest_alert else None,
+        mercado_pago_ready=provider_configured("MERCADO_PAGO"),
+        billing_webhooks_enabled=settings.billing_webhooks_enabled,
+        smtp_configured=settings.smtp_configured,
+        admin_alert_recipient_configured=bool(settings.admin_alert_recipient),
     )
 
 
