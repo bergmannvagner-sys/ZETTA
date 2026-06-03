@@ -4,7 +4,7 @@ import { useState } from "react";
 import { Pressable, Text, View } from "react-native";
 
 import { Screen } from "@/components/screen";
-import { Card, ErrorText } from "@/components/ui";
+import { Card, ErrorText, Field } from "@/components/ui";
 import { apiRequest } from "@/lib/api";
 import { useAuthStore } from "@/store/auth-store";
 import { AdminAlertEntry } from "@/types/auth";
@@ -27,8 +27,9 @@ const triggerFilters: Array<{ label: string; value?: string }> = [
   { label: "Manuais", value: "manual" }
 ];
 
-function alertsPath(alertType?: string, emailSent?: boolean, trigger?: string): string {
+function alertsPath(search: string, alertType?: string, emailSent?: boolean, trigger?: string): string {
   const params = new URLSearchParams();
+  if (search.trim()) params.set("q", search.trim());
   if (alertType) params.set("alert_type", alertType);
   if (emailSent !== undefined) params.set("email_sent", String(emailSent));
   if (trigger) params.set("trigger", trigger);
@@ -54,12 +55,13 @@ function triggerLabel(value?: string | null): string {
 
 export default function AdminAlerts() {
   const user = useAuthStore((state) => state.user);
+  const [search, setSearch] = useState("");
   const [alertType, setAlertType] = useState<string | undefined>();
   const [emailSent, setEmailSent] = useState<boolean | undefined>();
   const [trigger, setTrigger] = useState<string | undefined>();
   const alerts = useQuery({
-    queryKey: ["admin-alerts", alertType, emailSent, trigger],
-    queryFn: () => apiRequest<AdminAlertEntry[]>(alertsPath(alertType, emailSent, trigger)),
+    queryKey: ["admin-alerts", search.trim(), alertType, emailSent, trigger],
+    queryFn: () => apiRequest<AdminAlertEntry[]>(alertsPath(search, alertType, emailSent, trigger)),
     enabled: user?.role === "SUPER_ADMIN"
   });
   const entries = alerts.data ?? [];
@@ -77,6 +79,8 @@ export default function AdminAlerts() {
           Historico dos avisos enviados por email para falhas de webhook e pendencias financeiras.
         </Text>
       </View>
+
+      <Field label="Buscar por assunto, evento, erro ou provider" value={search} onChangeText={setSearch} />
 
       <View className="gap-2">
         <View className="flex-row flex-wrap gap-2" accessibilityRole="tablist">

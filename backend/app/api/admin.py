@@ -614,6 +614,7 @@ def admin_alerts(
     alert_type: str | None = Query(default=None, max_length=40),
     email_sent: bool | None = Query(default=None),
     trigger: str | None = Query(default=None, max_length=40),
+    q: str | None = Query(default=None, max_length=120),
     limit: int = Query(default=80, ge=1, le=100),
     db: Session = Depends(get_db),
 ) -> list[AdminAlertResponse]:
@@ -633,6 +634,18 @@ def admin_alerts(
     if trigger:
         normalized_trigger = trigger.strip().lower()
         alerts = [alert for alert in alerts if (alert.trigger or "").lower() == normalized_trigger]
+    if q:
+        term = q.strip().lower()
+        alerts = [
+            alert
+            for alert in alerts
+            if term in (alert.subject or "").lower()
+            or term in (alert.provider or "").lower()
+            or term in (alert.event_id or "").lower()
+            or term in (alert.error or "").lower()
+            or term in alert.source.lower()
+            or term in alert.alert_type.lower()
+        ]
     return alerts
 
 
@@ -730,6 +743,7 @@ def billing_webhooks(
     _: Annotated[User, Depends(require_roles(UserRole.SUPER_ADMIN))],
     processing_status: str | None = Query(default=None, max_length=24),
     provider: str | None = Query(default=None, max_length=32),
+    q: str | None = Query(default=None, max_length=120),
     limit: int = Query(default=80, ge=1, le=100),
     db: Session = Depends(get_db),
 ) -> list[BillingWebhookMonitorResponse]:
@@ -744,6 +758,20 @@ def billing_webhooks(
     if provider:
         normalized_provider = provider.strip().upper()
         responses = [entry for entry in responses if (entry.provider or "").upper() == normalized_provider]
+    if q:
+        term = q.strip().lower()
+        responses = [
+            entry
+            for entry in responses
+            if term in (entry.event_id or "").lower()
+            or term in (entry.external_status or "").lower()
+            or term in (entry.subscription_status or "").lower()
+            or term in (entry.linked_user_email or "").lower()
+            or term in (entry.linked_user_name or "").lower()
+            or term in (entry.linked_user_id or "").lower()
+            or term in (entry.error or "").lower()
+            or term in (entry.provider or "").lower()
+        ]
     return responses
 
 

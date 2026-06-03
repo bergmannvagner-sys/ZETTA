@@ -947,6 +947,13 @@ def test_super_admin_can_manage_paid_subscription_status(monkeypatch) -> None:
     assert manual_pending_alerts.status_code == 200
     assert manual_pending_alerts.json()[0]["trigger"] == "manual"
 
+    searched_pending_alerts = client.get(
+        "/admin/alerts?alert_type=PENDING_FINANCIAL&q=pendencia%20financeira",
+        headers=admin_headers,
+    )
+    assert searched_pending_alerts.status_code == 200
+    assert searched_pending_alerts.json()[0]["alert_type"] == "PENDING_FINANCIAL"
+
     db = SessionLocal()
     try:
         scheduled_alert = run_billing_pending_alert(db, days=0, limit=50, trigger="scheduled")
@@ -1319,6 +1326,17 @@ def test_billing_webhook_requires_valid_signature_and_is_idempotent() -> None:
         assert missing_entry["processing_status"] == "error"
         assert missing_entry["error"] == "Billing account not found"
         assert missing_entry["linked_user_email"] is None
+
+        searched_monitor = client.get("/admin/billing-webhooks?q=webhook-company@example.com", headers=admin_headers)
+        assert searched_monitor.status_code == 200
+        assert any(entry["event_id"] == event_id for entry in searched_monitor.json())
+
+        searched_error_monitor = client.get(
+            "/admin/billing-webhooks?q=Billing%20account%20not%20found",
+            headers=admin_headers,
+        )
+        assert searched_error_monitor.status_code == 200
+        assert any(entry["event_id"] == f"missing_{company_id}" for entry in searched_error_monitor.json())
 
         alerts = client.get("/admin/alerts?alert_type=WEBHOOK_FAILURE", headers=admin_headers)
         assert alerts.status_code == 200

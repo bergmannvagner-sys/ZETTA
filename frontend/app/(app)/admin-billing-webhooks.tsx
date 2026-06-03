@@ -4,7 +4,7 @@ import { useState } from "react";
 import { Pressable, Text, View } from "react-native";
 
 import { Screen } from "@/components/screen";
-import { Card, ErrorText } from "@/components/ui";
+import { Card, ErrorText, Field } from "@/components/ui";
 import { apiRequest } from "@/lib/api";
 import { useAuthStore } from "@/store/auth-store";
 import { BillingWebhookMonitorEntry } from "@/types/auth";
@@ -16,8 +16,9 @@ const statusFilters: Array<{ label: string; value?: string }> = [
   { label: "Erros", value: "error" }
 ];
 
-function webhooksPath(status?: string): string {
+function webhooksPath(search: string, status?: string): string {
   const params = new URLSearchParams();
+  if (search.trim()) params.set("q", search.trim());
   if (status) params.set("processing_status", status);
   params.set("provider", "MERCADO_PAGO");
   params.set("limit", "100");
@@ -48,10 +49,11 @@ function statusClasses(value: string, duplicate: boolean): string {
 
 export default function AdminBillingWebhooks() {
   const user = useAuthStore((state) => state.user);
+  const [search, setSearch] = useState("");
   const [selectedStatus, setSelectedStatus] = useState<string | undefined>();
   const webhooks = useQuery({
-    queryKey: ["admin-billing-webhooks", selectedStatus],
-    queryFn: () => apiRequest<BillingWebhookMonitorEntry[]>(webhooksPath(selectedStatus)),
+    queryKey: ["admin-billing-webhooks", search.trim(), selectedStatus],
+    queryFn: () => apiRequest<BillingWebhookMonitorEntry[]>(webhooksPath(search, selectedStatus)),
     enabled: user?.role === "SUPER_ADMIN"
   });
   const entries: BillingWebhookMonitorEntry[] = webhooks.data ?? [];
@@ -69,6 +71,8 @@ export default function AdminBillingWebhooks() {
           Monitor operacional dos ultimos eventos de pagamento recebidos. Esta tela nao exibe segredo nem payload bruto.
         </Text>
       </View>
+
+      <Field label="Buscar por email, evento, status ou erro" value={search} onChangeText={setSearch} />
 
       <View className="flex-row flex-wrap gap-2" accessibilityRole="tablist">
         {statusFilters.map((filter) => {

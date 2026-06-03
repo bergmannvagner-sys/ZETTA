@@ -40,6 +40,11 @@ export default function Profile() {
       {user?.role === "SUPER_ADMIN" ? (
         <>
           <Button
+            label="Resumo operacional"
+            tone="soft"
+            onPress={() => router.push("/(app)/admin-operations" as never)}
+          />
+          <Button
             label="Contas pendentes"
             tone="soft"
             onPress={() => router.push("/(app)/admin-pending-accounts")}
