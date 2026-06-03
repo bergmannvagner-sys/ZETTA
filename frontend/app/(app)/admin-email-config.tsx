@@ -6,7 +6,7 @@ import { Screen } from "@/components/screen";
 import { Card, ErrorText } from "@/components/ui";
 import { apiRequest } from "@/lib/api";
 import { useAuthStore } from "@/store/auth-store";
-import { EmailConfig } from "@/types/auth";
+import { BillingPendingAlertStatus, EmailConfig } from "@/types/auth";
 
 function StatusLine({ label, ok }: { label: string; ok: boolean }) {
   return (
@@ -19,11 +19,27 @@ function StatusLine({ label, ok }: { label: string; ok: boolean }) {
   );
 }
 
+function formatDateTime(value?: string | null) {
+  if (!value) {
+    return "Sem registro";
+  }
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) {
+    return value;
+  }
+  return date.toLocaleString("pt-BR");
+}
+
 export default function AdminEmailConfig() {
   const user = useAuthStore((state) => state.user);
   const config = useQuery({
     queryKey: ["admin-email-config"],
     queryFn: () => apiRequest<EmailConfig>("/admin/email-config"),
+    enabled: user?.role === "SUPER_ADMIN"
+  });
+  const alertStatus = useQuery({
+    queryKey: ["admin-billing-pending-alert-status"],
+    queryFn: () => apiRequest<BillingPendingAlertStatus>("/admin/billing-pending-alert-status"),
     enabled: user?.role === "SUPER_ADMIN"
   });
 
@@ -32,6 +48,7 @@ export default function AdminEmailConfig() {
   }
 
   const data = config.data;
+  const status = alertStatus.data;
 
   return (
     <Screen>
@@ -44,6 +61,7 @@ export default function AdminEmailConfig() {
       </View>
 
       <ErrorText message={config.error?.message} />
+      <ErrorText message={alertStatus.error?.message} />
       {config.isLoading ? <Text className="text-muted">Carregando...</Text> : null}
 
       {data ? (
@@ -67,6 +85,38 @@ export default function AdminEmailConfig() {
               {data.billing_pending_alerts_auto_interval_hours}h, limite {data.billing_pending_alerts_auto_limit}.
             </Text>
           </Card>
+
+          {status ? (
+            <Card>
+              <Text className="text-lg font-semibold text-white">Automacao de pendencias financeiras</Text>
+              <Text className="text-sm leading-5 text-muted">
+                Rotina {status.auto_enabled ? "ativa" : "inativa"}: {status.days_threshold} dia(s), intervalo de{" "}
+                {status.interval_hours}h, limite {status.limit}.
+              </Text>
+              <StatusLine label="Destinatario administrativo" ok={status.admin_recipient_configured} />
+              <StatusLine label="Execucao recente registrada" ok={status.recent_scheduled_alert_exists} />
+              <Text className="text-sm leading-6 text-muted">
+                Ultima execucao: {formatDateTime(status.last_scheduled_alert_at)}
+              </Text>
+              <Text className="text-sm leading-6 text-muted">
+                Proximo disparo permitido: {formatDateTime(status.next_allowed_alert_at)}
+              </Text>
+              <Text className="text-sm leading-6 text-muted">
+                Ultimo resultado: {status.last_scheduled_alerted_accounts ?? 0} alertada(s),{" "}
+                {status.last_scheduled_pending_accounts ?? 0} pendente(s),{" "}
+                {status.last_scheduled_checked_accounts ?? 0} verificada(s).
+              </Text>
+              <Text className="text-xs leading-5 text-muted">
+                Email no ultimo agendamento:{" "}
+                {status.last_scheduled_email_sent === null || status.last_scheduled_email_sent === undefined
+                  ? "sem registro"
+                  : status.last_scheduled_email_sent
+                    ? "enviado"
+                    : "nao enviado"}
+                .
+              </Text>
+            </Card>
+          ) : null}
 
           <Card>
             <Text className="text-lg font-semibold text-white">Checklist Render</Text>

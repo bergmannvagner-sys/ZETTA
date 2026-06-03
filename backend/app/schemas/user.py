@@ -72,6 +72,21 @@ class BillingPendingAlertResponse(BaseModel):
     accounts: list[SubscriptionAccountResponse]
 
 
+class BillingPendingAlertStatusResponse(BaseModel):
+    auto_enabled: bool
+    days_threshold: int
+    interval_hours: int
+    limit: int
+    admin_recipient_configured: bool
+    last_scheduled_alert_at: str | None = None
+    last_scheduled_email_sent: bool | None = None
+    last_scheduled_checked_accounts: int | None = None
+    last_scheduled_pending_accounts: int | None = None
+    last_scheduled_alerted_accounts: int | None = None
+    recent_scheduled_alert_exists: bool
+    next_allowed_alert_at: str | None = None
+
+
 class CommercialPlanResponse(BaseModel):
     role: UserRole
     plan: SubscriptionPlan

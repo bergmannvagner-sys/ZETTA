@@ -947,6 +947,15 @@ def test_super_admin_can_manage_paid_subscription_status(monkeypatch) -> None:
     finally:
         db.close()
 
+    alert_status = client.get("/admin/billing-pending-alert-status", headers=admin_headers)
+    assert alert_status.status_code == 200
+    alert_status_payload = alert_status.json()
+    assert alert_status_payload["auto_enabled"] is False
+    assert alert_status_payload["last_scheduled_email_sent"] is True
+    assert alert_status_payload["last_scheduled_alerted_accounts"] >= 1
+    assert alert_status_payload["recent_scheduled_alert_exists"] is True
+    assert alert_status_payload["next_allowed_alert_at"]
+
     config = client.get("/admin/billing-config", headers=admin_headers)
     assert config.status_code == 200
     config_payload = config.json()

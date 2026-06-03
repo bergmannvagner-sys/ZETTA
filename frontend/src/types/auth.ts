@@ -76,6 +76,21 @@ export type BillingPendingAlert = {
   accounts: SubscriptionAccount[];
 };
 
+export type BillingPendingAlertStatus = {
+  auto_enabled: boolean;
+  days_threshold: number;
+  interval_hours: number;
+  limit: number;
+  admin_recipient_configured: boolean;
+  last_scheduled_alert_at?: string | null;
+  last_scheduled_email_sent?: boolean | null;
+  last_scheduled_checked_accounts?: number | null;
+  last_scheduled_pending_accounts?: number | null;
+  last_scheduled_alerted_accounts?: number | null;
+  recent_scheduled_alert_exists: boolean;
+  next_allowed_alert_at?: string | null;
+};
+
 export type CommercialPlan = {
   role: UserRole;
   plan: SubscriptionPlan;

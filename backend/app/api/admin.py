@@ -15,6 +15,7 @@ from app.schemas.user import (
     AuditLogResponse,
     BillingConfigResponse,
     BillingPendingAlertResponse,
+    BillingPendingAlertStatusResponse,
     BillingReferenceUpdateRequest,
     BillingWebhookMonitorResponse,
     CommercialPlanResponse,
@@ -92,6 +93,22 @@ def audit_metadata_bool(metadata: dict[str, object] | None, key: str) -> bool:
     if not metadata:
         return False
     return bool(metadata.get(key))
+
+
+def audit_metadata_int(metadata: dict[str, object] | None, key: str) -> int | None:
+    if not metadata:
+        return None
+    value = metadata.get(key)
+    if isinstance(value, bool):
+        return None
+    if isinstance(value, int):
+        return value
+    if isinstance(value, str):
+        try:
+            return int(value)
+        except ValueError:
+            return None
+    return None
 
 
 def latest_audit_logs_by_user(
@@ -537,6 +554,53 @@ def recent_scheduled_billing_pending_alert_exists(db: Session, *, interval_hours
         )
         .first()
         is not None
+    )
+
+
+def latest_scheduled_billing_pending_alert(db: Session) -> AuditLog | None:
+    return (
+        db.query(AuditLog)
+        .filter(
+            AuditLog.resource_type == "billing_pending_alert",
+            AuditLog.metadata_json.contains('"trigger": "scheduled"'),
+        )
+        .order_by(AuditLog.created_at.desc())
+        .first()
+    )
+
+
+@router.get("/billing-pending-alert-status", response_model=BillingPendingAlertStatusResponse)
+def billing_pending_alert_status(
+    _: Annotated[User, Depends(require_roles(UserRole.SUPER_ADMIN))],
+    db: Session = Depends(get_db),
+) -> BillingPendingAlertStatusResponse:
+    settings = get_settings()
+    latest_alert = latest_scheduled_billing_pending_alert(db)
+    metadata = parse_audit_metadata(latest_alert.metadata_json if latest_alert else None)
+    last_scheduled_alert_at = latest_alert.created_at.isoformat() if latest_alert else None
+    next_allowed_alert_at = None
+    if latest_alert and settings.billing_pending_alerts_auto_interval_hours > 0:
+        next_allowed = aware_datetime(latest_alert.created_at) + timedelta(
+            hours=settings.billing_pending_alerts_auto_interval_hours
+        )
+        next_allowed_alert_at = next_allowed.isoformat()
+
+    return BillingPendingAlertStatusResponse(
+        auto_enabled=settings.billing_pending_alerts_auto_enabled,
+        days_threshold=settings.billing_pending_alerts_auto_days,
+        interval_hours=settings.billing_pending_alerts_auto_interval_hours,
+        limit=settings.billing_pending_alerts_auto_limit,
+        admin_recipient_configured=bool(settings.admin_alert_recipient),
+        last_scheduled_alert_at=last_scheduled_alert_at,
+        last_scheduled_email_sent=audit_metadata_bool(metadata, "email_sent") if latest_alert else None,
+        last_scheduled_checked_accounts=audit_metadata_int(metadata, "checked_accounts"),
+        last_scheduled_pending_accounts=audit_metadata_int(metadata, "pending_accounts"),
+        last_scheduled_alerted_accounts=audit_metadata_int(metadata, "alerted_accounts"),
+        recent_scheduled_alert_exists=recent_scheduled_billing_pending_alert_exists(
+            db,
+            interval_hours=settings.billing_pending_alerts_auto_interval_hours,
+        ),
+        next_allowed_alert_at=next_allowed_alert_at,
     )
 
 
