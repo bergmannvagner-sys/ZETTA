@@ -62,6 +62,7 @@ export type SubscriptionAccount = AuthUser & {
   billing_last_payment_received_at?: string | null;
   billing_activation_source: "WEBHOOK_PAYMENT" | "ADMIN_OR_MANUAL" | "NOT_ACTIVE" | string;
   billing_activation_blocker?: string | null;
+  billing_financial_pending_reason?: string | null;
   created_at: string;
 };
 

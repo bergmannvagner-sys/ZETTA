@@ -50,6 +50,11 @@ export default function Profile() {
             onPress={() => router.push("/(app)/admin-subscriptions" as never)}
           />
           <Button
+            label="Pendencias financeiras"
+            tone="soft"
+            onPress={() => router.push("/(app)/admin-billing-pending" as never)}
+          />
+          <Button
             label="Contas moderadas"
             tone="soft"
             onPress={() => router.push("/(app)/admin-moderated-accounts" as never)}

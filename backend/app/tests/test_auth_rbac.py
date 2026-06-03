@@ -889,6 +889,17 @@ def test_super_admin_can_manage_paid_subscription_status(monkeypatch) -> None:
     assert "billing_last_checkout_at" in company_payload
     assert "billing_last_webhook_status" in company_payload
 
+    pending_billing = client.get("/admin/billing-pending-accounts", headers=admin_headers)
+    assert pending_billing.status_code == 200
+    pending_billing_payload = pending_billing.json()
+    company_pending_payload = next(
+        account for account in pending_billing_payload if account["email"] == "billing-company@example.com"
+    )
+    assert company_pending_payload["billing_financial_pending_reason"] == (
+        "Conta ativa manualmente, mas sem webhook de pagamento confirmado."
+    )
+    assert company_pending_payload["billing_activation_source"] == "ADMIN_OR_MANUAL"
+
     audit = client.get("/admin/audit-logs?resource_type=billing_reference&limit=10", headers=admin_headers)
     assert audit.status_code == 200
     billing_reference_log = next(entry for entry in audit.json() if entry["target_user_id"] == company_id)

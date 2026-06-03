@@ -148,6 +148,11 @@ def billing_activation_source(
     return "ADMIN_OR_MANUAL"
 
 
+def has_confirmed_webhook_payment(latest_webhook: AuditLog | None) -> bool:
+    webhook_status = audit_external_status(latest_webhook)
+    return bool(webhook_status and STATUS_MAP.get(webhook_status.strip().lower()) == SubscriptionStatus.ACTIVE)
+
+
 def billing_activation_blocker(
     user: User,
     *,
@@ -177,6 +182,22 @@ def billing_activation_blocker(
     if mapped == SubscriptionStatus.PENDING:
         return f"Pagamento ainda pendente no Mercado Pago: {webhook_status}."
     return "Assinatura ainda nao ativa apesar de webhook recebido; revisar manualmente."
+
+
+def billing_financial_pending_reason(
+    user: User,
+    *,
+    latest_checkout: AuditLog | None,
+    latest_webhook: AuditLog | None,
+) -> str | None:
+    if user.status != AccountStatus.ACTIVE:
+        return None
+    if has_confirmed_webhook_payment(latest_webhook):
+        return None
+    if user.subscription_status == SubscriptionStatus.ACTIVE:
+        return "Conta ativa manualmente, mas sem webhook de pagamento confirmado."
+    blocker = billing_activation_blocker(user, latest_checkout=latest_checkout, latest_webhook=latest_webhook)
+    return blocker or "Conta aprovada sem pagamento confirmado por webhook."
 
 
 def subscription_account_response(
@@ -214,6 +235,11 @@ def subscription_account_response(
         billing_last_payment_received_at=latest_webhook.created_at.isoformat() if payment_received and latest_webhook else None,
         billing_activation_source=billing_activation_source(user, latest_webhook),
         billing_activation_blocker=billing_activation_blocker(
+            user,
+            latest_checkout=latest_checkout,
+            latest_webhook=latest_webhook,
+        ),
+        billing_financial_pending_reason=billing_financial_pending_reason(
             user,
             latest_checkout=latest_checkout,
             latest_webhook=latest_webhook,
@@ -307,6 +333,40 @@ def subscriptions(
         )
         for user in users
     ]
+
+
+@router.get("/billing-pending-accounts", response_model=list[SubscriptionAccountResponse])
+def billing_pending_accounts(
+    _: Annotated[User, Depends(require_roles(UserRole.SUPER_ADMIN))],
+    q: str | None = Query(default=None, max_length=120),
+    role: UserRole | None = Query(default=None),
+    db: Session = Depends(get_db),
+) -> list[SubscriptionAccountResponse]:
+    query = db.query(User).filter(User.role.in_(PAID_ADMIN_ROLES), User.status == AccountStatus.ACTIVE)
+    if role:
+        if role not in PAID_ADMIN_ROLES:
+            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Role has no paid subscription")
+        query = query.filter(User.role == role)
+    if q:
+        like = f"%{q.strip().lower()}%"
+        query = query.filter((User.email.ilike(like)) | (User.full_name.ilike(like)))
+    users = query.order_by(User.updated_at.desc(), User.created_at.desc()).all()
+    user_ids = [user.id for user in users]
+    latest_checkouts = latest_audit_logs_by_user(
+        db,
+        user_ids=user_ids,
+        resource_type="mercado_pago_checkout_preference",
+    )
+    latest_webhooks = latest_audit_logs_by_user(db, user_ids=user_ids, resource_type="billing_webhook")
+    responses = [
+        subscription_account_response(
+            user,
+            latest_checkout=latest_checkouts.get(user.id),
+            latest_webhook=latest_webhooks.get(user.id),
+        )
+        for user in users
+    ]
+    return [response for response in responses if response.billing_financial_pending_reason]
 
 
 @router.get("/moderated-accounts", response_model=list[SubscriptionAccountResponse])

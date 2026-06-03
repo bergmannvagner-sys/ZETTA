@@ -54,6 +54,7 @@ export default function AppLayout() {
       <Stack.Screen name="admin-pending-accounts" options={{ title: "Contas pendentes" }} />
       <Stack.Screen name="admin-moderated-accounts" options={{ title: "Contas moderadas" }} />
       <Stack.Screen name="admin-subscriptions" options={{ title: "Assinaturas" }} />
+      <Stack.Screen name="admin-billing-pending" options={{ title: "Pendencias financeiras" }} />
       <Stack.Screen name="admin-commercial-plans" options={{ title: "Planos comerciais" }} />
       <Stack.Screen name="admin-billing-config" options={{ title: "Pagamentos" }} />
       <Stack.Screen name="admin-billing-webhooks" options={{ title: "Webhooks" }} />

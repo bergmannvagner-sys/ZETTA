@@ -58,6 +58,7 @@ class SubscriptionAccountResponse(BaseModel):
     billing_last_payment_received_at: str | None = None
     billing_activation_source: str
     billing_activation_blocker: str | None = None
+    billing_financial_pending_reason: str | None = None
     created_at: str
 
 
