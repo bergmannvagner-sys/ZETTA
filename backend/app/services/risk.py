@@ -1,13 +1,16 @@
+import re
+import unicodedata
+
+
 CRISIS_TERMS = {
     "suicidio",
-    "suicídio",
     "me matar",
     "quero morrer",
     "acabar com tudo",
     "autoagressao",
-    "autoagressão",
     "sem saida",
-    "sem saída",
+    "tirar minha vida",
+    "nao aguento mais viver",
 }
 
 ELEVATED_TERMS = {
@@ -15,13 +18,26 @@ ELEVATED_TERMS = {
     "ansioso",
     "ansiosa",
     "panico",
-    "pânico",
     "desespero",
+    "crise",
+    "burnout",
+    "exausto",
+    "exausta",
+    "esgotado",
+    "esgotada",
+    "sobrecarregado",
+    "sobrecarregada",
 }
 
 
+def normalize_text(value: str) -> str:
+    normalized = unicodedata.normalize("NFKD", value.casefold())
+    without_accents = "".join(character for character in normalized if not unicodedata.combining(character))
+    return re.sub(r"\s+", " ", without_accents).strip()
+
+
 def classify_risk(message: str) -> str:
-    normalized = message.lower()
+    normalized = normalize_text(message)
     if any(term in normalized for term in CRISIS_TERMS):
         return "CRISIS"
     if any(term in normalized for term in ELEVATED_TERMS):

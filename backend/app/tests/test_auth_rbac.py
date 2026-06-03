@@ -26,7 +26,9 @@ from app.services.payment_adapters import (
     get_payment_adapter,
     validate_billing_reference,
 )
+from app.services.risk import classify_risk, normalize_text
 from app.services.rate_limit import clear_rate_limits
+from app.services.scope import is_in_emotional_scope
 
 Base.metadata.create_all(bind=engine)
 client = TestClient(app)
@@ -37,6 +39,15 @@ def reset_rate_limiter():
     clear_rate_limits()
     yield
     clear_rate_limits()
+
+
+def test_emotional_scope_and_risk_normalize_accents_and_block_off_topic() -> None:
+    assert normalize_text("Pânico e não consigo respirar") == "panico e nao consigo respirar"
+    assert classify_risk("estou em pânico") == "ELEVATED"
+    assert classify_risk("quero morrer e estou sem saída") == "CRISIS"
+    assert is_in_emotional_scope("me sinto mal e cansado") is True
+    assert is_in_emotional_scope("Hacker sistemas") is False
+    assert is_in_emotional_scope("sistemas me deixam ansioso") is True
 
 
 def test_public_registration_blocks_super_admin() -> None:
@@ -1476,7 +1487,7 @@ def test_mercado_pago_webhook_validates_signature_and_updates_subscription(monke
                     "id": payment_id,
                     "status": "approved",
                     "external_reference": company_id,
-                    "payer": {"email": "mp-webhook-company@example.com"},
+                    "payer": {"email": "payer-mercado@example.com"},
                 }
 
         def fake_mercado_pago_get(url, **kwargs):
@@ -1507,6 +1518,7 @@ def test_mercado_pago_webhook_validates_signature_and_updates_subscription(monke
             company = db.get(User, company_id)
             assert company is not None
             assert company.subscription_status == SubscriptionStatus.ACTIVE
+            assert company.billing_customer_id == "payer-mercado@example.com"
             assert company.billing_last_event_id == payment_id
         finally:
             db.close()

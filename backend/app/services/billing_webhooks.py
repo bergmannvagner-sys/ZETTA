@@ -45,6 +45,8 @@ def find_billing_user(db: Session, payload: BillingWebhookPayload) -> User | Non
     filters = []
     if payload.subscription_id:
         filters.append(User.billing_subscription_id == payload.subscription_id)
+        if payload.provider == "MERCADO_PAGO":
+            filters.append(User.id == payload.subscription_id)
     if payload.customer_id:
         filters.append(User.billing_customer_id == payload.customer_id)
     if not filters:
