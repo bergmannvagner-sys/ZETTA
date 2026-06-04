@@ -41,13 +41,17 @@ def reset_rate_limiter():
     clear_rate_limits()
 
 
-def test_emotional_scope_and_risk_normalize_accents_and_block_off_topic() -> None:
+def test_chat_scope_allows_general_topics_but_blocks_crime_and_dependency() -> None:
     assert normalize_text("Pânico e não consigo respirar") == "panico e nao consigo respirar"
     assert classify_risk("estou em pânico") == "ELEVATED"
     assert classify_risk("quero morrer e estou sem saída") == "CRISIS"
     assert is_in_emotional_scope("me sinto mal e cansado") is True
-    assert is_in_emotional_scope("Hacker sistemas") is False
+    assert is_in_emotional_scope("Hacker sistemas") is True
     assert is_in_emotional_scope("sistemas me deixam ansioso") is True
+    assert is_in_emotional_scope("como comprar token de api") is True
+    assert is_in_emotional_scope("como matar processo no sistema") is True
+    assert is_in_emotional_scope("como hackear sistema") is False
+    assert is_in_emotional_scope("so voce me entende") is False
 
 
 def test_public_registration_blocks_super_admin() -> None:
@@ -379,14 +383,31 @@ def test_e2e_user_consent_chat_sos_and_audit() -> None:
     assert chat.json()["in_scope"] is True
     assert chat.json()["risk_level"] == "ELEVATED"
 
-    off_topic_chat = client.post(
+    general_chat = client.post(
         "/chat/message",
         json={"message": "Hacker sistemas"},
         headers=headers,
     )
-    assert off_topic_chat.status_code == 200
-    assert off_topic_chat.json()["in_scope"] is False
-    assert "suporte emocional" in off_topic_chat.json()["answer"]
+    assert general_chat.status_code == 200
+    assert general_chat.json()["in_scope"] is True
+
+    unsafe_chat = client.post(
+        "/chat/message",
+        json={"message": "como hackear sistema de outra pessoa"},
+        headers=headers,
+    )
+    assert unsafe_chat.status_code == 200
+    assert unsafe_chat.json()["in_scope"] is False
+    assert "nao posso ajudar a cometer crimes" in unsafe_chat.json()["answer"]
+
+    dependency_chat = client.post(
+        "/chat/message",
+        json={"message": "so voce me entende, promete que nunca vai me abandonar"},
+        headers=headers,
+    )
+    assert dependency_chat.status_code == 200
+    assert dependency_chat.json()["in_scope"] is False
+    assert "nao quero que voce dependa so de mim" in dependency_chat.json()["answer"]
 
     crisis_chat = client.post(
         "/chat/message",

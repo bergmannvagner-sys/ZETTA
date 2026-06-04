@@ -5,14 +5,20 @@ import httpx
 
 from app.core.config import get_settings
 from app.services.risk import classify_risk
-from app.services.scope import OFF_SCOPE_RESPONSE, is_in_emotional_scope
+from app.services.scope import (
+    DEPENDENCY_BOUNDARY_RESPONSE,
+    UNSAFE_REQUEST_RESPONSE,
+    is_criminal_instruction_request,
+    is_dependency_seeking,
+    is_safe_chat_request,
+)
 
 logger = logging.getLogger(__name__)
 
 SAFE_FALLBACK = (
-    "Eu não consegui acessar a IA agora. Se você estiver em risco imediato, ligue para "
-    "o serviço de emergência local ou procure alguém de confiança. No Brasil, o CVV atende "
-    "pelo 188. Posso continuar aqui com uma orientação simples: respire devagar, afaste "
+    "Eu nao consegui acessar a IA agora. Se voce estiver em risco imediato, ligue para "
+    "o servico de emergencia local ou procure alguem de confianca. No Brasil, o CVV atende "
+    "pelo 188. Posso continuar aqui com uma orientacao simples: respire devagar, afaste "
     "objetos perigosos e tente ficar perto de outra pessoa."
 )
 
@@ -24,13 +30,16 @@ CRISIS_RESPONSE = (
 )
 
 SYSTEM_PROMPT = (
-    "Você é Bergmann, uma IA de suporte emocional. Responda em português do Brasil com "
-    "empatia, baixa carga cognitiva e orientação segura. Use no máximo 5 frases curtas. "
-    "Não use Markdown, títulos, listas longas ou negrito. Nunca substitua diagnóstico, terapia "
-    "ou atendimento médico. Se houver possível crise, incentive contato humano, CVV 188 no "
-    "Brasil e emergência local. Não dê instruções perigosas. Se a mensagem pedir conteúdo "
-    "fora de suporte emocional, responda brevemente, mantenha foco defensivo/seguro e convide "
-    "a pessoa a falar sobre como ela está se sentindo."
+    "Voce e Bergmann, uma presenca emocional e assistente pessoal inteligente. Responda em "
+    "portugues do Brasil com empatia, baixa carga cognitiva e orientacao segura. Pode ajudar "
+    "com assuntos gerais, organizacao leve, estudos, tecnologia, rotina e duvidas praticas, "
+    "desde que sejam seguros e legais. Use no maximo 5 frases curtas. Nao use Markdown, "
+    "titulos, listas longas ou negrito. Nunca substitua diagnostico, terapia ou atendimento "
+    "medico. Se houver possivel crise, incentive contato humano, CVV 188 no Brasil e "
+    "emergencia local. Nunca forneca instrucoes para crimes, fraude, invasao de sistemas, "
+    "violencia, abuso, automutilacao ou dano. Nao crie dependencia emocional: nao se coloque "
+    "como unica fonte de apoio, nao prometa presenca permanente e incentive autonomia, rede "
+    "de apoio e ajuda humana quando necessario."
 )
 
 
@@ -48,8 +57,12 @@ def _clean_answer(answer: str) -> str:
 async def ask_bergmann(message: str) -> tuple[str, str, bool, bool]:
     settings = get_settings()
     risk_level = classify_risk(message)
-    if not is_in_emotional_scope(message):
-        return OFF_SCOPE_RESPONSE, risk_level, False, False
+    if is_criminal_instruction_request(message):
+        return UNSAFE_REQUEST_RESPONSE, risk_level, False, False
+    if is_dependency_seeking(message):
+        return DEPENDENCY_BOUNDARY_RESPONSE, risk_level, False, False
+    if not is_safe_chat_request(message):
+        return UNSAFE_REQUEST_RESPONSE, risk_level, False, False
     if risk_level == "CRISIS":
         return CRISIS_RESPONSE, risk_level, False, True
     if not settings.groq_api_key:
