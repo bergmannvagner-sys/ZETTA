@@ -10,6 +10,7 @@ class BillingWebhookPayload(BaseModel):
     external_status: str = Field(min_length=2, max_length=64)
     customer_id: str | None = Field(default=None, max_length=120)
     subscription_id: str | None = Field(default=None, max_length=120)
+    account_reference_id: str | None = Field(default=None, max_length=120)
     occurred_at: datetime | None = None
 
 

@@ -144,7 +144,8 @@ def billing_payload_from_mercado_pago_payment(payment: dict[str, Any]) -> Billin
         event_id=payment_id,
         external_status=status,
         customer_id=payer_email,
-        subscription_id=_as_text(payment.get("external_reference")),
+        subscription_id=_as_text(payment.get("preference_id")) or _metadata_value(payment, "preference_id"),
+        account_reference_id=_as_text(payment.get("external_reference")) or _metadata_value(payment, "user_id"),
     )
 
 
@@ -168,4 +169,11 @@ def _payer_email(payment: dict[str, Any]) -> str | None:
     payer = payment.get("payer")
     if isinstance(payer, dict):
         return _as_text(payer.get("email"))
+    return None
+
+
+def _metadata_value(payment: dict[str, Any], key: str) -> str | None:
+    metadata = payment.get("metadata")
+    if isinstance(metadata, dict):
+        return _as_text(metadata.get(key))
     return None

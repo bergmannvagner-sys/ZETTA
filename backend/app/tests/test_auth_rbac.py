@@ -1525,6 +1525,7 @@ def test_mercado_pago_webhook_validates_signature_and_updates_subscription(monke
             assert company is not None
             assert company.subscription_status == SubscriptionStatus.ACTIVE
             assert company.billing_customer_id == "payer-mercado@example.com"
+            assert company.billing_subscription_id == "pref-mp-company"
             assert company.billing_last_event_id == payment_id
         finally:
             db.close()

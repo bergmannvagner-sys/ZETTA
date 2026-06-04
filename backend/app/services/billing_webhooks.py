@@ -43,6 +43,8 @@ def map_external_status(value: str) -> SubscriptionStatus | None:
 
 def find_billing_user(db: Session, payload: BillingWebhookPayload) -> User | None:
     filters = []
+    if payload.account_reference_id:
+        filters.append(User.id == payload.account_reference_id)
     if payload.subscription_id:
         filters.append(User.billing_subscription_id == payload.subscription_id)
         if payload.provider == "MERCADO_PAGO":
@@ -104,6 +106,7 @@ def apply_billing_webhook(db: Session, payload: BillingWebhookPayload) -> tuple[
             "provider": payload.provider,
             "event_id": payload.event_id,
             "external_status": payload.external_status,
+            "has_account_reference_id": bool(payload.account_reference_id),
             "previous_status": previous_status.value,
             "subscription_status": user.subscription_status.value,
             "processing_status": "processed",
