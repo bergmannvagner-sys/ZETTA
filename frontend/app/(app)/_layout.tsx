@@ -34,7 +34,7 @@ export default function AppLayout() {
         contentStyle: { backgroundColor: "#0A0F1F" }
       }}
     >
-      <Stack.Screen name="home" options={{ title: "Bergmann" }} />
+      <Stack.Screen name="home" options={{ headerShown: false, title: "Bergmann" }} />
       <Stack.Screen name="chat" options={{ title: "Conversar" }} />
       <Stack.Screen name="journal" options={{ title: "Diario emocional" }} />
       <Stack.Screen name="mood" options={{ title: "Humor" }} />

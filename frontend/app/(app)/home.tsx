@@ -18,7 +18,7 @@ export default function Home() {
   const { width } = useWindowDimensions();
   const user = useAuthStore((state) => state.user);
   const firstName = user?.full_name.split(" ")[0] ?? "voce";
-  const orbSize = Math.min(276, Math.max(224, width * 0.58));
+  const orbSize = Math.min(248, Math.max(196, width * 0.52));
   const paidAccess = hasPaidAccess(user);
   const paidRoleBlocked = isPaidRole(user?.role) && !paidAccess;
   const careLinks = [
@@ -36,11 +36,10 @@ export default function Home() {
 
   return (
     <Screen>
-      <View className="items-center gap-2 pt-3">
-        <BrandLockup compact showTagline={false} />
-        <Text className="text-center text-xs font-semibold tracking-[4px] text-lilac">PRESENCA</Text>
+      <View className="items-center gap-2 pt-2">
+        <BrandLockup compact />
       </View>
-      <View className="items-center gap-5 py-1">
+      <View className="items-center gap-4 py-1">
         <AnimatedOrb state="idle" size={orbSize} />
         <View className="items-center gap-2">
           <Text className="text-center text-base text-muted">Oi, {firstName}.</Text>
