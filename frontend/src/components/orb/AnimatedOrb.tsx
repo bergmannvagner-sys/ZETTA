@@ -21,19 +21,19 @@ function AnimatedOrbComponent({
   const haloColors = orbPalette.halo;
   const waveColors = orbPalette.wave;
   const inputRange = orbStateOrder.map((_, index) => index);
-  const particleBox = orbSize * 0.74;
+  const particleBox = orbSize * 0.88;
 
   const haloStyle = useAnimatedStyle(() => {
     const level = clampAudioLevel(audio.value);
     const breathing = reducedMotion ? 0.5 : breath.value;
     return {
-      opacity: motion.glowOpacity + level * motion.audioInfluence * 0.7,
+      opacity: state === "crisis" ? 0.16 : motion.glowOpacity * 0.86 + level * motion.audioInfluence * 0.55,
       transform: [
         {
           scale:
-            1.1 +
-            breathing * motion.breathScale +
-            level * motion.audioInfluence * 0.7
+            1.02 +
+            breathing * motion.breathScale * 0.7 +
+            level * motion.audioInfluence * 0.5
         }
       ],
       backgroundColor: interpolateColor(stateValue.value, inputRange, haloColors)
@@ -43,7 +43,7 @@ function AnimatedOrbComponent({
   const outerRingStyle = useAnimatedStyle(() => {
     const flowing = reducedMotion ? 0.35 : shimmer.value;
     return {
-      opacity: state === "crisis" ? 0.12 : state === "silent_presence" ? 0.08 : 0.16 + flowing * 0.08,
+      opacity: state === "crisis" ? 0.08 : state === "silent_presence" ? 0.08 : 0.22 + flowing * 0.1,
       transform: [{ scale: 0.98 + flowing * 0.035 }],
       borderColor: interpolateColor(stateValue.value, inputRange, waveColors)
     };
@@ -59,7 +59,7 @@ function AnimatedOrbComponent({
         { scale: 0.98 + breathing * motion.breathScale + audioPush }
       ],
       backgroundColor: interpolateColor(stateValue.value, inputRange, shellColors),
-      opacity: state === "crisis" || state === "low_energy" ? 0.26 : 0.4
+      opacity: state === "crisis" || state === "low_energy" ? 0.12 : 0.18
     };
   });
 
@@ -67,7 +67,7 @@ function AnimatedOrbComponent({
     const breathing = reducedMotion ? 0.5 : breath.value;
     const level = clampAudioLevel(audio.value);
     return {
-      opacity: state === "crisis" ? 0.12 : 0.2 + breathing * 0.12,
+      opacity: state === "crisis" ? 0.12 : 0.26 + breathing * 0.14,
       transform: [
         { scale: 0.9 + breathing * 0.18 + level * motion.audioInfluence * 0.35 }
       ],
@@ -79,7 +79,7 @@ function AnimatedOrbComponent({
     const breathing = reducedMotion ? 0.5 : breath.value;
     const level = clampAudioLevel(audio.value);
     return {
-      opacity: state === "crisis" ? 0.58 : 0.84 + breathing * 0.12,
+      opacity: state === "crisis" ? 0.62 : 0.9 + breathing * 0.08,
       transform: [
         { scale: 0.86 + breathing * motion.pulseScale + level * motion.audioInfluence * 0.55 }
       ],
@@ -90,7 +90,7 @@ function AnimatedOrbComponent({
   const embraceStyle = useAnimatedStyle(() => {
     const flowing = reducedMotion ? 0.35 : shimmer.value;
     return {
-      opacity: state === "crisis" ? 0.2 : state === "silent_presence" ? 0.2 : 0.72,
+      opacity: state === "crisis" ? 0.2 : state === "silent_presence" ? 0.18 : 0.86,
       transform: [
         { translateY: interpolate(flowing, [0, 1], [orbSize * 0.01, -orbSize * 0.012]) },
         { scaleX: 1 + flowing * 0.022 },
@@ -103,7 +103,7 @@ function AnimatedOrbComponent({
   const leftPulseStyle = useAnimatedStyle(() => {
     const breathing = reducedMotion ? 0.5 : breath.value;
     return {
-      opacity: state === "crisis" ? 0.16 : state === "silent_presence" ? 0.16 : 0.76,
+      opacity: state === "crisis" ? 0.12 : state === "silent_presence" ? 0.14 : 0.82,
       transform: [{ scale: 0.86 + breathing * 0.08 }],
       backgroundColor: "#00E5FF"
     };
@@ -112,7 +112,7 @@ function AnimatedOrbComponent({
   const rightPulseStyle = useAnimatedStyle(() => {
     const breathing = reducedMotion ? 0.5 : breath.value;
     return {
-      opacity: state === "crisis" ? 0.14 : state === "silent_presence" ? 0.14 : 0.72,
+      opacity: state === "crisis" ? 0.1 : state === "silent_presence" ? 0.12 : 0.78,
       transform: [{ scale: 0.82 + breathing * 0.07 }],
       backgroundColor: "#FF4DFF"
     };
@@ -126,20 +126,20 @@ function AnimatedOrbComponent({
           ? 0.06
           : state === "low_energy" || state === "silent_presence"
             ? 0.1
-            : 0.42 + flowing * 0.12,
+            : 0.76 + flowing * 0.14,
       transform: [{ rotate: `${interpolate(flowing, [0, 1], [-2, 2])}deg` }]
     };
   });
 
-  const particles = Array.from({ length: 96 }, (_, index) => {
+  const particles = Array.from({ length: 168 }, (_, index) => {
     const angle = index * 2.399963229728653;
-    const radius = particleBox * (0.04 + Math.sqrt((index + 1) / 96) * 0.45);
+    const radius = particleBox * (0.05 + Math.sqrt((index + 1) / 168) * 0.45);
     return {
       left: particleBox * 0.5 + Math.cos(angle) * radius,
       top: particleBox * 0.5 + Math.sin(angle) * radius * 0.82,
-      size: 0.9 + (index % 5) * 0.34,
-      color: index % 9 === 0 ? "#00E5FF" : index % 7 === 0 ? "#FF4DFF" : index % 5 === 0 ? "#B89BFF" : "#FFFFFF",
-      opacity: 0.22 + (index % 6) * 0.08
+      size: 0.72 + (index % 5) * 0.24,
+      color: index % 11 === 0 ? "#00E5FF" : index % 7 === 0 ? "#FF4DFF" : index % 5 === 0 ? "#8A28E2" : "#FFFFFF",
+      opacity: 0.24 + (index % 7) * 0.07
     };
   });
 
@@ -180,8 +180,8 @@ function AnimatedOrbComponent({
           style={[
             outerRingStyle,
             {
-              height: orbSize * 0.9,
-              width: orbSize * 0.9
+              height: orbSize * 0.96,
+              width: orbSize * 0.96
             }
           ]}
         />
@@ -191,12 +191,12 @@ function AnimatedOrbComponent({
           style={[
             shellStyle,
             {
-              height: orbSize * 0.78,
-              width: orbSize * 0.78,
-              shadowColor: "#8A28E2",
+              height: orbSize * 0.82,
+              width: orbSize * 0.82,
+              shadowColor: "#00E5FF",
               shadowOffset: { width: 0, height: 0 },
-              shadowOpacity: reducedMotion ? 0.08 : 0.2,
-              shadowRadius: 20
+              shadowOpacity: reducedMotion ? 0.08 : 0.22,
+              shadowRadius: 24
             }
           ]}
         >
@@ -206,7 +206,7 @@ function AnimatedOrbComponent({
             style={[
               particleStyle,
               {
-                borderColor: "rgba(0, 229, 255, 0.16)",
+                borderColor: "rgba(0, 229, 255, 0.22)",
                 height: particleBox,
                 width: particleBox
               }
@@ -233,10 +233,10 @@ function AnimatedOrbComponent({
             style={[
               leftPulseStyle,
               {
-                height: orbSize * 0.054,
-                left: orbSize * 0.24,
-                top: orbSize * 0.31,
-                width: orbSize * 0.054
+                height: orbSize * 0.052,
+                left: orbSize * 0.2,
+                top: orbSize * 0.34,
+                width: orbSize * 0.052
               }
             ]}
           />
@@ -246,10 +246,10 @@ function AnimatedOrbComponent({
             style={[
               rightPulseStyle,
               {
-                height: orbSize * 0.052,
-                right: orbSize * 0.24,
-                top: orbSize * 0.31,
-                width: orbSize * 0.052
+                height: orbSize * 0.05,
+                right: orbSize * 0.2,
+                top: orbSize * 0.34,
+                width: orbSize * 0.05
               }
             ]}
           />
@@ -259,12 +259,12 @@ function AnimatedOrbComponent({
             style={[
               embraceStyle,
               {
-                borderBottomWidth: Math.max(2, orbSize * 0.012),
-                borderBottomLeftRadius: orbSize * 0.38,
-                borderBottomRightRadius: orbSize * 0.38,
-                bottom: orbSize * 0.24,
-                height: orbSize * 0.2,
-                width: orbSize * 0.5
+                borderBottomWidth: Math.max(3, orbSize * 0.015),
+                borderBottomLeftRadius: orbSize * 0.46,
+                borderBottomRightRadius: orbSize * 0.46,
+                bottom: orbSize * 0.28,
+                height: orbSize * 0.26,
+                width: orbSize * 0.68
               }
             ]}
           />
@@ -274,11 +274,11 @@ function AnimatedOrbComponent({
             style={{
               borderBottomLeftRadius: orbSize * 0.24,
               borderBottomRightRadius: orbSize * 0.24,
-              bottom: orbSize * 0.245,
-              height: orbSize * 0.18,
-              opacity: state === "crisis" || state === "silent_presence" ? 0.08 : 0.28,
-              transform: [{ translateX: orbSize * 0.07 }],
-              width: orbSize * 0.32
+              bottom: orbSize * 0.292,
+              height: orbSize * 0.22,
+              opacity: state === "crisis" || state === "silent_presence" ? 0.08 : 0.42,
+              transform: [{ translateX: orbSize * 0.12 }],
+              width: orbSize * 0.42
             }}
           />
           <Animated.View
@@ -287,8 +287,8 @@ function AnimatedOrbComponent({
             style={[
               coreAuraStyle,
               {
-                height: orbSize * 0.18,
-                width: orbSize * 0.18
+                height: orbSize * 0.16,
+                width: orbSize * 0.16
               }
             ]}
           />
@@ -298,8 +298,8 @@ function AnimatedOrbComponent({
             style={[
               coreStyle,
               {
-                height: orbSize * 0.086,
-                width: orbSize * 0.086
+                height: orbSize * 0.062,
+                width: orbSize * 0.062
               }
             ]}
           />

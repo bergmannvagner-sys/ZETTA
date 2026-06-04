@@ -49,11 +49,6 @@ export default function Home() {
       <View className="gap-3">
         <Button label="Conversar com Bergmann" onPress={() => router.push("/(app)/chat")} />
         <Button
-          label="Apenas fique comigo"
-          tone="soft"
-          onPress={() => router.push({ pathname: "/(app)/chat", params: { mode: "silent_presence" } })}
-        />
-        <Button
           label="Nao consigo falar"
           tone="soft"
           onPress={() => router.push({ pathname: "/(app)/chat", params: { mode: "low_energy" } })}
