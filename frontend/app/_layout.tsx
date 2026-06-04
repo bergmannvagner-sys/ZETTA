@@ -21,7 +21,7 @@ export default function RootLayout() {
   if (!hydrated) {
     return (
       <View className="flex-1 items-center justify-center bg-ink">
-        <ActivityIndicator color="#00E5FF" />
+        <ActivityIndicator color="#6FE7F5" />
       </View>
     );
   }
@@ -31,10 +31,10 @@ export default function RootLayout() {
       <QueryClientProvider client={queryClient}>
         <Stack
           screenOptions={{
-            headerStyle: { backgroundColor: "#0A0F1F" },
+            headerStyle: { backgroundColor: "#070B18" },
             headerTintColor: "#FFFFFF",
             headerShadowVisible: false,
-            contentStyle: { backgroundColor: "#0A0F1F" }
+            contentStyle: { backgroundColor: "#070B18" }
           }}
         >
           <Stack.Screen name="index" options={{ headerShown: false }} />

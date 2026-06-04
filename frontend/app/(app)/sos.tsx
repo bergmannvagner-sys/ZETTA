@@ -1,6 +1,6 @@
 import { useMutation } from "@tanstack/react-query";
 import { useState } from "react";
-import { Text, View } from "react-native";
+import { Text, useWindowDimensions, View } from "react-native";
 
 import { AnimatedOrb } from "@/components/orb/AnimatedOrb";
 import { Screen } from "@/components/screen";
@@ -8,9 +8,11 @@ import { Button, Card, ErrorText } from "@/components/ui";
 import { registerSOSEvent, SOS_OFFLINE_MESSAGE } from "@/lib/sos";
 
 export default function SOS() {
+  const { width } = useWindowDimensions();
   const [confirmed, setConfirmed] = useState(false);
   const [registered, setRegistered] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
+  const orbSize = Math.min(232, Math.max(188, width * 0.5));
   const mutation = useMutation({
     mutationFn: registerSOSEvent,
     onSuccess: (data) => {
@@ -22,7 +24,7 @@ export default function SOS() {
 
   return (
     <Screen>
-      <AnimatedOrb state="crisis" size={220} reducedMotion={mutation.isPending} />
+      <AnimatedOrb state="crisis" size={orbSize} reducedMotion={mutation.isPending} />
       <Text className="text-3xl font-semibold text-white">SOS emocional</Text>
       <Card>
         <Text className="text-base leading-6 text-white">

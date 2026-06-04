@@ -13,10 +13,10 @@ export function Button({ label, onPress, tone = "primary", loading, disabled }: 
   const isDisabled = loading || disabled;
   const color =
     tone === "danger"
-      ? "border border-violet/40 bg-violet/25"
+      ? "border border-violet/45 bg-violet/30"
       : tone === "soft"
-        ? "border border-white/10 bg-surface/70"
-        : "border border-mint/30 bg-mint";
+        ? "border border-lilac/15 bg-surface/70"
+        : "border border-mint/40 bg-mint";
   const text = tone === "primary" ? "text-ink" : "text-white";
   return (
     <Pressable
@@ -55,7 +55,7 @@ export function Field(props: FieldProps) {
         {...props}
         autoCapitalize="none"
         autoCorrect={false}
-        placeholderTextColor="#6F8281"
+        placeholderTextColor="#7D86A8"
         className={`rounded-2xl border border-white/10 bg-surface/85 px-4 text-base text-white ${
           props.multiline ? "min-h-32 py-4" : "min-h-14"
         }`}
@@ -65,7 +65,7 @@ export function Field(props: FieldProps) {
 }
 
 export function Card({ children }: { children: ReactNode }) {
-  return <View className="gap-3 rounded-xl border border-white/10 bg-surface/55 p-4">{children}</View>;
+  return <View className="gap-3 rounded-xl border border-lilac/10 bg-surface/60 p-4">{children}</View>;
 }
 
 export function ErrorText({ message }: { message?: string }) {

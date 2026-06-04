@@ -28,10 +28,10 @@ export default function AppLayout() {
   return (
     <Stack
       screenOptions={{
-        headerStyle: { backgroundColor: "#0A0F1F" },
+        headerStyle: { backgroundColor: "#070B18" },
         headerTintColor: "#FFFFFF",
         headerShadowVisible: false,
-        contentStyle: { backgroundColor: "#0A0F1F" }
+        contentStyle: { backgroundColor: "#070B18" }
       }}
     >
       <Stack.Screen name="home" options={{ title: "Bergmann" }} />

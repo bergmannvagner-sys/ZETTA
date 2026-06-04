@@ -1,5 +1,5 @@
 import { Link, router } from "expo-router";
-import { Pressable, Text, View } from "react-native";
+import { Pressable, Text, useWindowDimensions, View } from "react-native";
 
 import { AnimatedOrb } from "@/components/orb/AnimatedOrb";
 import { Screen } from "@/components/screen";
@@ -14,8 +14,10 @@ import {
 import { useAuthStore } from "@/store/auth-store";
 
 export default function Home() {
+  const { width } = useWindowDimensions();
   const user = useAuthStore((state) => state.user);
   const firstName = user?.full_name.split(" ")[0] ?? "voce";
+  const orbSize = Math.min(276, Math.max(224, width * 0.58));
   const paidAccess = hasPaidAccess(user);
   const paidRoleBlocked = isPaidRole(user?.role) && !paidAccess;
   const careLinks = [
@@ -34,11 +36,11 @@ export default function Home() {
   return (
     <Screen>
       <View className="items-center gap-2 pt-3">
-        <Text className="text-sm text-muted">ZETTA BERGMANN</Text>
+        <Text className="text-xs font-semibold tracking-[5px] text-lilac">PRESENCA</Text>
         <Text className="text-center text-base text-muted">Aqui ninguem fica sozinho.</Text>
       </View>
-      <View className="items-center gap-5 py-2">
-        <AnimatedOrb state="idle" size={248} />
+      <View className="items-center gap-5 py-1">
+        <AnimatedOrb state="idle" size={orbSize} />
         <View className="items-center gap-2">
           <Text className="text-center text-base text-muted">Oi, {firstName}.</Text>
           <Text className="text-center text-3xl font-semibold text-white">Como voce esta agora?</Text>
@@ -85,9 +87,9 @@ export default function Home() {
                 key={item.route}
                 accessibilityRole="button"
                 onPress={() => router.push(item.route as never)}
-                className="rounded-full border border-white/10 bg-surface/55 px-4 py-3"
+                className="rounded-full border border-lilac/10 bg-surface/55 px-4 py-3"
               >
-                <Text className="text-mint">{item.label}</Text>
+                <Text className="text-lilac">{item.label}</Text>
               </Pressable>
             ))}
           </View>
@@ -104,9 +106,9 @@ export default function Home() {
                 key={item.route}
                 accessibilityRole="button"
                 onPress={() => router.push(item.route as never)}
-                className="rounded-full border border-white/10 bg-surface/55 px-4 py-3"
+                className="rounded-full border border-lilac/10 bg-surface/55 px-4 py-3"
               >
-                <Text className="text-mint">{item.label}</Text>
+                <Text className="text-lilac">{item.label}</Text>
               </Pressable>
             ))}
           </View>
@@ -114,7 +116,7 @@ export default function Home() {
       ) : null}
       <View className="flex-row justify-center gap-8 pt-2">
         <Link href="/(app)/privacy" className="text-mint">Privacidade</Link>
-        <Link href="/(app)/profile" className="text-mint">Perfil</Link>
+        <Link href="/(app)/profile" className="text-lilac">Perfil</Link>
       </View>
     </Screen>
   );

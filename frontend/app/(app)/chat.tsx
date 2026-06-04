@@ -1,29 +1,31 @@
 import { useMutation } from "@tanstack/react-query";
 import { useLocalSearchParams } from "expo-router";
 import { useState } from "react";
-import { Pressable, Text, TextInput, View } from "react-native";
+import { Pressable, Text, TextInput, useWindowDimensions, View } from "react-native";
 
 import { AnimatedOrb } from "@/components/orb/AnimatedOrb";
 import { OrbState } from "@/components/orb/orbTypes";
 import { Screen } from "@/components/screen";
 import { Button, Card, ErrorText } from "@/components/ui";
-import { sendChatMessage } from "@/lib/chat";
 import { useMicrophoneLevel } from "@/hooks/useMicrophoneLevel";
+import { sendChatMessage } from "@/lib/chat";
 
 type Message = { sender: "USER" | "BERGMANN"; content: string };
 
 function formatChatText(content: string): string {
   return content
     .replace(/\*\*(.*?)\*\*/gu, "$1")
-    .replace(/^\s*[-*]\s+/gmu, "• ")
+    .replace(/^\s*[-*]\s+/gmu, "- ")
     .replace(/\n{3,}/gu, "\n\n")
     .trim();
 }
 
 export default function Chat() {
+  const { width } = useWindowDimensions();
   const params = useLocalSearchParams<{ mode?: OrbState }>();
   const initialState =
     params.mode === "silent_presence" || params.mode === "low_energy" ? params.mode : "idle";
+  const orbSize = Math.min(244, Math.max(188, width * 0.52));
   const [text, setText] = useState("");
   const [sessionId, setSessionId] = useState<string | null>(null);
   const [messages, setMessages] = useState<Message[]>([]);
@@ -64,7 +66,7 @@ export default function Chat() {
       <AnimatedOrb
         state={microphone.isActive ? "listening" : orbState}
         audioLevel={microphone.isActive ? microphone.level : mutation.isPending ? 0.22 : 0}
-        size={220}
+        size={orbSize}
       />
       <View className="gap-3">
         {messages.length === 0 ? (
@@ -78,7 +80,9 @@ export default function Chat() {
           messages.map((message, index) => (
             <View
               key={`${message.sender}-${index}`}
-              className={`rounded-2xl p-4 ${message.sender === "USER" ? "bg-mint" : "bg-surface"}`}
+              className={`rounded-2xl p-4 ${
+                message.sender === "USER" ? "bg-mint/90" : "border border-lilac/10 bg-surface"
+              }`}
             >
               <Text
                 selectable
@@ -101,9 +105,9 @@ export default function Chat() {
             setOrbState(value ? "listening" : initialState);
           }}
           placeholder="Escreva aqui"
-          placeholderTextColor="#6F8281"
+          placeholderTextColor="#7D86A8"
           multiline
-          className="min-h-14 flex-1 rounded-2xl border border-white/10 bg-surface px-4 py-3 text-base text-white"
+          className="min-h-14 flex-1 rounded-2xl border border-lilac/10 bg-surface px-4 py-3 text-base text-white"
         />
         <Pressable
           accessibilityRole="button"

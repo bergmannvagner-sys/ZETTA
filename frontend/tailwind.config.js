@@ -5,15 +5,16 @@ module.exports = {
   theme: {
     extend: {
       colors: {
-        ink: "#0A0F1F",
-        surface: "#101832",
-        muted: "#A7B0C6",
-        mint: "#00E5FF",
-        azure: "#0D47FF",
-        violet: "#8A28E2",
-        magenta: "#FF4DFF",
-        amber: "#F3DDBA",
-        rose: "#B89BFF"
+        ink: "#070B18",
+        surface: "#11162D",
+        muted: "#B8BED6",
+        mint: "#6FE7F5",
+        azure: "#3349A6",
+        violet: "#7C5CFF",
+        lilac: "#B9A7FF",
+        magenta: "#D7A4FF",
+        amber: "#D9C7FF",
+        rose: "#E4A7D2"
       }
     }
   }

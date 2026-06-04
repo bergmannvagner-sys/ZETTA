@@ -42,7 +42,7 @@ const config: ExpoConfig = {
   userInterfaceStyle: "dark",
   newArchEnabled: true,
   splash: {
-    backgroundColor: "#0A0F1F"
+    backgroundColor: "#070B18"
   },
   ios: {
     supportsTablet: true,
@@ -51,7 +51,7 @@ const config: ExpoConfig = {
   android: {
     package: "com.zetta.bergmann",
     adaptiveIcon: {
-      backgroundColor: "#0A0F1F"
+      backgroundColor: "#070B18"
     },
     permissions: []
   },
