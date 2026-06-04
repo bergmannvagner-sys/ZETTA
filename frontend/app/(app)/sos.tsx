@@ -4,15 +4,9 @@ import { Linking, Text, useWindowDimensions, View } from "react-native";
 
 import { AnimatedOrb } from "@/components/orb/AnimatedOrb";
 import { Screen } from "@/components/screen";
+import { SupportMap } from "@/components/support-map";
 import { Button, Card, ErrorText } from "@/components/ui";
 import { registerSOSEvent, SOS_OFFLINE_MESSAGE } from "@/lib/sos";
-
-const mapTargets = [
-  { label: "Clinicas perto de mim", query: "clinica psicologica perto de mim" },
-  { label: "Psicologos perto de mim", query: "psicologo perto de mim" },
-  { label: "UBS perto de mim", query: "UBS unidade basica de saude perto de mim" },
-  { label: "CAPS perto de mim", query: "CAPS centro de atencao psicossocial perto de mim" }
-];
 
 function mapsSearchUrl(query: string) {
   return `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(query)}`;
@@ -58,23 +52,7 @@ export default function SOS() {
           Se voce corre perigo agora, acione a emergencia local. No Brasil, o CVV atende pelo 188.
         </Text>
       </Card>
-      <Card>
-        <Text className="text-xs font-semibold tracking-[4px] text-mint">MAPA DE APOIO</Text>
-        <Text className="text-base leading-6 text-muted">
-          Abra o mapa do celular para encontrar ajuda por perto. Em risco imediato, ligue para a emergencia local antes
-          de procurar atendimento no mapa.
-        </Text>
-        <View className="gap-3">
-          {mapTargets.map((target) => (
-            <Button
-              key={target.query}
-              label={target.label}
-              tone="soft"
-              onPress={() => openMapSearch(target.query)}
-            />
-          ))}
-        </View>
-      </Card>
+      <SupportMap onOpenSearch={openMapSearch} />
       <ErrorText message={mapError ?? undefined} />
       {!confirmed ? (
         <Button label="Confirmar SOS" tone="danger" onPress={() => setConfirmed(true)} />

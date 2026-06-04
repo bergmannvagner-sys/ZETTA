@@ -2,6 +2,7 @@ import { ExpoConfig } from "expo/config";
 
 const isProduction = process.env.APP_ENV === "production";
 const rawApiUrl = process.env.EXPO_PUBLIC_API_URL?.trim();
+const googleMapsApiKey = process.env.EXPO_PUBLIC_GOOGLE_MAPS_API_KEY?.trim();
 
 function normalizeApiUrl(value: string | undefined): string | undefined {
   return value?.replace(/\/+$/, "");
@@ -53,9 +54,28 @@ const config: ExpoConfig = {
     adaptiveIcon: {
       backgroundColor: "#0A0F1F"
     },
+    config: googleMapsApiKey
+      ? {
+          googleMaps: {
+            apiKey: googleMapsApiKey
+          }
+        }
+      : undefined,
     permissions: []
   },
-  plugins: ["expo-router", "expo-secure-store", "expo-audio", "expo-asset"],
+  plugins: [
+    "expo-router",
+    "expo-secure-store",
+    "expo-audio",
+    "expo-asset",
+    [
+      "expo-location",
+      {
+        locationWhenInUsePermission:
+          "Bergmann usa sua localizacao apenas para mostrar apoio proximo em situacoes de cuidado e SOS."
+      }
+    ]
+  ],
   experiments: {
     typedRoutes: true
   },
