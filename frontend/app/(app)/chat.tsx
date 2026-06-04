@@ -30,6 +30,7 @@ export default function Chat() {
   const [sessionId, setSessionId] = useState<string | null>(null);
   const [messages, setMessages] = useState<Message[]>([]);
   const [orbState, setOrbState] = useState<OrbState>(initialState);
+  const [voiceNotice, setVoiceNotice] = useState<string | null>(null);
   const microphone = useMicrophoneLevel();
 
   const mutation = useMutation({
@@ -55,10 +56,12 @@ export default function Chat() {
     if (microphone.isActive) {
       await microphone.stop();
       setOrbState(initialState);
+      setVoiceNotice(null);
       return;
     }
     await microphone.start();
-    setOrbState("listening");
+    setOrbState(initialState);
+    setVoiceNotice("Transcricao de voz ainda nao configurada. A conversa por texto continua ativa.");
   }
 
   return (
@@ -67,6 +70,7 @@ export default function Chat() {
         state={microphone.isActive ? "listening" : orbState}
         audioLevel={microphone.isActive ? microphone.level : mutation.isPending ? 0.22 : 0}
         size={orbSize}
+        onPress={toggleMicrophoneLevel}
       />
       <View className="gap-3">
         {messages.length === 0 ? (
@@ -96,6 +100,11 @@ export default function Chat() {
       </View>
       <ErrorText message={mutation.error?.message} />
       <ErrorText message={microphone.errorMessage ?? undefined} />
+      {voiceNotice ? (
+        <Card>
+          <Text className="text-sm leading-5 text-muted">{voiceNotice}</Text>
+        </Card>
+      ) : null}
       <View className="flex-row items-center gap-3">
         <TextInput
           accessibilityLabel="Mensagem para Bergmann"
@@ -119,7 +128,7 @@ export default function Chat() {
         </Pressable>
       </View>
       <Button
-        label={microphone.isActive ? "Desativar nivel de voz" : "Ativar nivel de voz"}
+        label={microphone.isActive ? "Desativar presenca por voz" : "Tocar para testar voz"}
         tone="soft"
         loading={microphone.status === "requesting_permission"}
         onPress={toggleMicrophoneLevel}

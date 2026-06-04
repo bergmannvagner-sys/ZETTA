@@ -3,6 +3,7 @@ import { router, useLocalSearchParams } from "expo-router";
 import { useState } from "react";
 import { Pressable, Text, View } from "react-native";
 
+import { BrandLockup } from "@/components/brand/BrandLockup";
 import { Screen } from "@/components/screen";
 import { Button, ErrorText, Field } from "@/components/ui";
 import { formatDocumentInput, getDocumentProgress, getDocumentRequirement, register } from "@/lib/auth";
@@ -45,7 +46,8 @@ export default function Register() {
 
   return (
     <Screen>
-      <View className="gap-2 pt-2">
+      <View className="gap-3 pt-2">
+        <BrandLockup align="left" compact showTagline={false} />
         <Text className="text-xs font-semibold tracking-[5px] text-mint">CRIAR CONTA</Text>
         <Text className="text-3xl font-semibold text-white">Cadastro</Text>
         <Text className="text-base text-muted">Tipo de conta: {roleLabels[role]}</Text>

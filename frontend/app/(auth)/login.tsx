@@ -3,6 +3,7 @@ import { Href, Link, router } from "expo-router";
 import { useState } from "react";
 import { Text, View } from "react-native";
 
+import { BrandLockup } from "@/components/brand/BrandLockup";
 import { Screen } from "@/components/screen";
 import { Button, ErrorText, Field } from "@/components/ui";
 import { login } from "@/lib/auth";
@@ -23,10 +24,9 @@ export default function Login() {
 
   return (
     <Screen>
-      <View className="gap-4 pt-5">
-        <Text className="text-xs font-semibold tracking-[6px] text-mint">ZETTA</Text>
+      <View className="gap-5 pt-4">
+        <BrandLockup align="left" compact />
         <View className="gap-2">
-          <Text className="text-4xl font-semibold text-white">Bergmann</Text>
           <Text className="text-base leading-6 text-muted">Entre para continuar seu cuidado emocional.</Text>
         </View>
       </View>

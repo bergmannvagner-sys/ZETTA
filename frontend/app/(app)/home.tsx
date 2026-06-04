@@ -1,6 +1,7 @@
 import { Link, router } from "expo-router";
 import { Pressable, Text, useWindowDimensions, View } from "react-native";
 
+import { BrandLockup } from "@/components/brand/BrandLockup";
 import { AnimatedOrb } from "@/components/orb/AnimatedOrb";
 import { Screen } from "@/components/screen";
 import { Button, Card } from "@/components/ui";
@@ -36,8 +37,8 @@ export default function Home() {
   return (
     <Screen>
       <View className="items-center gap-2 pt-3">
-        <Text className="text-xs font-semibold tracking-[5px] text-lilac">PRESENCA</Text>
-        <Text className="text-center text-base text-muted">Aqui ninguem fica sozinho.</Text>
+        <BrandLockup compact showTagline={false} />
+        <Text className="text-center text-xs font-semibold tracking-[4px] text-lilac">PRESENCA</Text>
       </View>
       <View className="items-center gap-5 py-1">
         <AnimatedOrb state="idle" size={orbSize} />

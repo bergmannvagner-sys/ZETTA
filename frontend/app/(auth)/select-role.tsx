@@ -1,6 +1,7 @@
 import { router } from "expo-router";
 import { Pressable, Text, View } from "react-native";
 
+import { BrandLockup } from "@/components/brand/BrandLockup";
 import { Screen } from "@/components/screen";
 import { Card } from "@/components/ui";
 import { UserRole } from "@/types/auth";
@@ -19,7 +20,8 @@ const roles: Array<{ label: string; role: UserRole; description: string }> = [
 export default function SelectRole() {
   return (
     <Screen>
-      <View className="gap-2 pt-2">
+      <View className="gap-3 pt-2">
+        <BrandLockup align="left" compact showTagline={false} />
         <Text className="text-xs font-semibold tracking-[5px] text-mint">TIPO DE CONTA</Text>
         <Text className="text-3xl font-semibold text-white">Escolha seu tipo de conta</Text>
         <Text className="text-base leading-6 text-muted">
