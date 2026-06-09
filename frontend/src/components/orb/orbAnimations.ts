@@ -35,6 +35,30 @@ export const orbMotionProfiles: Record<OrbState, OrbMotionProfile> = {
     glowOpacity: 0.38,
     audioInfluence: 0.07
   },
+  breathing: {
+    breathScale: 0.036,
+    pulseScale: 0.012,
+    durationMs: 5200,
+    drift: 1.4,
+    glowOpacity: 0.24,
+    audioInfluence: 0
+  },
+  calm: {
+    breathScale: 0.018,
+    pulseScale: 0.006,
+    durationMs: 6800,
+    drift: 0.8,
+    glowOpacity: 0.18,
+    audioInfluence: 0
+  },
+  sos: {
+    breathScale: 0.008,
+    pulseScale: 0.003,
+    durationMs: 6000,
+    drift: 0.6,
+    glowOpacity: 0.14,
+    audioInfluence: 0
+  },
   crisis: {
     breathScale: 0.01,
     pulseScale: 0.004,

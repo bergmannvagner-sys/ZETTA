@@ -2,6 +2,7 @@ import { useQuery } from "@tanstack/react-query";
 import { useLocalSearchParams } from "expo-router";
 import { Text, View } from "react-native";
 
+import { PageHero } from "@/components/page-hero";
 import { PaidAccessGate } from "@/components/paid-access-gate";
 import { Screen } from "@/components/screen";
 import { Card, ErrorText } from "@/components/ui";
@@ -24,82 +25,101 @@ export default function ProfessionalUserDetail() {
 
   return (
     <Screen>
-      <View className="gap-2">
-        <Text className="text-xs font-semibold tracking-[5px] text-mint">ACOMPANHAMENTO</Text>
-        <Text className="text-3xl font-semibold text-white">Detalhe autorizado</Text>
-        <Text className="text-base leading-6 text-muted">
-          Informacoes visiveis somente dentro do consentimento concedido pela pessoa.
-        </Text>
-      </View>
+      <View style={{ alignItems: "center", gap: 24 }}>
+        <PageHero
+          kicker="Acompanhamento"
+          title="Detalhe autorizado"
+          subtitle="Informações visíveis somente dentro do consentimento concedido pela pessoa."
+          orbState="thinking"
+        />
 
-      {user?.role !== "PSYCHOLOGIST" || !paidAccess ? (
-        <PaidAccessGate user={user} resourceLabel="Detalhe de acompanhamento autorizado" />
-      ) : (
-        <>
-          {detail.isLoading ? <Text className="text-muted">Carregando acompanhamento...</Text> : null}
-          <ErrorText message={detail.error?.message} />
+        <View style={{ width: "100%", maxWidth: 760, gap: 14 }}>
+          {user?.role !== "PSYCHOLOGIST" || !paidAccess ? (
+            <PaidAccessGate user={user} resourceLabel="Detalhe de acompanhamento autorizado" />
+          ) : (
+            <>
+              {detail.isLoading ? <Text className="text-muted dark:text-[#D1D5DB]">Carregando acompanhamento...</Text> : null}
+              <ErrorText message={detail.error?.message} />
 
-          {data ? (
-            <View className="gap-3">
-          <Card>
-            <Text selectable className="text-base font-semibold text-white">{data.full_name}</Text>
-            <Text selectable className="text-sm text-muted">{data.email}</Text>
-            <Text selectable className="text-sm leading-5 text-muted">
-              Categorias: {data.categories.join(", ")}
-            </Text>
-            <Text selectable className="text-sm text-muted">
-              Compartilhamento: {data.summary_only ? "apenas resumo" : "detalhes autorizados"}
-            </Text>
-          </Card>
+              {data ? (
+                <View className="gap-3">
+                  <Card>
+                    <Text selectable className="text-base font-semibold text-ink dark:text-white">{data.full_name}</Text>
+                    <Text selectable className="text-sm text-muted dark:text-[#D1D5DB]">{data.email}</Text>
+                    <Text selectable className="text-sm leading-5 text-muted dark:text-[#D1D5DB]">
+                      Categorias: {data.categories.join(", ")}
+                    </Text>
+                    <Text selectable className="text-sm text-muted dark:text-[#D1D5DB]">
+                      Compartilhamento: {data.summary_only ? "apenas resumo" : "detalhes autorizados"}
+                    </Text>
+                  </Card>
 
-          <Card>
-            <Text className="text-base font-semibold text-white">Resumo emocional</Text>
-            <Text selectable className="text-sm text-muted">
-              Humor recente: {data.latest_mood ?? "nao autorizado ou indisponivel"}
-            </Text>
-            <Text selectable className="text-sm text-muted">
-              Intensidade media: {data.average_intensity ?? "nao autorizada ou indisponivel"}
-            </Text>
-            {data.latest_report ? (
-              <>
-                <Text selectable className="text-sm text-muted">Risco indicado: {data.latest_report.risk_level}</Text>
-                <Text selectable className="text-sm leading-5 text-muted">{data.latest_report.summary}</Text>
-              </>
-            ) : (
-              <Text className="text-sm leading-5 text-muted">Resumo IA nao autorizado ou ainda nao gerado.</Text>
-            )}
-          </Card>
+                  <Card>
+                    <Text className="text-base font-semibold text-ink dark:text-white">Resumo emocional</Text>
+                    <Text selectable className="text-sm text-muted dark:text-[#D1D5DB]">
+                      Humor recente: {data.latest_mood ?? "não autorizado ou indisponível"}
+                    </Text>
+                    <Text selectable className="text-sm text-muted dark:text-[#D1D5DB]">
+                      Intensidade média: {data.average_intensity ?? "não autorizada ou indisponível"}
+                    </Text>
+                    {data.latest_report ? (
+                      <>
+                        <Text selectable className="text-sm text-muted dark:text-[#D1D5DB]">
+                          Risco indicado: {data.latest_report.risk_level}
+                        </Text>
+                        <Text selectable className="text-sm leading-5 text-muted dark:text-[#D1D5DB]">
+                          {data.latest_report.summary}
+                        </Text>
+                      </>
+                    ) : (
+                      <Text className="text-sm leading-5 text-muted dark:text-[#D1D5DB]">
+                        Resumo IA não autorizado ou ainda não gerado.
+                      </Text>
+                    )}
+                  </Card>
 
-          {data.recent_emotions.length ? (
-            <View className="gap-3">
-              <Text className="text-sm font-semibold text-muted">Registros emocionais autorizados</Text>
-              {data.recent_emotions.map((item: EmotionLog) => (
-                <Card key={item.id}>
-                  <Text selectable className="text-base font-semibold text-white">{item.mood}</Text>
-                  <Text selectable className="text-sm text-muted">Intensidade: {item.intensity}</Text>
-                  {item.note ? <Text selectable className="text-sm leading-5 text-muted">{item.note}</Text> : null}
-                </Card>
-              ))}
-            </View>
-          ) : null}
-
-          {data.journal_entries.length ? (
-            <View className="gap-3">
-              <Text className="text-sm font-semibold text-muted">Diario autorizado</Text>
-              {data.journal_entries.map((item: JournalEntry) => (
-                <Card key={item.id}>
-                  <Text selectable className="text-sm leading-5 text-white">{item.content}</Text>
-                  {item.tags.length ? (
-                    <Text selectable className="text-xs text-muted">Tags: {item.tags.join(", ")}</Text>
+                  {data.recent_emotions.length ? (
+                    <View className="gap-3">
+                      <Text className="text-sm font-semibold text-muted dark:text-[#D1D5DB]">
+                        Registros emocionais autorizados
+                      </Text>
+                      {data.recent_emotions.map((item: EmotionLog) => (
+                        <Card key={item.id}>
+                          <Text selectable className="text-base font-semibold text-ink dark:text-white">
+                            {item.mood}
+                          </Text>
+                          <Text selectable className="text-sm text-muted dark:text-[#D1D5DB]">Intensidade: {item.intensity}</Text>
+                          {item.note ? (
+                            <Text selectable className="text-sm leading-5 text-muted dark:text-[#D1D5DB]">{item.note}</Text>
+                          ) : null}
+                        </Card>
+                      ))}
+                    </View>
                   ) : null}
-                </Card>
-              ))}
-            </View>
-          ) : null}
-            </View>
-          ) : null}
-        </>
-      )}
+
+                  {data.journal_entries.length ? (
+                    <View className="gap-3">
+                      <Text className="text-sm font-semibold text-muted dark:text-[#D1D5DB]">Diário autorizado</Text>
+                      {data.journal_entries.map((item: JournalEntry) => (
+                        <Card key={item.id}>
+                          <Text selectable className="text-sm leading-5 text-ink dark:text-white">
+                            {item.content}
+                          </Text>
+                          {item.tags.length ? (
+                            <Text selectable className="text-xs text-muted dark:text-[#D1D5DB]">
+                              Tags: {item.tags.join(", ")}
+                            </Text>
+                          ) : null}
+                        </Card>
+                      ))}
+                    </View>
+                  ) : null}
+                </View>
+              ) : null}
+            </>
+          )}
+        </View>
+      </View>
     </Screen>
   );
 }

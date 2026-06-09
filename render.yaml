@@ -20,6 +20,8 @@ services:
           property: connectionString
       - key: JWT_SECRET_KEY
         sync: false
+      - key: DATA_ENCRYPTION_KEY
+        sync: false
       - key: CORS_ORIGINS
         sync: false
       - key: GROQ_API_KEY
@@ -63,11 +65,19 @@ services:
       - key: MERCADO_PAGO_WEBHOOK_SECRET
         sync: false
       - key: MERCADO_PAGO_SUCCESS_URL
-        sync: false
+        value: meuapp://pagamento/sucesso
       - key: MERCADO_PAGO_PENDING_URL
-        sync: false
+        value: meuapp://pagamento/pendente
       - key: MERCADO_PAGO_FAILURE_URL
+        value: meuapp://pagamento/erro
+      - key: DAILY_API_KEY
         sync: false
+      - key: DAILY_API_URL
+        value: https://api.daily.co/v1
+      - key: DAILY_ROOM_EXPIRE_HOURS
+        value: "8"
+      - key: DAILY_JOIN_TOKEN_EXPIRE_MINUTES
+        value: "180"
 
   - type: redis
     name: zetta-bergmann-redis

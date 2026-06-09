@@ -1,11 +1,134 @@
-import { memo } from "react";
+import { memo, useEffect } from "react";
 import { Pressable, View } from "react-native";
-import Animated, { interpolate, interpolateColor, useAnimatedStyle } from "react-native-reanimated";
+import Animated, {
+  cancelAnimation,
+  interpolate,
+  useAnimatedStyle,
+  useSharedValue,
+  withRepeat,
+  withTiming
+} from "react-native-reanimated";
+import { Circle, Defs, Ellipse, LinearGradient, Path, RadialGradient, Stop, Svg } from "react-native-svg";
 
-import { clampAudioLevel } from "@/components/orb/orbAnimations";
-import { AnimatedOrbProps } from "@/components/orb/orbTypes";
+import { calmEasing, clampAudioLevel } from "@/components/orb/orbAnimations";
+import { AnimatedOrbProps, OrbState } from "@/components/orb/orbTypes";
+import { orbAccessibilityLabelKeys, orbAccessibilityLabels, orbPalette, orbStateIndex } from "@/components/orb/orbTheme";
 import { useOrbState } from "@/components/orb/useOrbState";
-import { orbAccessibilityLabels, orbPalette, orbStateOrder } from "@/components/orb/orbTheme";
+import { useI18n } from "@/i18n/i18n";
+
+type OrbVisual = {
+  glow: string;
+  ring: string;
+  quiet: boolean;
+};
+
+const STATE_VISUALS: Partial<Record<OrbState, OrbVisual>> = {
+  idle: { glow: "#8B5CF6", quiet: false, ring: "#C4B5FD" },
+  listening: { glow: "#7C3AED", quiet: false, ring: "#A78BFA" },
+  thinking: { glow: "#8B5CF6", quiet: false, ring: "#C4B5FD" },
+  speaking: { glow: "#A855F7", quiet: false, ring: "#E9D5FF" },
+  breathing: { glow: "#6D28D9", quiet: true, ring: "#A78BFA" },
+  calm: { glow: "#8B5CF6", quiet: true, ring: "#C4B5FD" },
+  silent_presence: { glow: "#C4B5FD", quiet: true, ring: "#E9D5FF" },
+  low_energy: { glow: "#7C3AED", quiet: true, ring: "#DDD6FE" },
+  sos: { glow: "#9333EA", quiet: true, ring: "#C084FC" },
+  crisis: { glow: "#7E22CE", quiet: true, ring: "#E879F9" },
+  error: { glow: "#6D28D9", quiet: true, ring: "#F5D0FE" }
+};
+
+function getVisual(state: OrbState): OrbVisual {
+  return STATE_VISUALS[state] ?? { glow: "#8B5CF6", quiet: false, ring: "#C4B5FD" };
+}
+
+type OrbPalette = {
+  shell: string;
+  core: string;
+  halo: string;
+  wave: string;
+};
+
+const ORB_SPARKLES = [
+  { cx: 36, cy: 68, opacity: 0.52, r: 1.4 },
+  { cx: 58, cy: 44, opacity: 0.22, r: 1.2 },
+  { cx: 84, cy: 30, opacity: 0.35, r: 1.15 },
+  { cx: 126, cy: 22, opacity: 0.22, r: 1.25 },
+  { cx: 170, cy: 28, opacity: 0.26, r: 1.05 },
+  { cx: 198, cy: 40, opacity: 0.3, r: 1.3 },
+  { cx: 218, cy: 68, opacity: 0.45, r: 1.5 },
+  { cx: 42, cy: 116, opacity: 0.14, r: 1.1 },
+  { cx: 206, cy: 112, opacity: 0.16, r: 1.1 },
+  { cx: 68, cy: 186, opacity: 0.12, r: 1.2 }
+] as const;
+
+function OrbSurface({ palette, visual }: { palette: OrbPalette; visual: OrbVisual }) {
+  return (
+    <Svg height="100%" viewBox="0 0 256 256" width="100%">
+      <Defs>
+        <RadialGradient cx="50%" cy="38%" id="orbBase" r="72%">
+          <Stop offset="0%" stopColor="#050816" stopOpacity="1" />
+          <Stop offset="42%" stopColor="#0B1023" stopOpacity="1" />
+          <Stop offset="76%" stopColor={palette.shell} stopOpacity="0.96" />
+          <Stop offset="100%" stopColor={visual.glow} stopOpacity="0.94" />
+        </RadialGradient>
+        <RadialGradient cx="50%" cy="36%" id="orbHalo" r="66%">
+          <Stop offset="0%" stopColor={palette.halo} stopOpacity="0.94" />
+          <Stop offset="38%" stopColor={palette.halo} stopOpacity="0.32" />
+          <Stop offset="78%" stopColor={visual.glow} stopOpacity="0.12" />
+          <Stop offset="100%" stopColor="#050816" stopOpacity="0" />
+        </RadialGradient>
+        <LinearGradient id="orbWave" x1="18%" x2="88%" y1="64%" y2="82%">
+          <Stop offset="0%" stopColor={palette.wave} stopOpacity="0.96" />
+          <Stop offset="48%" stopColor={visual.ring} stopOpacity="0.95" />
+          <Stop offset="100%" stopColor={palette.shell} stopOpacity="0.9" />
+        </LinearGradient>
+        <LinearGradient id="orbShine" x1="0%" x2="100%" y1="0%" y2="100%">
+          <Stop offset="0%" stopColor={palette.core} stopOpacity="0.96" />
+          <Stop offset="62%" stopColor={palette.core} stopOpacity="0.18" />
+          <Stop offset="100%" stopColor={palette.core} stopOpacity="0" />
+        </LinearGradient>
+      </Defs>
+
+      <Circle cx="128" cy="128" fill="url(#orbBase)" r="112" />
+      <Circle cx="128" cy="128" fill="url(#orbHalo)" opacity={visual.quiet ? 0.58 : 0.76} r="112" />
+      <Circle cx="128" cy="128" fill="none" opacity={visual.quiet ? 0.24 : 0.4} r="108" stroke={palette.halo} strokeWidth="1.2" />
+      <Path
+        d="M 28 164 C 58 132, 96 118, 128 121 C 160 124, 200 138, 228 164 C 208 198, 176 220, 128 220 C 80 220, 48 198, 28 164 Z"
+        fill="url(#orbWave)"
+        opacity={visual.quiet ? 0.7 : 0.84}
+      />
+      <Path
+        d="M 42 160 C 70 141, 98 134, 128 135 C 158 136, 186 144, 214 160"
+        fill="none"
+        opacity={visual.quiet ? 0.22 : 0.34}
+        stroke={palette.core}
+        strokeLinecap="round"
+        strokeWidth="1.9"
+      />
+      <Ellipse
+        cx="96"
+        cy="80"
+        fill="url(#orbShine)"
+        opacity={visual.quiet ? 0.54 : 0.78}
+        rx="46"
+        ry="28"
+        transform="rotate(-28 96 80)"
+      />
+      <Circle cx="128" cy="120" fill={palette.core} opacity="0.92" r="18" />
+      <Circle cx="128" cy="120" fill={palette.core} opacity="0.12" r="32" />
+      <Circle cx="128" cy="120" fill="none" opacity="0.22" r="62" stroke={palette.halo} strokeWidth="1.1" />
+      {ORB_SPARKLES.map((sparkle, index) => (
+        <Circle
+          key={`${palette.shell}-${index}`}
+          cx={sparkle.cx}
+          cy={sparkle.cy}
+          fill={palette.core}
+          opacity={sparkle.opacity * (visual.quiet ? 0.7 : 1)}
+          r={sparkle.r}
+        />
+      ))}
+    </Svg>
+  );
+}
 
 function AnimatedOrbComponent({
   state,
@@ -14,297 +137,196 @@ function AnimatedOrbComponent({
   reducedMotion = false,
   onPress
 }: AnimatedOrbProps) {
-  const { audio, breath, motion, shimmer, stateValue } = useOrbState(state, audioLevel, reducedMotion);
-  const orbSize = Math.max(144, Math.min(size, 300));
-  const shellColors = orbPalette.shell;
-  const coreColors = orbPalette.core;
-  const haloColors = orbPalette.halo;
-  const waveColors = orbPalette.wave;
-  const inputRange = orbStateOrder.map((_, index) => index);
-  const particleBox = orbSize * 0.88;
+  const { t } = useI18n();
+  const visual = getVisual(state);
+  const paletteIndex = orbStateIndex[state];
+  const palette: OrbPalette = {
+    shell: orbPalette.shell[paletteIndex],
+    core: orbPalette.core[paletteIndex],
+    halo: orbPalette.halo[paletteIndex],
+    wave: orbPalette.wave[paletteIndex]
+  };
+  const orbSize = Math.max(156, Math.min(size, 380));
+  const imageWindowSize = orbSize * 0.82;
+  const { audio, breath, motion, shimmer } = useOrbState(state, audioLevel, reducedMotion);
+  const livingCycle = useSharedValue(0);
+
+  useEffect(() => {
+    cancelAnimation(livingCycle);
+
+    if (reducedMotion) {
+      livingCycle.value = 0.42;
+      return;
+    }
+
+    livingCycle.value = withRepeat(
+      withTiming(1, { duration: visual.quiet ? 9200 : 5600, easing: calmEasing }),
+      -1,
+      true
+    );
+
+    return () => {
+      cancelAnimation(livingCycle);
+    };
+  }, [livingCycle, reducedMotion, visual.quiet]);
+
+  const presenceStyle = useAnimatedStyle(() => {
+    const cycle = reducedMotion ? 0.42 : livingCycle.value;
+    const shimmerValue = reducedMotion ? 0.5 : shimmer.value;
+
+    return {
+      transform: [
+        { translateY: interpolate(cycle, [0, 1], [visual.quiet ? -0.7 : -3, visual.quiet ? 0.7 : 3]) },
+        { translateX: visual.quiet ? 0 : interpolate(shimmerValue, [0, 1], [-2, 2]) }
+      ]
+    };
+  });
 
   const haloStyle = useAnimatedStyle(() => {
     const level = clampAudioLevel(audio.value);
-    const breathing = reducedMotion ? 0.5 : breath.value;
+    const breathing = reducedMotion ? 0.48 : breath.value;
+
     return {
-      opacity: state === "crisis" ? 0.16 : motion.glowOpacity * 0.86 + level * motion.audioInfluence * 0.55,
+      backgroundColor: visual.glow,
+      opacity: (visual.quiet ? 0.1 : 0.2) + breathing * 0.12 + level * 0.18,
+      transform: [{ scale: 0.86 + breathing * motion.breathScale * 4.4 + level * motion.audioInfluence }]
+    };
+  });
+
+  const ringStyle = useAnimatedStyle(() => {
+    const cycle = reducedMotion ? 0.38 : livingCycle.value;
+    const shimmerValue = reducedMotion ? 0.5 : shimmer.value;
+
+    return {
+      borderColor: visual.ring,
+      opacity: visual.quiet ? 0.32 : 0.5 + cycle * 0.18,
       transform: [
-        {
-          scale:
-            1.02 +
-            breathing * motion.breathScale * 0.7 +
-            level * motion.audioInfluence * 0.5
-        }
-      ],
-      backgroundColor: interpolateColor(stateValue.value, inputRange, haloColors)
+        { rotate: `${interpolate(shimmerValue, [0, 1], [-6, 6])}deg` },
+        { scale: 0.94 + cycle * 0.045 }
+      ]
     };
   });
 
-  const outerRingStyle = useAnimatedStyle(() => {
-    const flowing = reducedMotion ? 0.35 : shimmer.value;
-    return {
-      opacity: state === "crisis" ? 0.08 : state === "silent_presence" ? 0.08 : 0.22 + flowing * 0.1,
-      transform: [{ scale: 0.98 + flowing * 0.035 }],
-      borderColor: interpolateColor(stateValue.value, inputRange, waveColors)
-    };
-  });
-
-  const shellStyle = useAnimatedStyle(() => {
+  const imageStyle = useAnimatedStyle(() => {
     const level = clampAudioLevel(audio.value);
-    const breathing = reducedMotion ? 0.5 : breath.value;
-    const audioPush = level * motion.audioInfluence;
-    return {
-      transform: [
-        { translateY: interpolate(breathing, [0, 1], [-motion.drift, motion.drift]) },
-        { scale: 0.98 + breathing * motion.breathScale + audioPush }
-      ],
-      backgroundColor: interpolateColor(stateValue.value, inputRange, shellColors),
-      opacity: state === "crisis" || state === "low_energy" ? 0.12 : 0.18
-    };
-  });
+    const breathing = reducedMotion ? 0.48 : breath.value;
+    const cycle = reducedMotion ? 0.42 : livingCycle.value;
 
-  const coreAuraStyle = useAnimatedStyle(() => {
-    const breathing = reducedMotion ? 0.5 : breath.value;
-    const level = clampAudioLevel(audio.value);
     return {
-      opacity: state === "crisis" ? 0.12 : 0.26 + breathing * 0.14,
       transform: [
-        { scale: 0.9 + breathing * 0.18 + level * motion.audioInfluence * 0.35 }
-      ],
-      backgroundColor: interpolateColor(stateValue.value, inputRange, coreColors)
+        { translateY: interpolate(cycle, [0, 1], [-2, 2]) },
+        { translateX: visual.quiet ? 0 : interpolate(shimmer.value, [0, 1], [-1.5, 1.5]) },
+        { scale: 1.01 + breathing * motion.breathScale * 1.6 + level * 0.03 }
+      ]
     };
   });
 
   const coreStyle = useAnimatedStyle(() => {
-    const breathing = reducedMotion ? 0.5 : breath.value;
     const level = clampAudioLevel(audio.value);
-    return {
-      opacity: state === "crisis" ? 0.62 : 0.9 + breathing * 0.08,
-      transform: [
-        { scale: 0.86 + breathing * motion.pulseScale + level * motion.audioInfluence * 0.55 }
-      ],
-      backgroundColor: interpolateColor(stateValue.value, inputRange, coreColors)
-    };
-  });
+    const breathing = reducedMotion ? 0.48 : breath.value;
 
-  const embraceStyle = useAnimatedStyle(() => {
-    const flowing = reducedMotion ? 0.35 : shimmer.value;
     return {
-      opacity: state === "crisis" ? 0.2 : state === "silent_presence" ? 0.18 : 0.86,
-      transform: [
-        { translateY: interpolate(flowing, [0, 1], [orbSize * 0.01, -orbSize * 0.012]) },
-        { scaleX: 1 + flowing * 0.022 },
-        { scaleY: 0.9 + flowing * 0.018 }
-      ],
-      borderColor: interpolateColor(stateValue.value, inputRange, waveColors)
-    };
-  });
-
-  const leftPulseStyle = useAnimatedStyle(() => {
-    const breathing = reducedMotion ? 0.5 : breath.value;
-    return {
-      opacity: state === "crisis" ? 0.12 : state === "silent_presence" ? 0.14 : 0.82,
-      transform: [{ scale: 0.86 + breathing * 0.08 }],
-      backgroundColor: "#00E5FF"
-    };
-  });
-
-  const rightPulseStyle = useAnimatedStyle(() => {
-    const breathing = reducedMotion ? 0.5 : breath.value;
-    return {
-      opacity: state === "crisis" ? 0.1 : state === "silent_presence" ? 0.12 : 0.78,
-      transform: [{ scale: 0.82 + breathing * 0.07 }],
-      backgroundColor: "#FF4DFF"
-    };
-  });
-
-  const particleStyle = useAnimatedStyle(() => {
-    const flowing = reducedMotion ? 0.35 : shimmer.value;
-    return {
-      opacity:
-        state === "crisis"
-          ? 0.06
-          : state === "low_energy" || state === "silent_presence"
-            ? 0.1
-            : 0.76 + flowing * 0.14,
-      transform: [{ rotate: `${interpolate(flowing, [0, 1], [-2, 2])}deg` }]
-    };
-  });
-
-  const particles = Array.from({ length: 168 }, (_, index) => {
-    const angle = index * 2.399963229728653;
-    const radius = particleBox * (0.05 + Math.sqrt((index + 1) / 168) * 0.45);
-    return {
-      left: particleBox * 0.5 + Math.cos(angle) * radius,
-      top: particleBox * 0.5 + Math.sin(angle) * radius * 0.82,
-      size: 0.72 + (index % 5) * 0.24,
-      color: index % 11 === 0 ? "#00E5FF" : index % 7 === 0 ? "#FF4DFF" : index % 5 === 0 ? "#8A28E2" : "#FFFFFF",
-      opacity: 0.24 + (index % 7) * 0.07
+      opacity: 0.3 + breathing * 0.3 + level * 0.28,
+      transform: [{ scale: 0.9 + breathing * 0.14 + level * 0.18 }]
     };
   });
 
   return (
     <Pressable
+      accessibilityLabel={t(orbAccessibilityLabelKeys[state]) ?? orbAccessibilityLabels[state]}
       accessibilityRole={onPress ? "button" : "image"}
-      accessibilityLabel={orbAccessibilityLabels[state]}
-      onPress={onPress}
-      disabled={!onPress}
       className="items-center justify-center"
-      style={{ minHeight: orbSize + 32 }}
+      disabled={!onPress}
+      onPress={onPress}
+      style={{ minHeight: orbSize + 30 }}
     >
-      <View
+      <Animated.View
         className="items-center justify-center"
-        style={{
-          height: orbSize + 28,
-          width: orbSize + 28
-        }}
+        style={[presenceStyle, { height: orbSize + 30, width: orbSize + 30 }]}
       >
         <Animated.View
           pointerEvents="none"
-          className="absolute rounded-full"
           style={[
             haloStyle,
             {
+              borderRadius: orbSize,
               height: orbSize,
-              width: orbSize,
-              shadowColor: state === "listening" || state === "speaking" ? "#00E5FF" : "#8A28E2",
-              shadowOffset: { width: 0, height: 0 },
-              shadowOpacity: reducedMotion ? 0.12 : 0.28,
-              shadowRadius: state === "crisis" || state === "silent_presence" ? 18 : 34
+              position: "absolute",
+              width: orbSize
             }
           ]}
         />
         <Animated.View
           pointerEvents="none"
-          className="absolute rounded-full border"
           style={[
-            outerRingStyle,
+            ringStyle,
             {
-              height: orbSize * 0.96,
-              width: orbSize * 0.96
+              borderRadius: orbSize,
+              borderWidth: 1.2,
+              height: orbSize * 0.94,
+              position: "absolute",
+              width: orbSize * 0.94
             }
           ]}
         />
         <Animated.View
           pointerEvents="none"
-          className="items-center justify-center rounded-full border border-white/10"
           style={[
-            shellStyle,
+            ringStyle,
             {
-              height: orbSize * 0.82,
-              width: orbSize * 0.82,
-              shadowColor: "#00E5FF",
-              shadowOffset: { width: 0, height: 0 },
-              shadowOpacity: reducedMotion ? 0.08 : 0.22,
-              shadowRadius: 24
+              borderColor: palette.shell,
+              borderRadius: orbSize,
+              borderWidth: imageWindowSize * 0.18,
+              height: orbSize * 0.98,
+              opacity: visual.quiet ? 0.14 : 0.22,
+              position: "absolute",
+              width: orbSize * 0.98
             }
           ]}
+        />
+        <View
+          style={{
+            backgroundColor: "#050816",
+            borderColor: `${visual.ring}66`,
+            borderRadius: imageWindowSize / 2,
+            borderWidth: 1,
+            boxShadow: `0 0 ${visual.quiet ? 22 : 36}px ${visual.glow}55`,
+            height: imageWindowSize,
+            overflow: "hidden",
+            width: imageWindowSize
+          }}
         >
           <Animated.View
             pointerEvents="none"
-            className="absolute rounded-full border"
             style={[
-              particleStyle,
+              imageStyle,
               {
-                borderColor: "rgba(0, 229, 255, 0.22)",
-                height: particleBox,
-                width: particleBox
+                height: imageWindowSize,
+                position: "absolute",
+                width: imageWindowSize
               }
             ]}
           >
-            {particles.map((particle, index) => (
-              <View
-                key={index}
-                className="absolute rounded-full"
-                style={{
-                  backgroundColor: particle.color,
-                  height: particle.size,
-                  left: particle.left,
-                  opacity: state === "crisis" ? 0.08 : particle.opacity,
-                  top: particle.top,
-                  width: particle.size
-                }}
-              />
-            ))}
+            <OrbSurface palette={palette} visual={visual} />
           </Animated.View>
           <Animated.View
             pointerEvents="none"
-            className="absolute rounded-full"
-            style={[
-              leftPulseStyle,
-              {
-                height: orbSize * 0.052,
-                left: orbSize * 0.2,
-                top: orbSize * 0.34,
-                width: orbSize * 0.052
-              }
-            ]}
-          />
-          <Animated.View
-            pointerEvents="none"
-            className="absolute rounded-full"
-            style={[
-              rightPulseStyle,
-              {
-                height: orbSize * 0.05,
-                right: orbSize * 0.2,
-                top: orbSize * 0.34,
-                width: orbSize * 0.05
-              }
-            ]}
-          />
-          <Animated.View
-            pointerEvents="none"
-            className="absolute"
-            style={[
-              embraceStyle,
-              {
-                borderBottomWidth: Math.max(3, orbSize * 0.015),
-                borderBottomLeftRadius: orbSize * 0.46,
-                borderBottomRightRadius: orbSize * 0.46,
-                bottom: orbSize * 0.28,
-                height: orbSize * 0.26,
-                width: orbSize * 0.68
-              }
-            ]}
-          />
-          <View
-            pointerEvents="none"
-            className="absolute border-b-2 border-magenta"
-            style={{
-              borderBottomLeftRadius: orbSize * 0.24,
-              borderBottomRightRadius: orbSize * 0.24,
-              bottom: orbSize * 0.292,
-              height: orbSize * 0.22,
-              opacity: state === "crisis" || state === "silent_presence" ? 0.08 : 0.42,
-              transform: [{ translateX: orbSize * 0.12 }],
-              width: orbSize * 0.42
-            }}
-          />
-          <Animated.View
-            pointerEvents="none"
-            className="absolute rounded-full"
-            style={[
-              coreAuraStyle,
-              {
-                height: orbSize * 0.16,
-                width: orbSize * 0.16
-              }
-            ]}
-          />
-          <Animated.View
-            pointerEvents="none"
-            className="rounded-full"
             style={[
               coreStyle,
               {
-                height: orbSize * 0.062,
-                width: orbSize * 0.062
+                backgroundColor: palette.core,
+                borderRadius: 999,
+                boxShadow: `0 0 18px ${palette.core}AA`,
+                height: imageWindowSize * 0.035,
+                left: imageWindowSize * 0.482,
+                position: "absolute",
+                top: imageWindowSize * 0.39,
+                width: imageWindowSize * 0.035
               }
             ]}
           />
-        </Animated.View>
-      </View>
+        </View>
+      </Animated.View>
     </Pressable>
   );
 }

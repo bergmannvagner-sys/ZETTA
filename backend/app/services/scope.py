@@ -79,14 +79,14 @@ DEPENDENCY_PHRASES = {
 }
 
 UNSAFE_REQUEST_RESPONSE = (
-    "Eu posso conversar sobre quase qualquer assunto seguro, mas nao posso ajudar a cometer crimes, "
-    "fraudes, invasoes, violencia ou abuso. Posso ajudar com uma alternativa legal, preventiva ou defensiva."
+    "Eu posso conversar sobre quase qualquer assunto seguro, mas não posso ajudar a cometer crimes, "
+    "fraudes, invasões, violência ou abuso. Posso ajudar com uma alternativa legal, preventiva ou defensiva."
 )
 
 DEPENDENCY_BOUNDARY_RESPONSE = (
-    "Eu posso ficar aqui com voce neste momento, mas nao quero que voce dependa so de mim. "
-    "O mais seguro e manter tambem contato com pessoas reais de confianca e profissionais quando precisar. "
-    "Se estiver em risco agora, ligue para a emergencia local ou para o CVV 188."
+    "Eu posso ficar aqui com você neste momento, mas não quero que você dependa só de mim. "
+    "O mais seguro é manter também contato com pessoas reais de confiança e profissionais quando precisar. "
+    "Se estiver em risco agora, ligue para a emergência local ou para o CVV 188."
 )
 
 

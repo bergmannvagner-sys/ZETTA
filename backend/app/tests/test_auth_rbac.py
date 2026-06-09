@@ -4,9 +4,11 @@ import hmac
 from hashlib import sha256
 
 import pytest
+from sqlalchemy import text
 
 os.environ.setdefault("DATABASE_URL", "sqlite+pysqlite:///:memory:")
 os.environ.setdefault("JWT_SECRET_KEY", "test-secret-key-with-more-than-thirty-two-chars")
+os.environ.setdefault("DATA_ENCRYPTION_KEY", "test-data-encryption-key-with-more-than-thirty-two-chars")
 os.environ.setdefault("CORS_ORIGINS", "http://localhost:8081")
 os.environ["APP_ENV"] = "test"
 
@@ -382,6 +384,30 @@ def test_e2e_user_consent_chat_sos_and_audit() -> None:
     assert chat.json()["fallback"] is True
     assert chat.json()["in_scope"] is True
     assert chat.json()["risk_level"] == "ELEVATED"
+    assert chat.json()["user_message_id"]
+    assert chat.json()["assistant_message_id"]
+
+    history = client.get("/chat/history", headers=headers)
+    assert history.status_code == 200
+    history_payload = history.json()
+    assert history_payload["session_id"] == chat.json()["session_id"]
+    assert [message["sender"] for message in history_payload["messages"]] == ["USER", "BERGMANN"]
+    assert history_payload["messages"][0]["content"] == "Estou ansioso hoje"
+
+    edited_chat = client.patch(
+        f"/chat/messages/{chat.json()['user_message_id']}",
+        json={"message": "Estou menos ansioso agora"},
+        headers=headers,
+    )
+    assert edited_chat.status_code == 200
+    assert edited_chat.json()["user_message_id"] == chat.json()["user_message_id"]
+    assert edited_chat.json()["assistant_message_id"]
+
+    edited_history = client.get("/chat/history", headers=headers)
+    assert edited_history.status_code == 200
+    edited_messages = edited_history.json()["messages"]
+    assert edited_messages[0]["content"] == "Estou menos ansioso agora"
+    assert len(edited_messages) == 2
 
     general_chat = client.post(
         "/chat/message",
@@ -398,7 +424,7 @@ def test_e2e_user_consent_chat_sos_and_audit() -> None:
     )
     assert unsafe_chat.status_code == 200
     assert unsafe_chat.json()["in_scope"] is False
-    assert "nao posso ajudar a cometer crimes" in unsafe_chat.json()["answer"]
+    assert "nao posso ajudar a cometer crimes" in normalize_text(unsafe_chat.json()["answer"])
 
     dependency_chat = client.post(
         "/chat/message",
@@ -407,7 +433,26 @@ def test_e2e_user_consent_chat_sos_and_audit() -> None:
     )
     assert dependency_chat.status_code == 200
     assert dependency_chat.json()["in_scope"] is False
-    assert "nao quero que voce dependa so de mim" in dependency_chat.json()["answer"]
+    assert "nao quero que voce dependa so de mim" in normalize_text(dependency_chat.json()["answer"])
+
+    english_chat = client.post(
+        "/chat/message",
+        json={"message": "I need help organizing my day", "language": "en"},
+        headers=headers,
+    )
+    assert english_chat.status_code == 200
+    assert english_chat.json()["in_scope"] is True
+    assert "could not reach the ai" in english_chat.json()["answer"].lower()
+
+    with client.websocket_connect("/chat/realtime") as websocket:
+        websocket.send_json({"access_token": access_token, "language": "en"})
+        assert websocket.receive_json()["type"] == "ready"
+        websocket.send_json({"type": "message", "message": "I need help organizing my day", "language": "en"})
+        assert websocket.receive_json()["type"] == "typing"
+        realtime_answer = websocket.receive_json()
+        assert realtime_answer["type"] == "answer"
+        assert realtime_answer["in_scope"] is True
+        assert "could not reach the ai" in realtime_answer["answer"].lower()
 
     crisis_chat = client.post(
         "/chat/message",
@@ -470,6 +515,117 @@ def test_e2e_user_consent_chat_sos_and_audit() -> None:
     assert AuditAction.SOS_EVENT_CREATED in actions
 
 
+def test_sensitive_content_is_encrypted_at_rest_and_decrypted_through_api() -> None:
+    register = client.post(
+        "/auth/register",
+        json={
+            "email": "encrypted-user@example.com",
+            "full_name": "Pessoa Criptografada",
+            "password": "strongpass123",
+            "role": "USER",
+            "document": "24680246804",
+            "lgpdConsent": True,
+        },
+    )
+    assert register.status_code == 201
+    data = register.json()
+    headers = {"Authorization": f"Bearer {data['access_token']}"}
+
+    consent_status = client.get("/privacy/consent", headers=headers)
+    assert consent_status.status_code == 200
+    accept_consent = client.post(
+        "/privacy/consent",
+        json={"policy_version": consent_status.json()["policy_version"]},
+        headers=headers,
+    )
+    assert accept_consent.status_code == 200
+
+    chat_message = "Estou sobrecarregado e preciso organizar meu dia"
+    journal_content = "Hoje eu precisei respirar e pausar antes de continuar."
+    emotion_note = "Ansiedade forte no trabalho e cansaço no fim do dia."
+    sos_message = "Preciso de ajuda agora"
+
+    chat = client.post("/chat/message", json={"message": chat_message}, headers=headers)
+    assert chat.status_code == 200
+
+    journal = client.post(
+        "/journal/entries",
+        json={"content": journal_content, "entry_type": "REFLECTION", "tags": ["ansiedade"]},
+        headers=headers,
+    )
+    assert journal.status_code == 201
+
+    emotion = client.post(
+        "/emotions/logs",
+        json={
+            "mood": "ansioso",
+            "emotions": ["ansiedade", "cansaco"],
+            "intensity": 8,
+            "energy": 3,
+            "anxiety": 9,
+            "stress": 8,
+            "sleep_quality": 4,
+            "motivation": 2,
+            "note": emotion_note,
+        },
+        headers=headers,
+    )
+    assert emotion.status_code == 201
+
+    sos = client.post(
+        "/sos/event",
+        json={"intensity": "HIGH", "message": sos_message},
+        headers=headers,
+    )
+    assert sos.status_code == 200
+
+    db = SessionLocal()
+    try:
+        raw_chat = db.execute(
+            text("SELECT content FROM bergmann_chat_messages WHERE id = :id"),
+            {"id": chat.json()["user_message_id"]},
+        ).scalar_one()
+        raw_journal = db.execute(
+            text("SELECT content FROM bergmann_journal_entries WHERE id = :id"),
+            {"id": journal.json()["id"]},
+        ).scalar_one()
+        raw_emotion_note = db.execute(
+            text("SELECT note FROM bergmann_emotion_logs WHERE id = :id"),
+            {"id": emotion.json()["id"]},
+        ).scalar_one()
+        raw_sos_message = db.execute(
+            text("SELECT message FROM bergmann_sos_events WHERE id = :id"),
+            {"id": sos.json()["id"]},
+        ).scalar_one()
+    finally:
+        db.close()
+
+    assert raw_chat != chat_message
+    assert raw_journal != journal_content
+    assert raw_emotion_note != emotion_note
+    assert raw_sos_message != sos_message
+
+    history = client.get("/chat/history", headers=headers)
+    assert history.status_code == 200
+    assert history.json()["messages"][0]["content"] == chat_message
+
+    journal_list = client.get("/journal/entries", headers=headers)
+    assert journal_list.status_code == 200
+    assert journal_list.json()[0]["content"] == journal_content
+
+    emotion_list = client.get("/emotions/logs", headers=headers)
+    assert emotion_list.status_code == 200
+    assert emotion_list.json()[0]["note"] == emotion_note
+
+    export = client.get("/privacy/export", headers=headers)
+    assert export.status_code == 200
+    export_payload = export.json()
+    assert export_payload["chat_sessions"][0]["messages"][0]["content"] == chat_message
+    assert export_payload["journal_entries"][0]["content"] == journal_content
+    assert export_payload["emotion_logs"][0]["note"] == emotion_note
+    assert export_payload["sos_events"][0]["message"] == sos_message
+
+
 def test_login_rate_limit_returns_429() -> None:
     settings = get_settings()
     previous_requests = settings.auth_rate_limit_requests
@@ -530,7 +686,7 @@ def test_password_reset_flow_changes_password_and_revokes_old_refresh_tokens() -
     assert old_refresh_response.status_code == 401
 
 
-def test_emotional_journal_sharing_and_nr1_privacy_boundaries() -> None:
+def test_emotional_journal_sharing_and_nr1_privacy_boundaries(monkeypatch) -> None:
     user_register = client.post(
         "/auth/register",
         json={
@@ -709,6 +865,167 @@ def test_emotional_journal_sharing_and_nr1_privacy_boundaries() -> None:
     assert len(detailed_payload["recent_emotions"]) == 1
     assert detailed_payload["recent_emotions"][0]["mood"] == "ansioso"
 
+    telecare_providers = client.get("/telecare/providers", headers=user_headers)
+    assert telecare_providers.status_code == 200
+    assert any(provider["id"] == psychologist_register.json()["user"]["id"] for provider in telecare_providers.json())
+
+    telecare_session = client.post(
+        "/telecare/sessions",
+        json={
+            "provider_user_id": psychologist_register.json()["user"]["id"],
+            "notes": "Quero atendimento dentro do app.",
+        },
+        headers=user_headers,
+    )
+    assert telecare_session.status_code == 201
+    telecare_payload = telecare_session.json()
+    assert telecare_payload["status"] == "REQUESTED"
+    assert telecare_payload["room_code"].startswith("ZT-")
+    assert telecare_payload["platform_fee_brl"] > 0
+    assert telecare_payload["provider_payout_brl"] > 0
+    assert telecare_payload["video_engine_status"] == "DAILY_NOT_CONFIGURED"
+
+    professional_sessions = client.get("/telecare/sessions", headers=psychologist_headers)
+    assert professional_sessions.status_code == 200
+    assert professional_sessions.json()[0]["requester_user_id"] == user_register.json()["user"]["id"]
+
+    user_cannot_start_session = client.patch(
+        f"/telecare/sessions/{telecare_payload['id']}/status",
+        json={"status": "IN_SESSION"},
+        headers=user_headers,
+    )
+    assert user_cannot_start_session.status_code == 403
+
+    join_before_accept = client.post(f"/telecare/sessions/{telecare_payload['id']}/join", headers=user_headers)
+    assert join_before_accept.status_code == 409
+
+    settings = get_settings()
+    previous_daily_api_key = settings.daily_api_key
+    previous_daily_api_url = settings.daily_api_url
+    settings.daily_api_key = "daily-test-key"
+    settings.daily_api_url = "https://api.daily.test/v1"
+    captured_daily_requests: list[dict[str, object]] = []
+
+    class FakeDailyResponse:
+        def __init__(self, payload: dict[str, object]) -> None:
+            self._payload = payload
+            self.text = json.dumps(payload)
+
+        def raise_for_status(self) -> None:
+            return None
+
+        def json(self) -> dict[str, object]:
+            return self._payload
+
+    def fake_daily_post(url, **kwargs):
+        captured_daily_requests.append({"url": url, **kwargs})
+        assert kwargs["headers"]["Authorization"] == "Bearer daily-test-key"
+        if url.endswith("/rooms"):
+            room_name = kwargs["json"]["name"]
+            return FakeDailyResponse({"name": room_name, "url": f"https://zetta.daily.co/{room_name}"})
+        if url.endswith("/meeting-tokens"):
+            return FakeDailyResponse({"token": "daily-token"})
+        raise AssertionError(f"Unexpected Daily URL: {url}")
+
+    monkeypatch.setattr("app.services.telecare.httpx.post", fake_daily_post)
+
+    accepted_session = client.patch(
+        f"/telecare/sessions/{telecare_payload['id']}/status",
+        json={"status": "ACCEPTED"},
+        headers=psychologist_headers,
+    )
+    assert accepted_session.status_code == 200
+    assert accepted_session.json()["status"] == "ACCEPTED"
+    assert accepted_session.json()["video_engine_status"] == "DAILY_READY"
+
+    user_join = client.post(f"/telecare/sessions/{telecare_payload['id']}/join", headers=user_headers)
+    assert user_join.status_code == 200
+    user_join_payload = user_join.json()
+    assert user_join_payload["video_engine"] == "DAILY"
+    assert user_join_payload["join_url"].startswith("https://zetta.daily.co/zetta-")
+    assert "t=daily-token" in user_join_payload["join_url"]
+
+    provider_join = client.post(f"/telecare/sessions/{telecare_payload['id']}/join", headers=psychologist_headers)
+    assert provider_join.status_code == 200
+    token_requests = [request for request in captured_daily_requests if str(request["url"]).endswith("/meeting-tokens")]
+    assert token_requests[0]["json"]["properties"]["is_owner"] is False
+    assert token_requests[1]["json"]["properties"]["is_owner"] is True
+    assert token_requests[0]["json"]["properties"]["room_name"].startswith("zetta-")
+
+    started_session = client.patch(
+        f"/telecare/sessions/{telecare_payload['id']}/status",
+        json={"status": "IN_SESSION"},
+        headers=psychologist_headers,
+    )
+    assert started_session.status_code == 200
+    assert started_session.json()["status"] == "IN_SESSION"
+
+    completed_session = client.patch(
+        f"/telecare/sessions/{telecare_payload['id']}/status",
+        json={"status": "COMPLETED"},
+        headers=psychologist_headers,
+    )
+    assert completed_session.status_code == 200
+    assert completed_session.json()["payment_status"] == "PENDING_PROVIDER_REPASS"
+    settings.daily_api_key = previous_daily_api_key
+    settings.daily_api_url = previous_daily_api_url
+
+    hospital_register = client.post(
+        "/auth/register",
+        json={
+            "email": "hospital@example.com",
+            "full_name": "Hospital Regional",
+            "password": "strongpass123",
+            "role": "HOSPITAL",
+            "document": "98765432000198",
+            "lgpdConsent": True,
+        },
+    )
+    assert hospital_register.status_code == 201
+    hospital_payload = hospital_register.json()
+    hospital_headers = {"Authorization": f"Bearer {hospital_payload['access_token']}"}
+
+    db = SessionLocal()
+    try:
+        hospital = db.get(User, hospital_payload["user"]["id"])
+        assert hospital is not None
+        hospital.status = AccountStatus.ACTIVE
+        hospital.subscription_status = SubscriptionStatus.ACTIVE
+        db.commit()
+    finally:
+        db.close()
+
+    hospital_consent_status = client.get("/privacy/consent", headers=hospital_headers)
+    assert hospital_consent_status.status_code == 200
+    client.post(
+        "/privacy/consent",
+        json={"policy_version": hospital_consent_status.json()["policy_version"]},
+        headers=hospital_headers,
+    )
+
+    telecare_providers_with_hospital = client.get("/telecare/providers", headers=user_headers)
+    assert telecare_providers_with_hospital.status_code == 200
+    assert any(provider["id"] == hospital_payload["user"]["id"] for provider in telecare_providers_with_hospital.json())
+
+    hospital_session = client.post(
+        "/telecare/sessions",
+        json={
+            "provider_user_id": hospital_payload["user"]["id"],
+            "notes": "Quero atendimento com um hospital da rede.",
+        },
+        headers=user_headers,
+    )
+    assert hospital_session.status_code == 201
+    hospital_session_payload = hospital_session.json()
+    assert hospital_session_payload["provider_role"] == "HOSPITAL"
+    assert hospital_session_payload["session_price_brl"] == 220.0
+    assert hospital_session_payload["platform_fee_brl"] == 44.0
+    assert hospital_session_payload["provider_payout_brl"] == 176.0
+
+    hospital_sessions = client.get("/telecare/sessions", headers=hospital_headers)
+    assert hospital_sessions.status_code == 200
+    assert any(session["id"] == hospital_session_payload["id"] for session in hospital_sessions.json())
+
     company_consent = client.post(
         "/sharing/consents",
         json={
@@ -731,6 +1048,119 @@ def test_emotional_journal_sharing_and_nr1_privacy_boundaries() -> None:
     after_revoke = client.get("/professional/authorized-users", headers=psychologist_headers)
     assert after_revoke.status_code == 200
     assert after_revoke.json() == []
+
+
+def test_institution_dashboard_aggregates_authorized_sharing_and_connection_code() -> None:
+    user_register = client.post(
+        "/auth/register",
+        json={
+            "email": "institution-user@example.com",
+            "full_name": "Pessoa Institucional",
+            "password": "strongpass123",
+            "role": "USER",
+            "document": "24681357090",
+            "lgpdConsent": True,
+        },
+    )
+    assert user_register.status_code == 201
+    user_token = user_register.json()["access_token"]
+    user_headers = {"Authorization": f"Bearer {user_token}"}
+    user_consent_status = client.get("/privacy/consent", headers=user_headers)
+    client.post(
+        "/privacy/consent",
+        json={"policy_version": user_consent_status.json()["policy_version"]},
+        headers=user_headers,
+    )
+
+    institution_register = client.post(
+        "/auth/register",
+        json={
+            "email": "clinic@example.com",
+            "full_name": "Clinica Rede",
+            "password": "strongpass123",
+            "role": "CLINIC",
+            "document": "11223344000186",
+            "lgpdConsent": True,
+        },
+    )
+    assert institution_register.status_code == 201
+    institution_payload = institution_register.json()
+    institution_id = institution_payload["user"]["id"]
+    institution_headers = {"Authorization": f"Bearer {institution_payload['access_token']}"}
+
+    db = SessionLocal()
+    try:
+        institution = db.get(User, institution_id)
+        assert institution is not None
+        institution.status = AccountStatus.ACTIVE
+        institution.subscription_status = SubscriptionStatus.ACTIVE
+        db.commit()
+    finally:
+        db.close()
+
+    institution_consent_status = client.get("/privacy/consent", headers=institution_headers)
+    assert institution_consent_status.status_code == 200
+    client.post(
+        "/privacy/consent",
+        json={"policy_version": institution_consent_status.json()["policy_version"]},
+        headers=institution_headers,
+    )
+
+    connection_code = client.get("/connections/me", headers=institution_headers)
+    assert connection_code.status_code == 200
+    assert connection_code.json()["connection_code"]
+
+    search = client.get(
+        "/connections/search",
+        params={"query": institution_payload["user"]["email"]},
+        headers=user_headers,
+    )
+    assert search.status_code == 200
+    assert search.json()["role"] == "CLINIC"
+    assert search.json()["status"] == "ACTIVE"
+
+    sharing = client.post(
+        "/sharing/consents",
+        json={
+            "target_identifier": institution_payload["user"]["email"],
+            "categories": ["MOOD", "TRENDS", "JOURNAL"],
+            "summary_only": False,
+        },
+        headers=user_headers,
+    )
+    assert sharing.status_code == 201
+
+    journal = client.post(
+        "/journal/entries",
+        json={"content": "Hoje consegui pedir ajuda antes de piorar.", "tags": ["apoio", "ansiedade"]},
+        headers=user_headers,
+    )
+    assert journal.status_code == 201
+
+    emotion = client.post(
+        "/emotions/logs",
+        json={"mood": "ansioso", "emotions": ["ansiedade"], "intensity": 8, "anxiety": 9, "stress": 8},
+        headers=user_headers,
+    )
+    assert emotion.status_code == 201
+
+    dashboard = client.get("/institution/dashboard", headers=institution_headers)
+    assert dashboard.status_code == 200
+    payload = dashboard.json()
+    assert payload["participant_count"] == 1
+    assert payload["average_intensity"] == 8.0
+    assert payload["average_anxiety"] == 9.0
+    assert payload["average_stress"] == 8.0
+    assert payload["risk_flags"] == 1
+    assert payload["shared_users"][0]["full_name"] == "Pessoa Institucional"
+    assert payload["shared_users"][0]["latest_mood"] == "ansioso"
+    assert payload["shared_users"][0]["average_intensity"] == 8.0
+    assert payload["shared_users"][0]["journal_entries_visible"] == 1
+    assert payload["shared_users"][0]["summary_only"] is False
+    breakdown = {item["category"]: item["count"] for item in payload["category_breakdown"]}
+    assert breakdown == {"JOURNAL": 1, "TRENDS": 1, "MOOD": 1}
+    mood_breakdown = {item["mood"]: item["count"] for item in payload["mood_breakdown"]}
+    assert mood_breakdown == {"ansioso": 1}
 
 
 def test_user_care_reminders_require_consent_and_stay_user_owned() -> None:
@@ -907,7 +1337,7 @@ def test_super_admin_can_manage_paid_subscription_status(monkeypatch) -> None:
         account for account in listed.json() if account["email"] == "billing-company-pending@example.com"
     )
     assert pending_company_payload["billing_activation_source"] == "NOT_ACTIVE"
-    assert "ainda nao aprovada" in pending_company_payload["billing_activation_blocker"]
+    assert "ainda nao aprovada" in normalize_text(pending_company_payload["billing_activation_blocker"])
 
     plans = client.get("/admin/commercial-plans", headers=admin_headers)
     assert plans.status_code == 200
@@ -1015,7 +1445,7 @@ def test_super_admin_can_manage_paid_subscription_status(monkeypatch) -> None:
     assert pending_alert_payload["email_sent"] is True
     assert any(account["email"] == "billing-company@example.com" for account in pending_alert_payload["accounts"])
     assert "billing-company@example.com" in captured_admin_alert["body"]
-    assert "pendencia financeira" in captured_admin_alert["subject"].lower()
+    assert "pendência financeira" in captured_admin_alert["subject"].lower()
 
     audit = client.get("/admin/audit-logs?resource_type=billing_reference&limit=10", headers=admin_headers)
     assert audit.status_code == 200
@@ -1205,6 +1635,9 @@ def test_super_admin_can_manage_paid_subscription_status(monkeypatch) -> None:
         assert mercado_pago_body["external_reference"] == company_id
         assert mercado_pago_body["items"][0]["currency_id"] == "BRL"
         assert mercado_pago_body["back_urls"]["success"] == "https://app.example.com/success"
+        assert mercado_pago_body["back_urls"]["pending"] == "https://app.example.com/pending"
+        assert mercado_pago_body["back_urls"]["failure"] == "https://app.example.com/failure"
+        assert mercado_pago_body["auto_return"] == "approved"
     finally:
         settings.mercado_pago_access_token = previous_access_token
         settings.mercado_pago_public_key = previous_public_key

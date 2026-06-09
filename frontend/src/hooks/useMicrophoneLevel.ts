@@ -1,5 +1,5 @@
-import { useCallback, useEffect, useRef, useState } from "react";
 import Constants from "expo-constants";
+import { useCallback, useEffect, useRef, useState } from "react";
 
 type MicrophoneLevelStatus = "idle" | "requesting_permission" | "active" | "denied" | "error";
 
@@ -55,7 +55,7 @@ export function useMicrophoneLevel(): UseMicrophoneLevelResult {
     } catch {
       setLevel(0);
       setStatus("error");
-      setErrorMessage("Nao foi possivel desligar o microfone.");
+      setErrorMessage("Não foi possível desligar o microfone.");
     }
   }, [clearMeteringInterval]);
 
@@ -65,7 +65,7 @@ export function useMicrophoneLevel(): UseMicrophoneLevelResult {
     if (Constants.appOwnership === "expo") {
       setLevel(0);
       setStatus("error");
-      setErrorMessage("Medicao de voz indisponivel no Expo Go. Use uma development build para testar microfone.");
+      setErrorMessage("Medição de voz indisponível no Expo Go. Use uma development build para testar microfone.");
       return;
     }
     try {
@@ -73,13 +73,13 @@ export function useMicrophoneLevel(): UseMicrophoneLevelResult {
       const permission = await audio.requestRecordingPermissionsAsync();
       if (!permission.granted) {
         setStatus("denied");
-        setErrorMessage("Permissao de microfone negada.");
+        setErrorMessage("Permissão de microfone negada.");
         return;
       }
 
       const meteringOptions = {
         ...audio.RecordingPresets.LOW_QUALITY,
-        isMeteringEnabled: true
+        isMeteringEnabled: true,
       };
       const recorder = new audio.AudioModule.AudioRecorder(meteringOptions);
 
@@ -92,7 +92,7 @@ export function useMicrophoneLevel(): UseMicrophoneLevelResult {
         playsInSilentMode: true,
         interruptionMode: "mixWithOthers",
         shouldPlayInBackground: false,
-        shouldRouteThroughEarpiece: false
+        shouldRouteThroughEarpiece: false,
       });
       await recorder.prepareToRecordAsync(meteringOptions);
       recorder.record();
@@ -106,11 +106,11 @@ export function useMicrophoneLevel(): UseMicrophoneLevelResult {
       clearMeteringInterval();
       setLevel(0);
       setStatus("error");
-      setErrorMessage("Medicao de voz indisponivel neste Expo Go.");
+      setErrorMessage("Medição de voz indisponível neste aparelho.");
       try {
         await audioModuleRef.current?.setIsAudioActiveAsync?.(false);
       } catch {
-        // Audio cleanup failure should not hide the original activation error.
+        // Falha de limpeza de áudio não deve esconder o erro original.
       }
     }
   }, [clearMeteringInterval]);
@@ -128,6 +128,6 @@ export function useMicrophoneLevel(): UseMicrophoneLevelResult {
     isActive: status === "active",
     errorMessage,
     start,
-    stop
+    stop,
   };
 }

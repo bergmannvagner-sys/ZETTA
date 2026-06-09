@@ -60,7 +60,7 @@ export function getDocumentRequirement(role: UserRole): {
     return {
       type: "CNPJ",
       label: "CNPJ",
-      helper: "Usado para reduzir contas falsas e liberar a conta apos validacao.",
+      helper: "Usado para reduzir contas falsas e liberar a conta após validação.",
       maxLength: 18,
       maxDigits: 14,
       example: "00.000.000/0000-00"
@@ -70,7 +70,7 @@ export function getDocumentRequirement(role: UserRole): {
     return {
       type: "CRP",
       label: "CRP",
-      helper: "O registro profissional sera validado antes de liberar recursos clinicos.",
+      helper: "O registro profissional será validado antes de liberar recursos clínicos.",
       maxLength: 32,
       example: "06/123456"
     };
@@ -78,7 +78,7 @@ export function getDocumentRequirement(role: UserRole): {
   return {
     type: "CPF",
     label: "CPF",
-    helper: "Usado apenas para validacao da conta e prevencao de duplicidade.",
+    helper: "Usado apenas para validação da conta e prevenção de duplicidade.",
     maxLength: 14,
     maxDigits: 11,
     example: "000.000.000-00"
@@ -141,7 +141,7 @@ export function getDocumentProgress(role: UserRole, value: string): string {
   if (requirement.type === "CRP") {
     return `${normalizeDocumentForValidation(role, value).length}/${requirement.maxLength} caracteres`;
   }
-  return `${onlyDigits(value, requirement.maxDigits ?? 0).length}/${requirement.maxDigits} numeros`;
+  return `${onlyDigits(value, requirement.maxDigits ?? 0).length}/${requirement.maxDigits} números`;
 }
 
 export function validateRegisterInput(input: RegisterInput): string | null {
@@ -152,27 +152,27 @@ export function validateRegisterInput(input: RegisterInput): string | null {
     return "Informe seu nome completo.";
   }
   if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/u.test(email)) {
-    return "Informe um email valido.";
+    return "Informe um e-mail válido.";
   }
   if (input.password.length < 8) {
     return "A senha deve ter pelo menos 8 caracteres.";
   }
   if (input.password.length > 128) {
-    return "A senha deve ter no maximo 128 caracteres.";
+    return "A senha deve ter no máximo 128 caracteres.";
   }
   if (input.role === "SUPER_ADMIN") {
-    return "Administrador interno nao pode ser criado pelo cadastro publico.";
+    return "Administrador interno não pode ser criado pelo cadastro público.";
   }
   const requirement = getDocumentRequirement(input.role);
   const document = normalizeDocumentForValidation(input.role, input.document);
   if (requirement.type === "CPF" && document.length !== 11) {
-    return "Informe um CPF valido para validacao da conta.";
+    return "Informe um CPF válido para validação da conta.";
   }
   if (requirement.type === "CNPJ" && document.length !== 14) {
-    return "Informe um CNPJ valido para validacao da conta.";
+    return "Informe um CNPJ válido para validação da conta.";
   }
   if (requirement.type === "CRP" && !/^[A-Z0-9/-]{4,32}$/u.test(document)) {
-    return "Informe um CRP valido para validacao profissional.";
+    return "Informe um CRP válido para validação profissional.";
   }
   if (!input.lgpdConsent) {
     return "Aceite o consentimento LGPD para criar sua conta.";
@@ -194,7 +194,7 @@ function normalizeAuthResponse(data: RawAuthResponse): AuthResponse {
         hasUserEmail: Boolean(rawUser?.email)
       });
     }
-    throw new Error("Resposta de autenticacao invalida.");
+    throw new Error("Resposta de autenticação inválida.");
   }
 
   const user: AuthUser = {
@@ -256,7 +256,7 @@ export async function register(input: RegisterInput): Promise<AuthResponse> {
 export async function login(input: LoginInput): Promise<AuthResponse> {
   const email = normalizeEmail(input.email);
   if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/u.test(email)) {
-    throw new Error("Informe um email valido.");
+    throw new Error("Informe um e-mail válido.");
   }
   if (!input.password) {
     throw new Error("Informe sua senha.");
@@ -277,7 +277,7 @@ export function getMe() {
 export async function requestPasswordReset(email: string): Promise<PasswordResetRequestResponse> {
   const normalizedEmail = normalizeEmail(email);
   if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/u.test(normalizedEmail)) {
-    throw new Error("Informe um email valido.");
+    throw new Error("Informe um e-mail válido.");
   }
   return apiRequest<PasswordResetRequestResponse>("/auth/password-reset/request", {
     method: "POST",
@@ -291,7 +291,7 @@ export async function confirmPasswordReset(input: {
   newPassword: string;
 }): Promise<{ message: string }> {
   if (input.token.trim().length < 32) {
-    throw new Error("Informe o codigo de recuperacao.");
+    throw new Error("Informe o código de recuperação.");
   }
   if (input.newPassword.length < 8) {
     throw new Error("A nova senha deve ter pelo menos 8 caracteres.");

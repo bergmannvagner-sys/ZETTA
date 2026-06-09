@@ -5,6 +5,7 @@ from hashlib import sha256
 from sqlalchemy import or_
 from sqlalchemy.orm import Session
 
+from app.models.billing import BillingWebhookEvent
 from app.models.privacy import AuditAction
 from app.models.user import SubscriptionStatus, User
 from app.schemas.billing import BillingWebhookPayload
@@ -60,9 +61,43 @@ def find_duplicate_event_user(db: Session, event_id: str) -> User | None:
     return db.query(User).filter(User.billing_last_event_id == event_id).first()
 
 
+def find_billing_webhook_event(db: Session, *, provider: str, event_id: str) -> BillingWebhookEvent | None:
+    return (
+        db.query(BillingWebhookEvent)
+        .filter(BillingWebhookEvent.provider == provider, BillingWebhookEvent.event_id == event_id)
+        .first()
+    )
+
+
+def get_or_create_billing_webhook_event(
+    db: Session, payload: BillingWebhookPayload
+) -> tuple[BillingWebhookEvent, bool]:
+    event = find_billing_webhook_event(db, provider=payload.provider, event_id=payload.event_id)
+    if event:
+        return event, event.processing_status == "processed"
+
+    event = BillingWebhookEvent(
+        provider=payload.provider,
+        event_id=payload.event_id,
+        account_reference_id=payload.account_reference_id,
+        customer_id=payload.customer_id,
+        subscription_id=payload.subscription_id,
+        external_status=payload.external_status,
+        processing_status="received",
+        duplicate=False,
+        received_at=payload.occurred_at or datetime.now(UTC),
+    )
+    db.add(event)
+    db.flush()
+    return event, False
+
+
 def apply_billing_webhook(db: Session, payload: BillingWebhookPayload) -> tuple[User, bool]:
-    duplicate = find_duplicate_event_user(db, payload.event_id)
-    if duplicate:
+    event, already_processed = get_or_create_billing_webhook_event(db, payload)
+    if already_processed:
+        duplicate = db.get(User, event.linked_user_id) if event.linked_user_id else find_billing_user(db, payload)
+        if duplicate is None:
+            raise LookupError("Billing account not found")
         write_audit_log(
             db,
             action=AuditAction.BILLING_WEBHOOK_PROCESSED,
@@ -96,6 +131,15 @@ def apply_billing_webhook(db: Session, payload: BillingWebhookPayload) -> tuple[
     user.billing_subscription_id = payload.subscription_id or user.billing_subscription_id
     user.billing_last_event_id = payload.event_id
     user.billing_last_event_at = payload.occurred_at or datetime.now(UTC)
+    event.account_reference_id = payload.account_reference_id
+    event.linked_user_id = user.id
+    event.customer_id = payload.customer_id or user.billing_customer_id
+    event.subscription_id = payload.subscription_id or user.billing_subscription_id
+    event.external_status = payload.external_status
+    event.processing_status = "processed"
+    event.duplicate = False
+    event.error = None
+    event.processed_at = datetime.now(UTC)
     write_audit_log(
         db,
         action=AuditAction.BILLING_WEBHOOK_PROCESSED,
@@ -127,6 +171,31 @@ def record_billing_webhook_error(
     subscription_id: str | None = None,
     error: str,
 ) -> None:
+    if event_id:
+        event = find_billing_webhook_event(db, provider=provider, event_id=event_id)
+        if event is None:
+            event = BillingWebhookEvent(
+                provider=provider,
+                event_id=event_id,
+                customer_id=customer_id,
+                subscription_id=subscription_id,
+                external_status=external_status,
+                processing_status="error",
+                duplicate=False,
+                error=error,
+                received_at=datetime.now(UTC),
+                processed_at=datetime.now(UTC),
+            )
+            db.add(event)
+        else:
+            event.customer_id = customer_id or event.customer_id
+            event.subscription_id = subscription_id or event.subscription_id
+            event.external_status = external_status or event.external_status
+            event.processing_status = "error"
+            event.duplicate = False
+            event.error = error
+            event.processed_at = datetime.now(UTC)
+
     write_audit_log(
         db,
         action=AuditAction.BILLING_WEBHOOK_PROCESSED,

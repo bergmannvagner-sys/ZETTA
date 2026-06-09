@@ -1,18 +1,23 @@
 import { router } from "expo-router";
 import { useQuery } from "@tanstack/react-query";
-import { Text } from "react-native";
+import { Pressable, Text, View } from "react-native";
 
 import { Screen } from "@/components/screen";
-import { Button, Card } from "@/components/ui";
+import { Button, Card, Header, SectionTitle } from "@/components/ui";
+import { radii, useAppTheme } from "@/design-system/theme";
+import { useI18n } from "@/i18n/i18n";
 import { hasPaidAccess, planLabel, subscriptionStatusLabel } from "@/lib/billing";
 import { getMyConnectionCode } from "@/lib/emotional";
 import { useAuthStore } from "@/store/auth-store";
 
 export default function Profile() {
+  const { colors } = useAppTheme();
+  const { language, languages, setLanguage, t } = useI18n();
   const user = useAuthStore((state) => state.user);
   const clearSession = useAuthStore((state) => state.clearSession);
   const canShareCode =
     user?.status === "ACTIVE" && (user.role === "PSYCHOLOGIST" || user.role === "COMPANY") && hasPaidAccess(user);
+
   const connectionCode = useQuery({
     queryKey: ["my-connection-code"],
     queryFn: getMyConnectionCode,
@@ -21,94 +26,113 @@ export default function Profile() {
 
   return (
     <Screen>
-      <Text className="text-3xl font-semibold text-white">Perfil</Text>
-      <Card>
-        <Text selectable className="text-base text-white">{user?.full_name}</Text>
-        <Text selectable className="text-sm text-muted">{user?.email}</Text>
-        <Text selectable className="text-sm text-muted">Perfil: {user?.role}</Text>
-        <Text selectable className="text-sm text-muted">Status: {user?.status}</Text>
-        <Text selectable className="text-sm text-muted">
-          Plano: {planLabel(user?.subscription_plan)}
-        </Text>
-        <Text selectable className="text-sm text-muted">
-          Assinatura: {subscriptionStatusLabel(user?.subscription_status)}
-        </Text>
-        {canShareCode && connectionCode.data ? (
-          <Text selectable className="text-sm text-mint">Codigo de conexao: {connectionCode.data.connection_code}</Text>
-        ) : null}
-      </Card>
-      {user?.role === "SUPER_ADMIN" ? (
-        <>
+      <View style={{ alignItems: "center", gap: 24, width: "100%" }}>
+        <View style={{ gap: 10, maxWidth: 640, width: "100%" }}>
+          <Header align="center" title={t("profile.title")} subtitle={t("language.subtitle")} />
+        </View>
+
+        <View style={{ gap: 20, maxWidth: 960, width: "100%" }}>
+          <Card>
+            <Text selectable style={{ color: colors.textPrimary, fontSize: 20, fontWeight: "800", lineHeight: 26 }}>
+              {user?.full_name}
+            </Text>
+            <Text selectable style={{ color: colors.textSecondary, fontSize: 15, lineHeight: 22 }}>
+              {user?.email}
+            </Text>
+            <Text selectable style={{ color: colors.textSecondary, fontSize: 15, lineHeight: 22 }}>
+              {t("profile.role", { value: user?.role })}
+            </Text>
+            <Text selectable style={{ color: colors.textSecondary, fontSize: 15, lineHeight: 22 }}>
+              {t("profile.status", { value: user?.status })}
+            </Text>
+            <Text selectable style={{ color: colors.textSecondary, fontSize: 15, lineHeight: 22 }}>
+              {t("profile.plan", { value: planLabel(user?.subscription_plan) })}
+            </Text>
+            <Text selectable style={{ color: colors.textSecondary, fontSize: 15, lineHeight: 22 }}>
+              {t("profile.subscription", { value: subscriptionStatusLabel(user?.subscription_status) })}
+            </Text>
+            {canShareCode && connectionCode.data ? (
+              <Text selectable style={{ color: colors.primary, fontSize: 15, fontWeight: "800", lineHeight: 22 }}>
+                {t("profile.connectionCode", { value: connectionCode.data.connection_code })}
+              </Text>
+            ) : null}
+          </Card>
+
+          <Card>
+            <SectionTitle title={t("language.title")} subtitle={t("language.current")} />
+            <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 10 }}>
+              {languages.map((option) => {
+                const selected = option.code === language;
+                return (
+                  <Pressable
+                    key={option.code}
+                    accessibilityRole="button"
+                    accessibilityState={{ selected }}
+                    onPress={() => void setLanguage(option.code)}
+                    style={({ pressed }) => ({
+                      backgroundColor: selected ? colors.primaryLight : colors.surfaceStrong,
+                      borderColor: selected ? colors.primary : colors.primaryLight,
+                      borderCurve: "continuous",
+                      borderRadius: radii.pill,
+                      borderWidth: 1.5,
+                      boxShadow: selected ? `0 8px 18px ${colors.shadow}` : "none",
+                      minHeight: 48,
+                      minWidth: 118,
+                      opacity: pressed ? 0.82 : 1,
+                      paddingHorizontal: 16,
+                      paddingVertical: 12
+                    })}
+                  >
+                    <Text
+                      style={{
+                        color: selected ? "#120F1F" : colors.textPrimary,
+                        fontSize: 15,
+                        fontWeight: "800",
+                        lineHeight: 20
+                      }}
+                    >
+                      {option.nativeLabel}
+                    </Text>
+                  </Pressable>
+                );
+              })}
+            </View>
+          </Card>
+
+          {user?.role === "SUPER_ADMIN" ? (
+            <Card>
+              <SectionTitle title="Painéis administrativos" subtitle="Acesso restrito ao administrador interno." />
+              <View style={{ gap: 10 }}>
+                <Button label="Resumo operacional" tone="soft" onPress={() => router.push("/(app)/admin-operations" as never)} />
+                <Button label="Contas pendentes" tone="soft" onPress={() => router.push("/(app)/admin-pending-accounts" as never)} />
+                <Button label="Assinaturas" tone="soft" onPress={() => router.push("/(app)/admin-subscriptions" as never)} />
+                <Button
+                  label="Pendências financeiras"
+                  tone="soft"
+                  onPress={() => router.push("/(app)/admin-billing-pending" as never)}
+                />
+                <Button label="Contas moderadas" tone="soft" onPress={() => router.push("/(app)/admin-moderated-accounts" as never)} />
+                <Button label="Planos comerciais" tone="soft" onPress={() => router.push("/(app)/admin-commercial-plans" as never)} />
+                <Button label="Configurar pagamentos" tone="soft" onPress={() => router.push("/(app)/admin-billing-config" as never)} />
+                <Button label="Monitorar webhooks" tone="soft" onPress={() => router.push("/(app)/admin-billing-webhooks" as never)} />
+                <Button label="Alertas administrativos" tone="soft" onPress={() => router.push("/(app)/admin-alerts" as never)} />
+                <Button label="Configurar e-mail" tone="soft" onPress={() => router.push("/(app)/admin-email-config" as never)} />
+                <Button label="Auditoria" tone="soft" onPress={() => router.push("/(app)/admin-audit" as never)} />
+              </View>
+            </Card>
+          ) : null}
+
+          <Button label={t("profile.planAccess")} tone="soft" onPress={() => router.push("/(app)/plans" as never)} />
           <Button
-            label="Resumo operacional"
+            label={t("common.exit")}
             tone="soft"
-            onPress={() => router.push("/(app)/admin-operations" as never)}
+            onPress={async () => {
+              await clearSession();
+              router.replace("/(auth)/login");
+            }}
           />
-          <Button
-            label="Contas pendentes"
-            tone="soft"
-            onPress={() => router.push("/(app)/admin-pending-accounts")}
-          />
-          <Button
-            label="Assinaturas"
-            tone="soft"
-            onPress={() => router.push("/(app)/admin-subscriptions" as never)}
-          />
-          <Button
-            label="Pendencias financeiras"
-            tone="soft"
-            onPress={() => router.push("/(app)/admin-billing-pending" as never)}
-          />
-          <Button
-            label="Contas moderadas"
-            tone="soft"
-            onPress={() => router.push("/(app)/admin-moderated-accounts" as never)}
-          />
-          <Button
-            label="Planos comerciais"
-            tone="soft"
-            onPress={() => router.push("/(app)/admin-commercial-plans" as never)}
-          />
-          <Button
-            label="Configurar pagamentos"
-            tone="soft"
-            onPress={() => router.push("/(app)/admin-billing-config" as never)}
-          />
-          <Button
-            label="Monitorar webhooks"
-            tone="soft"
-            onPress={() => router.push("/(app)/admin-billing-webhooks" as never)}
-          />
-          <Button
-            label="Alertas administrativos"
-            tone="soft"
-            onPress={() => router.push("/(app)/admin-alerts" as never)}
-          />
-          <Button
-            label="Configurar email"
-            tone="soft"
-            onPress={() => router.push("/(app)/admin-email-config" as never)}
-          />
-          <Button
-            label="Auditoria"
-            tone="soft"
-            onPress={() => router.push("/(app)/admin-audit" as never)}
-          />
-        </>
-      ) : null}
-      <Button
-        label="Plano e acesso"
-        tone="soft"
-        onPress={() => router.push("/(app)/plans" as never)}
-      />
-      <Button
-        label="Sair"
-        tone="soft"
-        onPress={async () => {
-          await clearSession();
-          router.replace("/(auth)/login");
-        }}
-      />
+        </View>
+      </View>
     </Screen>
   );
 }

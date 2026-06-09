@@ -1,10 +1,11 @@
 from datetime import UTC, datetime
 from uuid import uuid4
 
-from sqlalchemy import DateTime, ForeignKey, String, Text
+from sqlalchemy import DateTime, ForeignKey, String
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.db.base import Base
+from app.services.encryption import EncryptedText
 
 
 class ChatSession(Base):
@@ -28,7 +29,7 @@ class ChatMessage(Base):
         ForeignKey("bergmann_chat_sessions.id", ondelete="CASCADE"), nullable=False
     )
     sender: Mapped[str] = mapped_column(String(24), nullable=False)
-    content: Mapped[str] = mapped_column(Text, nullable=False)
+    content: Mapped[str] = mapped_column(EncryptedText(), nullable=False)
     risk_level: Mapped[str] = mapped_column(String(24), default="LOW", nullable=False)
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), default=lambda: datetime.now(UTC), nullable=False

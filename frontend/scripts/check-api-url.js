@@ -30,7 +30,9 @@ function normalizeApiUrl(value) {
 }
 
 function isLocalIpHttpUrl(value) {
-  return /^http:\/\/(10|172\.(1[6-9]|2\d|3[0-1])|192\.168)\.\d{1,3}\.\d{1,3}\.\d{1,3}(:\d+)?$/u.test(value);
+  return /^http:\/\/(?:10(?:\.\d{1,3}){3}|172\.(?:1[6-9]|2\d|3[0-1])(?:\.\d{1,3}){2}|192\.168(?:\.\d{1,3}){2})(:\d+)?$/u.test(
+    value
+  );
 }
 
 const root = path.resolve(__dirname, "..");

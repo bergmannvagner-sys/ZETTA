@@ -3,6 +3,7 @@ import { Redirect } from "expo-router";
 import { useState } from "react";
 import { Pressable, Text, View } from "react-native";
 
+import { PageHero } from "@/components/page-hero";
 import { Screen } from "@/components/screen";
 import { Button, Card, ErrorText, Field } from "@/components/ui";
 import { apiRequest } from "@/lib/api";
@@ -12,10 +13,10 @@ import { PendingAccount, UserRole } from "@/types/auth";
 
 const roleFilters: Array<{ label: string; value?: UserRole }> = [
   { label: "Todos" },
-  { label: "Usuarios", value: "USER" },
-  { label: "Psicologos", value: "PSYCHOLOGIST" },
+  { label: "Usuários", value: "USER" },
+  { label: "Psicólogos", value: "PSYCHOLOGIST" },
   { label: "Empresas", value: "COMPANY" },
-  { label: "Clinicas", value: "CLINIC" },
+  { label: "Clínicas", value: "CLINIC" },
   { label: "Hospitais", value: "HOSPITAL" },
   { label: "ONGs", value: "NGO" }
 ];
@@ -29,21 +30,21 @@ function pendingPath(search: string, role?: UserRole): string {
 }
 
 function recommendationLabel(value: string): string {
-  if (value === "REVIEW_APPROVE") return "Triagem favoravel";
-  if (value === "HIGH_RISK_REVIEW") return "Revisao rigorosa";
-  return "Revisao manual";
+  if (value === "REVIEW_APPROVE") return "Triagem favorável";
+  if (value === "HIGH_RISK_REVIEW") return "Revisão rigorosa";
+  return "Revisão manual";
 }
 
 function recommendationClass(value: string): string {
-  if (value === "REVIEW_APPROVE") return "border-mint/25 bg-mint/10";
+  if (value === "REVIEW_APPROVE") return "border-primary/25 bg-primary/10";
   if (value === "HIGH_RISK_REVIEW") return "border-rose/25 bg-rose/10";
-  return "border-violet/25 bg-violet/10";
+  return "border-primaryDark/25 bg-primaryDark/10";
 }
 
 function recommendationTextClass(value: string): string {
-  if (value === "REVIEW_APPROVE") return "text-mint";
+  if (value === "REVIEW_APPROVE") return "text-primary";
   if (value === "HIGH_RISK_REVIEW") return "text-rose";
-  return "text-lilac";
+  return "text-primaryDark";
 }
 
 export default function AdminPendingAccounts() {
@@ -70,89 +71,103 @@ export default function AdminPendingAccounts() {
 
   return (
     <Screen>
-      <Text className="text-3xl font-semibold text-white">Contas pendentes</Text>
-      <Field label="Buscar por nome ou email" value={search} onChangeText={setSearch} />
-      <View className="flex-row flex-wrap gap-2" accessibilityRole="tablist">
-        {roleFilters.map((filter) => {
-          const selected = role === filter.value;
-          return (
-            <Pressable
-              key={filter.label}
-              accessibilityRole="tab"
-              accessibilityState={{ selected }}
-              className={`rounded-full border px-4 py-2 ${
-                selected ? "border-mint bg-mint" : "border-white/10 bg-surface/70"
-              }`}
-              onPress={() => setRole(filter.value)}
-            >
-              <Text className={`text-sm font-semibold ${selected ? "text-ink" : "text-white"}`}>
-                {filter.label}
-              </Text>
-            </Pressable>
-          );
-        })}
-      </View>
-      <Field label="Observacao da decisao" value={reason} onChangeText={setReason} />
-      <ErrorText message={pending.error?.message ?? moderation.error?.message} />
-      {pending.isLoading ? <Text className="text-muted">Carregando...</Text> : null}
-      {accounts.length === 0 && !pending.isLoading ? <Text className="text-muted">Nenhuma conta pendente.</Text> : null}
-      <View className="gap-3">
-        {accounts.map((account: PendingAccount) => (
-          <Card key={account.id}>
-            <Text className="text-lg font-semibold text-white">{account.full_name}</Text>
-            <Text selectable className="text-sm text-muted">{account.email}</Text>
-            <Text className="text-sm text-muted">{account.role}</Text>
-            {account.document_type && account.document_last4 ? (
-              <Text className="text-sm text-muted">
-                {account.document_type} final {account.document_last4}
-              </Text>
-            ) : null}
-            <Text className="text-sm text-muted">Plano: {planLabel(account.subscription_plan)}</Text>
-            <Text className="text-sm text-muted">
-              Assinatura apos decisao: {subscriptionStatusLabel(account.subscription_status)}
-            </Text>
-            <View className={`rounded-xl border px-3 py-2 ${recommendationClass(account.verification_recommendation)}`}>
-              <Text className={`text-sm font-semibold ${recommendationTextClass(account.verification_recommendation)}`}>
-                {recommendationLabel(account.verification_recommendation)} - {account.verification_score}/100
-              </Text>
-            </View>
-            <View className="gap-1">
-              <Text className="text-xs font-semibold text-muted">Sinais da triagem</Text>
-              {account.verification_signals.map((signal) => (
-                <Text key={signal} className="text-xs leading-5 text-muted">
-                  - {signal}
+      <View style={{ alignItems: "center", gap: 24 }}>
+        <PageHero
+          kicker="Admin"
+          title="Contas pendentes"
+          subtitle="Revisão de contas antes da liberação comercial. A triagem ajuda a decisão, mas não aprova sozinha."
+          orbState="thinking"
+        />
+
+        <View style={{ width: "100%", maxWidth: 880, gap: 16 }}>
+          <Field label="Buscar por nome ou e-mail" value={search} onChangeText={setSearch} />
+          <View className="flex-row flex-wrap gap-2" accessibilityRole="tablist">
+            {roleFilters.map((filter) => {
+              const selected = role === filter.value;
+              return (
+                <Pressable
+                  key={filter.label}
+                  accessibilityRole="tab"
+                  accessibilityState={{ selected }}
+                  className={`rounded-full border px-4 py-2 ${
+                    selected
+                      ? "border-primary bg-primaryLight"
+                      : "border-primaryLight dark:border-[#4C1D95]/40 bg-surface dark:bg-[#1C1630]/70"
+                  }`}
+                  onPress={() => setRole(filter.value)}
+                >
+                  <Text className={`text-sm font-semibold ${selected ? "text-ink dark:text-white" : "text-ink dark:text-white"}`}>
+                    {filter.label}
+                  </Text>
+                </Pressable>
+              );
+            })}
+          </View>
+          <Field label="Observação da decisão" value={reason} onChangeText={setReason} />
+          <ErrorText message={pending.error?.message ?? moderation.error?.message} />
+          {pending.isLoading ? <Text className="text-muted dark:text-[#D1D5DB]">Carregando...</Text> : null}
+          {accounts.length === 0 && !pending.isLoading ? (
+            <Text className="text-muted dark:text-[#D1D5DB]">Nenhuma conta pendente.</Text>
+          ) : null}
+          <View className="gap-3">
+            {accounts.map((account: PendingAccount) => (
+              <Card key={account.id}>
+                <Text className="text-lg font-semibold text-ink dark:text-white">{account.full_name}</Text>
+                <Text selectable className="text-sm text-muted dark:text-[#D1D5DB]">{account.email}</Text>
+                <Text className="text-sm text-muted dark:text-[#D1D5DB]">{account.role}</Text>
+                {account.document_type && account.document_last4 ? (
+                  <Text className="text-sm text-muted dark:text-[#D1D5DB]">
+                    {account.document_type} final {account.document_last4}
+                  </Text>
+                ) : null}
+                <Text className="text-sm text-muted dark:text-[#D1D5DB]">Plano: {planLabel(account.subscription_plan)}</Text>
+                <Text className="text-sm text-muted dark:text-[#D1D5DB]">
+                  Assinatura após decisão: {subscriptionStatusLabel(account.subscription_status)}
                 </Text>
-              ))}
-              {account.verification_warnings.map((warning) => (
-                <Text key={warning} className="text-xs leading-5 text-lilac">
-                  - {warning}
+                <View className={`rounded-xl border px-3 py-2 ${recommendationClass(account.verification_recommendation)}`}>
+                  <Text className={`text-sm font-semibold ${recommendationTextClass(account.verification_recommendation)}`}>
+                    {recommendationLabel(account.verification_recommendation)} - {account.verification_score}/100
+                  </Text>
+                </View>
+                <View className="gap-1">
+                  <Text className="text-xs font-semibold text-muted dark:text-[#D1D5DB]">Sinais da triagem</Text>
+                  {account.verification_signals.map((signal) => (
+                    <Text key={signal} className="text-xs leading-5 text-muted dark:text-[#D1D5DB]">
+                      - {signal}
+                    </Text>
+                  ))}
+                  {account.verification_warnings.map((warning) => (
+                    <Text key={warning} className="text-xs leading-5 text-primaryDark">
+                      - {warning}
+                    </Text>
+                  ))}
+                </View>
+                <Text className="text-xs leading-5 text-muted dark:text-[#D1D5DB]">
+                  A triagem ajuda a revisão, mas não aprova sozinha. Ao aprovar, perfis pagos entram
+                  como pendentes de assinatura real antes do acesso comercial.
                 </Text>
-              ))}
-            </View>
-            <Text className="text-xs leading-5 text-muted">
-              A triagem ajuda a revisao, mas nao aprova sozinha. Ao aprovar, perfis pagos entram
-              como pendentes de assinatura real antes do acesso comercial.
-            </Text>
-            <View className="gap-2">
-              <Button
-                label="Aprovar"
-                onPress={() => moderation.mutate({ path: "/admin/approve-account", userId: account.id })}
-              />
-              <Button
-                label="Rejeitar"
-                tone="danger"
-                onPress={() => moderation.mutate({ path: "/admin/reject-account", userId: account.id })}
-              />
-              {account.email.startsWith("qa-") || account.email.endsWith("@example.com") ? (
-                <Button
-                  label="Arquivar QA"
-                  tone="soft"
-                  onPress={() => moderation.mutate({ path: "/admin/archive-account", userId: account.id })}
-                />
-              ) : null}
-            </View>
-          </Card>
-        ))}
+                <View className="gap-2">
+                  <Button
+                    label="Aprovar"
+                    onPress={() => moderation.mutate({ path: "/admin/approve-account", userId: account.id })}
+                  />
+                  <Button
+                    label="Rejeitar"
+                    tone="danger"
+                    onPress={() => moderation.mutate({ path: "/admin/reject-account", userId: account.id })}
+                  />
+                  {account.email.startsWith("qa-") || account.email.endsWith("@example.com") ? (
+                    <Button
+                      label="Arquivar QA"
+                      tone="soft"
+                      onPress={() => moderation.mutate({ path: "/admin/archive-account", userId: account.id })}
+                    />
+                  ) : null}
+                </View>
+              </Card>
+            ))}
+          </View>
+        </View>
       </View>
     </Screen>
   );

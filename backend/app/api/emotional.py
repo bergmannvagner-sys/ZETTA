@@ -1,5 +1,5 @@
 import json
-from datetime import UTC, datetime
+from datetime import UTC, datetime, timedelta
 from statistics import mean
 from typing import Annotated
 
@@ -31,15 +31,19 @@ from app.schemas.emotional import (
     SharingConsentCreate,
     SharingConsentResponse,
 )
+from app.schemas.institution import InstitutionDashboardResponse
 from app.services.audit import write_audit_log
 from app.services.billing import has_paid_access
 from app.services.connection_codes import generate_connection_code, normalize_connection_code
+from app.services.consent import get_active_lgpd_consent
+from app.services.institution_dashboard import build_institution_dashboard
 
 router = APIRouter(tags=["emotional"])
 
 COMPANY_ROLES = {UserRole.COMPANY}
 PROFESSIONAL_ROLES = {UserRole.PSYCHOLOGIST}
-SHARE_TARGET_ROLES = COMPANY_ROLES | PROFESSIONAL_ROLES
+INSTITUTION_ROLES = {UserRole.CLINIC, UserRole.HOSPITAL, UserRole.NGO, UserRole.PUBLIC_INSTITUTION}
+SHARE_TARGET_ROLES = COMPANY_ROLES | PROFESSIONAL_ROLES | INSTITUTION_ROLES
 NR1_MIN_PARTICIPANTS = 3
 
 
@@ -86,6 +90,39 @@ def _serialize_emotion(log: EmotionLog) -> EmotionLogResponse:
         note=log.note,
         created_at=log.created_at,
     )
+
+
+def _dominant_mood(logs: list[EmotionLog]) -> str | None:
+    counts: dict[str, int] = {}
+    for log in logs:
+        counts[log.mood] = counts.get(log.mood, 0) + 1
+    if not counts:
+        return None
+    return max(counts, key=counts.get)
+
+
+def _safe_average(values: list[int | None]) -> float | None:
+    clean_values = [value for value in values if value is not None]
+    return round(mean(clean_values), 2) if clean_values else None
+
+
+def _entry_snippet(entry: JournalEntry, max_length: int = 140) -> str:
+    content = " ".join(entry.content.split())
+    if len(content) <= max_length:
+        return content
+    return f"{content[: max_length - 3]}..."
+
+
+def _weekly_triggers(entries: list[JournalEntry]) -> list[str]:
+    text = " ".join(entry.content.lower() for entry in entries)
+    candidates = [
+        ("trabalho/estudos", ["trabalho", "estudo", "faculdade", "prova", "empresa"]),
+        ("sono/descanso", ["sono", "dormi", "cansado", "cansada", "descanso"]),
+        ("família/relacionamentos", ["familia", "família", "relacionamento", "amigo", "amiga"]),
+        ("ansiedade/preocupação", ["ansiedade", "ansioso", "ansiosa", "preocup"]),
+        ("rotina/tempo", ["rotina", "tempo", "atras", "correria", "agenda"]),
+    ]
+    return [label for label, words in candidates if any(word in text for word in words)][:4]
 
 
 def _serialize_consent(consent: UserSharingConsent) -> SharingConsentResponse:
@@ -216,6 +253,23 @@ def create_emotion_log(
     return _serialize_emotion(log)
 
 
+@router.get("/emotions/logs", response_model=list[EmotionLogResponse])
+def list_emotion_logs(
+    user: Annotated[User, Depends(require_lgpd_consent)],
+    db: Session = Depends(get_db),
+) -> list[EmotionLogResponse]:
+    if user.role != UserRole.USER:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Only common users can list own emotion logs")
+    logs = (
+        db.query(EmotionLog)
+        .filter(EmotionLog.user_id == user.id)
+        .order_by(EmotionLog.created_at.desc())
+        .limit(50)
+        .all()
+    )
+    return [_serialize_emotion(log) for log in logs]
+
+
 @router.post("/sharing/consents", response_model=SharingConsentResponse, status_code=status.HTTP_201_CREATED)
 def grant_sharing_consent(
     payload: SharingConsentCreate,
@@ -226,7 +280,10 @@ def grant_sharing_consent(
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Only common users can grant sharing consent")
     target = _find_share_target(db, payload)
     if not target or target.role not in SHARE_TARGET_ROLES:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Professional or company account not found")
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Professional, company or institutional account not found",
+        )
     if target.status.value != "ACTIVE":
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Target account is not active")
     if not has_paid_access(target):
@@ -325,31 +382,72 @@ def create_my_emotional_report(
 ) -> EmotionalReportResponse:
     if user.role != UserRole.USER:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Only common users can create own report")
+    now = datetime.now(UTC)
+    period_start = now - timedelta(days=7)
     logs = (
         db.query(EmotionLog)
-        .filter(EmotionLog.user_id == user.id)
+        .filter(EmotionLog.user_id == user.id, EmotionLog.created_at >= period_start)
         .order_by(EmotionLog.created_at.desc())
-        .limit(14)
+        .limit(30)
         .all()
     )
-    entries_count = db.query(JournalEntry).filter(JournalEntry.user_id == user.id).count()
+    entries = (
+        db.query(JournalEntry)
+        .filter(JournalEntry.user_id == user.id, JournalEntry.created_at >= period_start)
+        .order_by(JournalEntry.created_at.desc())
+        .limit(10)
+        .all()
+    )
+    entries_count = len(entries)
     if not logs:
-        summary = "Ainda nao ha registros emocionais suficientes. Comece com um registro simples de humor ou diario."
+        summary = (
+            "Ainda não há registros emocionais suficientes nesta semana. "
+            "Comece com um check-in rápido ou diário para o Bergmann organizar sinais com cuidado."
+        )
         risk_level = "UNKNOWN"
-        metadata: dict[str, object] = {"emotion_logs": 0, "journal_entries": entries_count}
+        metadata: dict[str, object] = {
+            "period_days": 7,
+            "emotion_logs": 0,
+            "journal_entries": entries_count,
+            "predominant_mood": None,
+            "triggers": [],
+            "important_moments": [_entry_snippet(entry) for entry in entries[:3]],
+            "next_session_questions": [
+                "O que eu gostaria que meu psicólogo soubesse sobre esta semana?",
+                "Quais situações pareceram pesar mais no meu corpo ou na minha rotina?",
+            ],
+        }
     else:
         avg_intensity = round(mean(log.intensity for log in logs), 2)
         latest = logs[0]
+        predominant_mood = _dominant_mood(logs) or latest.mood
+        avg_energy = _safe_average([log.energy for log in logs])
+        avg_anxiety = _safe_average([log.anxiety for log in logs])
+        avg_sleep = _safe_average([log.sleep_quality for log in logs])
+        triggers = _weekly_triggers(entries)
         risk_level = "ELEVATED" if avg_intensity >= 7 or any((log.anxiety or 0) >= 8 for log in logs) else "LOW"
         summary = (
-            f"Nos ultimos registros, o humor mais recente foi {latest.mood}. "
-            f"A intensidade media ficou em {avg_intensity}. Use isso como apoio de reflexao, nao como diagnostico."
+            f"Nesta semana, o humor predominante foi {predominant_mood}. "
+            f"A intensidade média ficou em {avg_intensity}. "
+            "Use este resumo como apoio para percepção e conversa com psicólogo, não como diagnóstico."
         )
         metadata = {
+            "period_days": 7,
             "emotion_logs": len(logs),
             "journal_entries": entries_count,
             "average_intensity": avg_intensity,
+            "average_energy": avg_energy,
+            "average_anxiety": avg_anxiety,
+            "average_sleep": avg_sleep,
             "latest_mood": latest.mood,
+            "predominant_mood": predominant_mood,
+            "triggers": triggers,
+            "important_moments": [_entry_snippet(entry) for entry in entries[:3]],
+            "next_session_questions": [
+                "O que apareceu com mais frequência nos meus registros desta semana?",
+                "Quais gatilhos eu quero entender melhor?",
+                "Que cuidado leve eu consigo manter nos próximos dias?",
+            ],
         }
     report = EmotionalReport(
         user_id=user.id,
@@ -507,7 +605,7 @@ def get_nr1_report(
     participant_count = len({consent.owner_user_id for consent in consents})
     now = datetime.now(UTC)
     if participant_count < NR1_MIN_PARTICIPANTS:
-        summary = "Relatorio NR-1 suprimido por privacidade: amostra insuficiente para indicadores agregados."
+        summary = "Relatório NR-1 suprimido por privacidade: amostra insuficiente para indicadores agregados."
         indicators: dict[str, object] = {"minimum_participants": NR1_MIN_PARTICIPANTS}
         suppressed = True
     else:
@@ -551,3 +649,13 @@ def get_nr1_report(
         indicators=indicators,
         generated_at=now,
     )
+
+
+@router.get("/institution/dashboard", response_model=InstitutionDashboardResponse)
+def get_institution_dashboard(
+    user: Annotated[User, Depends(require_paid_roles(*INSTITUTION_ROLES))],
+    db: Session = Depends(get_db),
+) -> InstitutionDashboardResponse:
+    if not get_active_lgpd_consent(db, user.id):
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="LGPD consent required")
+    return build_institution_dashboard(db, user)

@@ -1,4 +1,5 @@
 import { apiRequest } from "@/lib/api";
+import { UserRole } from "@/types/auth";
 
 export type JournalEntry = {
   id: string;
@@ -29,7 +30,7 @@ export type SharingConsent = {
   id: string;
   target_user_id: string;
   target_email: string;
-  target_role: string;
+  target_role: UserRole;
   categories: SharingCategory[];
   summary_only: boolean;
   period_start: string | null;
@@ -42,7 +43,7 @@ export type ConnectionSearchResult = {
   id: string;
   full_name: string;
   email: string;
-  role: "PSYCHOLOGIST" | "COMPANY";
+  role: UserRole;
   status: string;
   connection_code: string;
 };
@@ -128,6 +129,10 @@ export async function createEmotionLog(input: {
       note: input.note ?? null
     })
   });
+}
+
+export async function listEmotionLogs(): Promise<EmotionLog[]> {
+  return apiRequest<EmotionLog[]>("/emotions/logs");
 }
 
 export async function createSharingConsent(input: {

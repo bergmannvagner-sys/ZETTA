@@ -1,15 +1,16 @@
 import Constants from "expo-constants";
+import { Platform } from "react-native";
 
 import { useAuthStore } from "@/store/auth-store";
 
 const extra = Constants.expoConfig?.extra as { apiUrl?: string } | undefined;
 
-const NETWORK_ERROR_MESSAGE =
-  "Nao foi possivel conectar ao servidor. Verifique sua internet ou a configuracao da API.";
-const MISSING_API_URL_MESSAGE = "API nao configurada. Defina EXPO_PUBLIC_API_URL no frontend/.env";
-const EXPIRED_SESSION_MESSAGE = "Sessao expirada. Entre novamente.";
-const PAID_PLAN_REQUIRED_MESSAGE =
-  "Plano pago pendente. Verifique Plano e acesso ou fale com o administrador para liberar o recurso.";
+const NETWORK_ERROR_MESSAGE = "error.network";
+const MISSING_API_URL_MESSAGE = "API não configurada. Defina EXPO_PUBLIC_API_URL no frontend/.env";
+const AUTH_REQUIRED_MESSAGE = "error.authRequired";
+const EXPIRED_SESSION_MESSAGE = "error.sessionExpired";
+const PAID_PLAN_REQUIRED_MESSAGE = "error.paidPlanRequired";
+const LOCAL_WEB_API_PORT = 8000;
 
 export class ApiError extends Error {
   status: number;
@@ -29,7 +30,36 @@ function normalizeApiUrl(value?: string): string | undefined {
 }
 
 function isLocalIpHttpUrl(value: string): boolean {
-  return /^http:\/\/(10|172\.(1[6-9]|2\d|3[0-1])|192\.168)\.\d{1,3}\.\d{1,3}\.\d{1,3}(:\d+)?$/u.test(value);
+  return /^http:\/\/(?:10(?:\.\d{1,3}){3}|172\.(?:1[6-9]|2\d|3[0-1])(?:\.\d{1,3}){2}|192\.168(?:\.\d{1,3}){2})(:\d+)?$/u.test(
+    value
+  );
+}
+
+function isLocalWebBrowser(): boolean {
+  if (!__DEV__ || Platform.OS !== "web" || typeof window === "undefined") {
+    return false;
+  }
+  return window.location.hostname === "localhost" || window.location.hostname === "127.0.0.1";
+}
+
+function getLocalWebApiUrl(): string | undefined {
+  if (!isLocalWebBrowser() || typeof window === "undefined") {
+    return undefined;
+  }
+  return `${window.location.protocol}//${window.location.hostname}:${LOCAL_WEB_API_PORT}`;
+}
+
+function shouldUseLocalWebApiFallback(apiUrl: string): boolean {
+  if (!isLocalWebBrowser()) {
+    return false;
+  }
+  if (/^https?:\/\/(localhost|127\.0\.0\.1)(:\d+)?$/u.test(apiUrl)) {
+    return false;
+  }
+  if (isLocalIpHttpUrl(apiUrl)) {
+    return false;
+  }
+  return true;
 }
 
 function resolveApiUrl(): string {
@@ -39,22 +69,33 @@ function resolveApiUrl(): string {
     throw new Error(MISSING_API_URL_MESSAGE);
   }
   if (!/^https?:\/\//u.test(apiUrl)) {
-    throw new Error("API mal configurada. EXPO_PUBLIC_API_URL deve comecar com http:// ou https://.");
+    throw new Error("API mal configurada. EXPO_PUBLIC_API_URL deve começar com http:// ou https://.");
   }
-  if (/^https?:\/\/(localhost|127\.0\.0\.1)(:\d+)?$/u.test(apiUrl)) {
-    throw new Error("API mal configurada. No Android fisico, use o IP do PC ou a URL do Render.");
+  if (/^https?:\/\/(localhost|127\.0\.0\.1)(:\d+)?$/u.test(apiUrl) && Platform.OS !== "web") {
+    throw new Error("API mal configurada. No Android físico, use o IP do PC ou a URL do Render.");
   }
   if (!__DEV__ && !apiUrl.startsWith("https://")) {
-    throw new Error("API mal configurada. Em producao, EXPO_PUBLIC_API_URL deve usar https://.");
+    throw new Error("API mal configurada. Em produção, EXPO_PUBLIC_API_URL deve usar https://.");
   }
   if (__DEV__ && apiUrl.startsWith("http://") && !isLocalIpHttpUrl(apiUrl)) {
     throw new Error("API mal configurada. Em desenvolvimento, http:// deve usar um IP local real.");
   }
 
+  const localWebApiUrl = getLocalWebApiUrl();
+  if (localWebApiUrl && shouldUseLocalWebApiFallback(apiUrl)) {
+    return localWebApiUrl;
+  }
+
   return apiUrl;
 }
 
-export const API_URL = normalizeApiUrl(process.env.EXPO_PUBLIC_API_URL ?? extra?.apiUrl);
+export const API_URL = resolveApiUrl();
+
+export function getWebSocketUrl(path: string): string {
+  const baseUrl = resolveApiUrl();
+  const wsBaseUrl = baseUrl.replace(/^http/u, "ws");
+  return `${wsBaseUrl}${path.startsWith("/") ? path : `/${path}`}`;
+}
 
 type ApiOptions = RequestInit & {
   auth?: boolean;
@@ -73,7 +114,7 @@ function parseResponseBody(text: string): unknown {
   try {
     return JSON.parse(text);
   } catch {
-    return { detail: "Resposta invalida do servidor." };
+    return { detail: "Resposta inválida do servidor." };
   }
 }
 
@@ -94,12 +135,12 @@ function getValidationIssues(data: unknown): ValidationIssue[] {
   }
   return detail.map((issue) => {
     if (!issue || typeof issue !== "object") {
-      return { field: "request", message: "Dado invalido.", type: "validation_error" };
+      return { field: "request", message: "Dado inválido.", type: "validation_error" };
     }
     const typedIssue = issue as { loc?: unknown; msg?: unknown; type?: unknown };
     return {
       field: formatLocation(typedIssue.loc),
-      message: typeof typedIssue.msg === "string" ? typedIssue.msg : "Dado invalido.",
+      message: typeof typedIssue.msg === "string" ? typedIssue.msg : "Dado inválido.",
       type: typeof typedIssue.type === "string" ? typedIssue.type : "validation_error"
     };
   });
@@ -109,7 +150,7 @@ function getFriendlyFieldName(field: string): string {
   const names: Record<string, string> = {
     name: "Nome completo",
     full_name: "Nome completo",
-    email: "Email",
+    email: "E-mail",
     password: "Senha",
     role: "Tipo de conta",
     accountType: "Tipo de conta",
@@ -133,7 +174,7 @@ function getApiErrorMessage(data: unknown): string {
     if (detail && typeof detail === "object") {
       const structured = detail as { message?: unknown; errors?: unknown };
       const message =
-        typeof structured.message === "string" ? structured.message : "Nao foi possivel concluir a acao.";
+        typeof structured.message === "string" ? structured.message : "Não foi possível concluir a ação.";
       if (Array.isArray(structured.errors)) {
         const errors = structured.errors.filter((error): error is string => typeof error === "string");
         return errors.length > 0 ? `${message}\n${errors.join("\n")}` : message;
@@ -141,7 +182,7 @@ function getApiErrorMessage(data: unknown): string {
       return message;
     }
   }
-  return "Nao foi possivel concluir a acao.";
+  return "Não foi possível concluir a ação.";
 }
 
 function isInvalidTokenMessage(data: unknown): boolean {
@@ -149,6 +190,14 @@ function isInvalidTokenMessage(data: unknown): boolean {
     return false;
   }
   return (data as { detail?: unknown }).detail === "Invalid token";
+}
+
+function isMissingTokenMessage(data: unknown): boolean {
+  if (!data || typeof data !== "object" || !("detail" in data)) {
+    return false;
+  }
+  const detail = (data as { detail?: unknown }).detail;
+  return detail === "Missing token" || detail === "Not authenticated";
 }
 
 export async function apiRequest<T>(path: string, options: ApiOptions = {}): Promise<T> {
@@ -181,9 +230,14 @@ export async function apiRequest<T>(path: string, options: ApiOptions = {}): Pro
           validation
         });
       }
-      if (response.status === 401 && shouldUseAuth && token && isInvalidTokenMessage(data)) {
-        await useAuthStore.getState().clearSession();
-        throw new ApiError(EXPIRED_SESSION_MESSAGE, response.status, validation);
+      if (response.status === 401 && shouldUseAuth) {
+        if (token && isInvalidTokenMessage(data)) {
+          await useAuthStore.getState().clearSession();
+          throw new ApiError(EXPIRED_SESSION_MESSAGE, response.status, validation);
+        }
+        if (!token || isMissingTokenMessage(data)) {
+          throw new ApiError(AUTH_REQUIRED_MESSAGE, response.status, validation);
+        }
       }
       if (response.status === 402) {
         throw new ApiError(PAID_PLAN_REQUIRED_MESSAGE, response.status, validation);
@@ -199,7 +253,9 @@ export async function apiRequest<T>(path: string, options: ApiOptions = {}): Pro
         error: error instanceof Error ? error.message : "Unknown error"
       });
     }
-    if (error instanceof Error && error.message !== "Network request failed") {
+    const isNetworkFailure =
+      error instanceof Error && (error.message === "Network request failed" || /failed to fetch/i.test(error.message));
+    if (error instanceof Error && !isNetworkFailure) {
       throw error;
     }
     throw new ApiError(NETWORK_ERROR_MESSAGE, 0);

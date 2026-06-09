@@ -5,11 +5,13 @@ const rawApiUrl = process.env.EXPO_PUBLIC_API_URL?.trim();
 const googleMapsApiKey = process.env.EXPO_PUBLIC_GOOGLE_MAPS_API_KEY?.trim();
 
 function normalizeApiUrl(value: string | undefined): string | undefined {
-  return value?.replace(/\/+$/, "");
+  return value?.replace(/\/+$/u, "");
 }
 
 function isLocalIpHttpUrl(value: string): boolean {
-  return /^http:\/\/(10|172\.(1[6-9]|2\d|3[0-1])|192\.168)\.\d{1,3}\.\d{1,3}\.\d{1,3}(:\d+)?$/u.test(value);
+  return /^http:\/\/(?:10(?:\.\d{1,3}){3}|172\.(?:1[6-9]|2\d|3[0-1])(?:\.\d{1,3}){2}|192\.168(?:\.\d{1,3}){2})(:\d+)?$/u.test(
+    value
+  );
 }
 
 const apiUrl = normalizeApiUrl(rawApiUrl);
@@ -17,7 +19,7 @@ const apiUrl = normalizeApiUrl(rawApiUrl);
 if (isProduction && !apiUrl) {
   throw new Error("EXPO_PUBLIC_API_URL is required in production builds");
 } else if (!apiUrl) {
-  console.warn("EXPO_PUBLIC_API_URL is not set. API calls will fail until frontend/.env is configured.");
+  // Runtime API calls and scripts/check-api-url.js show the actionable local setup error.
 } else if (!/^https?:\/\//u.test(apiUrl)) {
   if (isProduction) {
     throw new Error("EXPO_PUBLIC_API_URL must start with http:// or https://");
@@ -37,22 +39,34 @@ if (isProduction && !apiUrl) {
 const config: ExpoConfig = {
   name: "Bergmann",
   slug: "zetta-bergmann",
-  scheme: "bergmann",
+  scheme: "meuapp",
   version: "0.1.0",
   orientation: "portrait",
-  userInterfaceStyle: "dark",
+  icon: "./assets/icon.png",
+  userInterfaceStyle: "automatic",
   newArchEnabled: true,
   splash: {
-    backgroundColor: "#0A0F1F"
+    backgroundColor: "#0A0F1F",
+    image: "./assets/splash-icon.png",
+    resizeMode: "contain"
   },
   ios: {
+    icon: "./assets/icon.png",
     supportsTablet: true,
-    bundleIdentifier: "com.zetta.bergmann"
+    bundleIdentifier: "com.zetta.bergmann",
+    infoPlist: {
+      NSCameraUsageDescription:
+        "Bergmann usa a câmera apenas durante teleatendimentos autorizados dentro do app.",
+      NSMicrophoneUsageDescription:
+        "Bergmann usa o microfone apenas durante teleatendimentos autorizados dentro do app."
+    }
   },
   android: {
     package: "com.zetta.bergmann",
+    permissions: ["android.permission.CAMERA"],
     adaptiveIcon: {
-      backgroundColor: "#0A0F1F"
+      backgroundColor: "#0A0F1F",
+      foregroundImage: "./assets/adaptive-icon.png"
     },
     config: googleMapsApiKey
       ? {
@@ -60,22 +74,25 @@ const config: ExpoConfig = {
             apiKey: googleMapsApiKey
           }
         }
-      : undefined,
-    permissions: []
+      : undefined
   },
   plugins: [
     "expo-router",
     "expo-secure-store",
     "expo-audio",
     "expo-asset",
+    "expo-localization",
     [
       "expo-location",
       {
         locationWhenInUsePermission:
-          "Bergmann usa sua localizacao apenas para mostrar apoio proximo em situacoes de cuidado e SOS."
+          "Bergmann usa sua localização apenas para mostrar apoio próximo em situações de cuidado e SOS."
       }
     ]
   ],
+  web: {
+    favicon: "./assets/favicon.png"
+  },
   experiments: {
     typedRoutes: true
   },

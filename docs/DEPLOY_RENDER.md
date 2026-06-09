@@ -20,6 +20,7 @@ https://dashboard.render.com/blueprint/new
 4. Preencha as variaveis marcadas como secret:
 
 - `JWT_SECRET_KEY`
+- `DATA_ENCRYPTION_KEY`
 - `CORS_ORIGINS`
 - `GROQ_API_KEY`
 - `SUPER_ADMIN_EMAIL`
@@ -37,6 +38,15 @@ https://dashboard.render.com/blueprint/new
 - `MERCADO_PAGO_SUCCESS_URL`
 - `MERCADO_PAGO_PENDING_URL`
 - `MERCADO_PAGO_FAILURE_URL`
+- `DAILY_API_KEY`
+
+Para o browser local do Codex em `http://127.0.0.1:8082` e `http://localhost:8082`, o valor de
+`CORS_ORIGINS` precisa incluir essas duas origens junto com os demais ambientes de desenvolvimento.
+Um exemplo funcional e:
+
+```text
+http://localhost:8081,http://localhost:19006,http://127.0.0.1:8082,http://localhost:8082
+```
 
 5. Aplique o Blueprint.
 6. Para criar ou rotacionar o super admin sem Render Shell, configure temporariamente:
@@ -64,6 +74,20 @@ Depois de configurar `MERCADO_PAGO_WEBHOOK_SECRET`, altere para:
 ```text
 BILLING_WEBHOOKS_ENABLED=true
 ```
+
+## Daily
+
+Configure `DAILY_API_KEY` no Render para ativar teleatendimento dentro do app. As demais variaveis
+podem usar os padroes do `render.yaml`:
+
+```text
+DAILY_API_URL=https://api.daily.co/v1
+DAILY_ROOM_EXPIRE_HOURS=8
+DAILY_JOIN_TOKEN_EXPIRE_MINUTES=180
+```
+
+A chave Daily fica somente no backend. O Expo chama o backend e recebe uma URL temporaria de entrada
+na sala privada da sessao.
 
 ## Validacao
 

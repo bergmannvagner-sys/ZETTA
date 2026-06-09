@@ -2,10 +2,11 @@ import enum
 from datetime import UTC, datetime
 from uuid import uuid4
 
-from sqlalchemy import Boolean, DateTime, Enum, ForeignKey, String, Text
+from sqlalchemy import Boolean, DateTime, Enum, ForeignKey, String
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.db.base import Base
+from app.services.encryption import EncryptedText
 
 
 class CareReminderCategory(str, enum.Enum):
@@ -26,7 +27,7 @@ class CareReminder(Base):
     category: Mapped[CareReminderCategory] = mapped_column(Enum(CareReminderCategory), nullable=False)
     cadence: Mapped[str] = mapped_column(String(32), default="DAILY", nullable=False)
     time_local: Mapped[str | None] = mapped_column(String(5), nullable=True)
-    note: Mapped[str | None] = mapped_column(Text, nullable=True)
+    note: Mapped[str | None] = mapped_column(EncryptedText(), nullable=True)
     active: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)
     last_completed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=lambda: datetime.now(UTC), nullable=False)

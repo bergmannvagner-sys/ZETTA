@@ -3,6 +3,7 @@ import { Redirect } from "expo-router";
 import { useState } from "react";
 import { Pressable, Text, View } from "react-native";
 
+import { PageHero } from "@/components/page-hero";
 import { Screen } from "@/components/screen";
 import { Card, ErrorText, Field } from "@/components/ui";
 import { apiRequest } from "@/lib/api";
@@ -18,12 +19,12 @@ const alertFilters: Array<{ label: string; value?: string }> = [
 const deliveryFilters: Array<{ label: string; value?: boolean }> = [
   { label: "Todos" },
   { label: "Enviados", value: true },
-  { label: "Nao enviados", value: false }
+  { label: "Não enviados", value: false }
 ];
 
 const triggerFilters: Array<{ label: string; value?: string }> = [
   { label: "Todos" },
-  { label: "Automaticos", value: "scheduled" },
+  { label: "Automáticos", value: "scheduled" },
   { label: "Manuais", value: "manual" }
 ];
 
@@ -43,12 +44,12 @@ function displayDate(value: string): string {
 
 function alertLabel(value: string): string {
   if (value === "WEBHOOK_FAILURE") return "Falha de webhook";
-  if (value === "PENDING_FINANCIAL") return "Pendencia financeira";
+  if (value === "PENDING_FINANCIAL") return "Pendência financeira";
   return value;
 }
 
 function triggerLabel(value?: string | null): string {
-  if (value === "scheduled") return "automatico";
+  if (value === "scheduled") return "automático";
   if (value === "manual") return "manual";
   return value ?? "sem gatilho";
 }
@@ -72,114 +73,127 @@ export default function AdminAlerts() {
 
   return (
     <Screen>
-      <View className="gap-2">
-        <Text className="text-sm font-semibold tracking-[4px] text-mint">ADMIN</Text>
-        <Text className="text-3xl font-semibold text-white">Alertas administrativos</Text>
-        <Text className="text-base leading-6 text-muted">
-          Historico dos avisos enviados por email para falhas de webhook e pendencias financeiras.
-        </Text>
-      </View>
+      <View style={{ alignItems: "center", gap: 24 }}>
+        <PageHero
+          kicker="Admin"
+          title="Alertas administrativos"
+          subtitle="Histórico dos avisos enviados por e-mail para falhas de webhook e pendências financeiras."
+          orbState="thinking"
+        />
 
-      <Field label="Buscar por assunto, evento, erro ou provider" value={search} onChangeText={setSearch} />
+        <View style={{ width: "100%", maxWidth: 960, gap: 16 }}>
+          <Field label="Buscar por assunto, evento, erro ou provedor" value={search} onChangeText={setSearch} />
 
-      <View className="gap-2">
-        <View className="flex-row flex-wrap gap-2" accessibilityRole="tablist">
-          {alertFilters.map((filter) => {
-            const selected = alertType === filter.value;
-            return (
-              <Pressable
-                key={filter.label}
-                accessibilityRole="tab"
-                accessibilityState={{ selected }}
-                className={`rounded-full border px-4 py-2 ${
-                  selected ? "border-mint bg-mint" : "border-white/10 bg-surface/70"
-                }`}
-                onPress={() => setAlertType(filter.value)}
-              >
-                <Text className={`text-sm font-semibold ${selected ? "text-ink" : "text-white"}`}>
-                  {filter.label}
-                </Text>
-              </Pressable>
-            );
-          })}
-        </View>
-        <View className="flex-row flex-wrap gap-2" accessibilityRole="tablist">
-          {deliveryFilters.map((filter) => {
-            const selected = emailSent === filter.value;
-            return (
-              <Pressable
-                key={filter.label}
-                accessibilityRole="tab"
-                accessibilityState={{ selected }}
-                className={`rounded-full border px-4 py-2 ${
-                  selected ? "border-violet bg-violet/80" : "border-white/10 bg-surface/70"
-                }`}
-                onPress={() => setEmailSent(filter.value)}
-              >
-                <Text className="text-sm font-semibold text-white">{filter.label}</Text>
-              </Pressable>
-            );
-          })}
-        </View>
-        <View className="flex-row flex-wrap gap-2" accessibilityRole="tablist">
-          {triggerFilters.map((filter) => {
-            const selected = trigger === filter.value;
-            return (
-              <Pressable
-                key={filter.label}
-                accessibilityRole="tab"
-                accessibilityState={{ selected }}
-                className={`rounded-full border px-4 py-2 ${
-                  selected ? "border-mint bg-mint/70" : "border-white/10 bg-surface/70"
-                }`}
-                onPress={() => setTrigger(filter.value)}
-              >
-                <Text className="text-sm font-semibold text-white">{filter.label}</Text>
-              </Pressable>
-            );
-          })}
-        </View>
-      </View>
-
-      <ErrorText message={alerts.error?.message} />
-      {alerts.isLoading ? <Text className="text-muted">Carregando...</Text> : null}
-      {entries.length === 0 && !alerts.isLoading ? (
-        <Text className="text-muted">Nenhum alerta administrativo registrado.</Text>
-      ) : null}
-
-      <View className="gap-3">
-        {entries.map((entry: AdminAlertEntry) => (
-          <Card key={entry.id}>
-            <View className="flex-row flex-wrap items-center justify-between gap-2">
-              <Text className="text-lg font-semibold text-white">{alertLabel(entry.alert_type)}</Text>
-              <Text className={`text-xs font-semibold ${entry.email_sent ? "text-mint" : "text-rose"}`}>
-                {entry.email_sent ? "Email enviado" : "Email nao enviado"}
-              </Text>
+          <View className="gap-2">
+            <View className="flex-row flex-wrap gap-2" accessibilityRole="tablist">
+              {alertFilters.map((filter) => {
+                const selected = alertType === filter.value;
+                return (
+                  <Pressable
+                    key={filter.label}
+                    accessibilityRole="tab"
+                    accessibilityState={{ selected }}
+                    className={`rounded-full border px-4 py-2 ${
+                      selected
+                        ? "border-primary bg-primaryLight"
+                        : "border-primaryLight dark:border-[#4C1D95]/40 bg-surface dark:bg-[#1C1630]/70"
+                    }`}
+                    onPress={() => setAlertType(filter.value)}
+                  >
+                    <Text className="text-sm font-semibold text-ink dark:text-white">{filter.label}</Text>
+                  </Pressable>
+                );
+              })}
             </View>
-            <Text selectable className="text-sm text-muted">{entry.subject ?? "Sem assunto registrado"}</Text>
-            <Text className="text-sm text-muted">Origem: {entry.source}</Text>
-            <Text className="text-sm text-muted">Criado em: {displayDate(entry.created_at)}</Text>
-            {entry.trigger ? <Text className="text-sm text-muted">Gatilho: {triggerLabel(entry.trigger)}</Text> : null}
-            {entry.provider ? <Text className="text-sm text-muted">Provider: {entry.provider}</Text> : null}
-            {entry.event_id ? <Text selectable className="text-sm text-muted">Evento: {entry.event_id}</Text> : null}
-            {entry.days_threshold !== null && entry.days_threshold !== undefined ? (
-              <Text className="text-sm text-muted">Limite: {entry.days_threshold} dia(s)</Text>
-            ) : null}
-            {entry.checked_accounts !== null && entry.checked_accounts !== undefined ? (
-              <Text className="text-sm text-muted">
-                Verificadas: {entry.checked_accounts} | Pendentes: {entry.pending_accounts ?? 0}
-              </Text>
-            ) : null}
-            {entry.alerted_accounts !== null && entry.alerted_accounts !== undefined ? (
-              <Text className="text-sm text-muted">Contas no alerta: {entry.alerted_accounts}</Text>
-            ) : null}
-            {entry.error ? (
-              <View className="rounded-2xl border border-white/10 bg-ink/35 p-3">
-                <Text selectable className="text-xs leading-5 text-muted">{entry.error}</Text>
-              </View>
-            ) : null}
-          </Card>
-        ))}
+
+            <View className="flex-row flex-wrap gap-2" accessibilityRole="tablist">
+              {deliveryFilters.map((filter) => {
+                const selected = emailSent === filter.value;
+                return (
+                  <Pressable
+                    key={filter.label}
+                    accessibilityRole="tab"
+                    accessibilityState={{ selected }}
+                    className={`rounded-full border px-4 py-2 ${
+                      selected
+                        ? "border-primaryDark bg-primaryDark/80"
+                        : "border-primaryLight dark:border-[#4C1D95]/40 bg-surface dark:bg-[#1C1630]/70"
+                    }`}
+                    onPress={() => setEmailSent(filter.value)}
+                  >
+                    <Text className="text-sm font-semibold text-ink dark:text-white">{filter.label}</Text>
+                  </Pressable>
+                );
+              })}
+            </View>
+
+            <View className="flex-row flex-wrap gap-2" accessibilityRole="tablist">
+              {triggerFilters.map((filter) => {
+                const selected = trigger === filter.value;
+                return (
+                  <Pressable
+                    key={filter.label}
+                    accessibilityRole="tab"
+                    accessibilityState={{ selected }}
+                    className={`rounded-full border px-4 py-2 ${
+                      selected
+                        ? "border-primary bg-primaryLight/70"
+                        : "border-primaryLight dark:border-[#4C1D95]/40 bg-surface dark:bg-[#1C1630]/70"
+                    }`}
+                    onPress={() => setTrigger(filter.value)}
+                  >
+                    <Text className="text-sm font-semibold text-ink dark:text-white">{filter.label}</Text>
+                  </Pressable>
+                );
+              })}
+            </View>
+          </View>
+
+          <ErrorText message={alerts.error?.message} />
+          {alerts.isLoading ? <Text className="text-muted dark:text-[#D1D5DB]">Carregando...</Text> : null}
+          {entries.length === 0 && !alerts.isLoading ? (
+            <Text className="text-muted dark:text-[#D1D5DB]">Nenhum alerta administrativo registrado.</Text>
+          ) : null}
+
+          <View className="gap-3">
+            {entries.map((entry: AdminAlertEntry) => (
+              <Card key={entry.id}>
+                <View className="flex-row flex-wrap items-center justify-between gap-2">
+                  <Text className="text-lg font-semibold text-ink dark:text-white">{alertLabel(entry.alert_type)}</Text>
+                  <Text className={`text-xs font-semibold ${entry.email_sent ? "text-primary" : "text-rose"}`}>
+                    {entry.email_sent ? "E-mail enviado" : "E-mail não enviado"}
+                  </Text>
+                </View>
+                <Text selectable className="text-sm text-muted dark:text-[#D1D5DB]">
+                  {entry.subject ?? "Sem assunto registrado"}
+                </Text>
+                <Text className="text-sm text-muted dark:text-[#D1D5DB]">Origem: {entry.source}</Text>
+                <Text className="text-sm text-muted dark:text-[#D1D5DB]">Criado em: {displayDate(entry.created_at)}</Text>
+                {entry.trigger ? <Text className="text-sm text-muted dark:text-[#D1D5DB]">Gatilho: {triggerLabel(entry.trigger)}</Text> : null}
+              {entry.provider ? <Text className="text-sm text-muted dark:text-[#D1D5DB]">Provedor: {entry.provider}</Text> : null}
+                {entry.event_id ? <Text selectable className="text-sm text-muted dark:text-[#D1D5DB]">Evento: {entry.event_id}</Text> : null}
+                {entry.days_threshold !== null && entry.days_threshold !== undefined ? (
+                  <Text className="text-sm text-muted dark:text-[#D1D5DB]">Limite: {entry.days_threshold} dia(s)</Text>
+                ) : null}
+                {entry.checked_accounts !== null && entry.checked_accounts !== undefined ? (
+                  <Text className="text-sm text-muted dark:text-[#D1D5DB]">
+                    Verificadas: {entry.checked_accounts} | Pendentes: {entry.pending_accounts ?? 0}
+                  </Text>
+                ) : null}
+                {entry.alerted_accounts !== null && entry.alerted_accounts !== undefined ? (
+                  <Text className="text-sm text-muted dark:text-[#D1D5DB]">Contas no alerta: {entry.alerted_accounts}</Text>
+                ) : null}
+                {entry.error ? (
+                  <View className="rounded-2xl border border-primaryLight dark:border-[#4C1D95]/40 bg-surfaceSoft dark:bg-[#261D42]/35 p-3">
+                    <Text selectable className="text-xs leading-5 text-muted dark:text-[#D1D5DB]">
+                      {entry.error}
+                    </Text>
+                  </View>
+                ) : null}
+              </Card>
+            ))}
+          </View>
+        </View>
       </View>
     </Screen>
   );

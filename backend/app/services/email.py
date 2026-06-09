@@ -50,7 +50,7 @@ def send_password_reset_email(to_email: str, token: str) -> bool:
                 "",
                 f"Abra este link para criar uma nova senha: {reset_link}",
                 "",
-                "Este link expira em 30 minutos. Se voce nao pediu isso, ignore esta mensagem.",
+                "Este link expira em 30 minutos. Se você não pediu isso, ignore esta mensagem.",
             ]
         ),
         context="Password reset",

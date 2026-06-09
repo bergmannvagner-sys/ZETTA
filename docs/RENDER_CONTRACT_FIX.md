@@ -1,4 +1,4 @@
-# Corrigir contrato do backend no Render
+# Contrato do backend no Render
 
 O app mobile aponta para:
 
@@ -6,7 +6,15 @@ O app mobile aponta para:
 https://zetta-bergmann.onrender.com
 ```
 
-O backend publicado nesse endereco ainda nao corresponde ao backend local deste repositorio.
+Verificacao viva feita em 2026-06-09:
+
+- `GET /health` respondeu `{"status":"ok"}`
+- `GET /openapi.json` expôs o contrato principal do app
+- `GET /telecare/providers` e `GET /telecare/sessions` retornaram `404 Not Found`
+
+Ou seja, o serviço publicado ainda precisa ser realinhado com o backend deste repositório antes de considerar o bloco de telecare concluído.
+
+Se o deploy sair do ar ou continuar com o contrato incompleto, use as instrucoes abaixo para realinhar o servico.
 
 ## Contrato esperado pelo app atual
 
@@ -24,17 +32,6 @@ O backend correto deve expor:
 - `GET /admin/pending-accounts`
 - `POST /admin/approve-account`
 - `POST /admin/reject-account`
-
-## Evidencia da divergencia atual
-
-O Render atual expoe endpoints como:
-
-- `POST /chat`
-- `POST /sos/events/opened`
-- `GET /legal/privacy`
-
-Esses endpoints pertencem a outro contrato. O frontend esta tolerando esse formato temporariamente,
-mas o backend correto e o deste repositorio.
 
 ## Caminho recomendado: atualizar o servico existente
 

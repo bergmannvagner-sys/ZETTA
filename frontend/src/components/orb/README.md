@@ -21,9 +21,9 @@ Estados:
 
 ## Microfone futuro
 
-A prop `audioLevel` aceita valores de `0` a `1`. O hook `useMicrophoneLevel` usa `expo-audio`, pede permissao somente quando o usuario toca em ativar e normaliza `metering` para essa faixa.
+A prop `audioLevel` aceita valores de `0` a `1`. O hook `useMicrophoneLevel` usa `expo-audio`, pede permissão somente quando o usuário toca em ativar e normaliza `metering` para essa faixa.
 
-Nao peca permissao de microfone ao abrir a Home. Solicite apenas quando o usuario ativar explicitamente um modo de voz.
+Não peça permissão de microfone ao abrir a Home. Solicite apenas quando o usuário ativar explicitamente um modo de voz.
 
 ```tsx
 const microphone = useMicrophoneLevel();
@@ -34,4 +34,4 @@ const microphone = useMicrophoneLevel();
 />
 ```
 
-Esta versao mede amplitude visual. Ela nao transcreve, nao envia audio e nao grava conteudo para o backend.
+Esta versão mede amplitude visual. Ela não transcreve, não envia áudio e não grava conteúdo para o backend.

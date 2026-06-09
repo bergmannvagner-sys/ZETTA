@@ -6,7 +6,7 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI, Request, Response
 from fastapi.middleware.cors import CORSMiddleware
 
-from app.api import admin, assistant, auth, billing, chat, connections, emotional, privacy, sos, users
+from app.api import admin, assistant, auth, billing, chat, connections, emotional, privacy, sos, telecare, users
 from app.core.config import get_settings
 from app.db.session import SessionLocal
 from app.services.super_admin import sync_super_admin
@@ -23,6 +23,8 @@ logger = logging.getLogger(__name__)
 @asynccontextmanager
 async def lifespan(_: FastAPI) -> AsyncIterator[None]:
     billing_pending_alert_task: asyncio.Task[None] | None = None
+    if settings.is_production:
+        _ = settings.data_encryption_secret
     if settings.super_admin_bootstrap_on_startup:
         db = SessionLocal()
         try:
@@ -113,6 +115,7 @@ app.include_router(users.router)
 app.include_router(chat.router)
 app.include_router(connections.router)
 app.include_router(emotional.router)
+app.include_router(telecare.router)
 app.include_router(sos.router)
 app.include_router(privacy.router)
 app.include_router(admin.router)

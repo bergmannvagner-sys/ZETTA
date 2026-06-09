@@ -28,8 +28,8 @@ def billing_success() -> HTMLResponse:
     return _billing_return_page(
         title="Pagamento recebido",
         message=(
-            "Recebemos o retorno do Mercado Pago. A assinatura sera liberada "
-            "quando o webhook de confirmacao for validado pelo Bergmann."
+            "Recebemos o retorno do Mercado Pago. A assinatura será liberada "
+            "quando o webhook de confirmação for validado pelo Bergmann."
         ),
     )
 
@@ -37,10 +37,10 @@ def billing_success() -> HTMLResponse:
 @router.get("/pending", response_class=HTMLResponse)
 def billing_pending() -> HTMLResponse:
     return _billing_return_page(
-        title="Pagamento em analise",
+        title="Pagamento em análise",
         message=(
-            "O pagamento ainda esta pendente. Assim que o Mercado Pago confirmar "
-            "o status pelo webhook, o acesso comercial sera atualizado."
+            "O pagamento ainda está pendente. Assim que o Mercado Pago confirmar "
+            "o status pelo webhook, o acesso comercial será atualizado."
         ),
     )
 
@@ -48,10 +48,10 @@ def billing_pending() -> HTMLResponse:
 @router.get("/failure", response_class=HTMLResponse)
 def billing_failure() -> HTMLResponse:
     return _billing_return_page(
-        title="Pagamento nao concluido",
+        title="Pagamento não concluído",
         message=(
-            "O Mercado Pago nao concluiu esta cobranca. Nenhum acesso pago foi "
-            "liberado automaticamente sem webhook validado. Tente novamente ou fale com a administracao."
+            "O Mercado Pago não concluiu esta cobrança. Nenhum acesso pago foi "
+            "liberado automaticamente sem webhook validado. Tente novamente ou fale com a administração."
         ),
     )
 
@@ -253,13 +253,13 @@ def send_billing_webhook_failure_alert(
         subject=subject,
         body="\n".join(
             [
-                "Um webhook de pagamento falhou e precisa de revisao administrativa.",
+                "Um webhook de pagamento falhou e precisa de revisão administrativa.",
                 "",
                 f"Provider: {provider}",
                 f"Evento: {event_id or 'sem evento'}",
                 f"Status externo: {external_status or 'sem status'}",
-                f"Cliente informado: {'sim' if customer_id else 'nao'}",
-                f"Assinatura informada: {'sim' if subscription_id else 'nao'}",
+                f"Cliente informado: {'sim' if customer_id else 'não'}",
+                f"Assinatura informada: {'sim' if subscription_id else 'não'}",
                 f"Erro: {error}",
                 "",
                 "Abra o monitor de webhooks no admin do Bergmann para conferir os detalhes.",

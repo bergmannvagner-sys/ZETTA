@@ -156,6 +156,12 @@ $me = Invoke-Json -Method GET -Path "/users/me" -Headers $userHeaders
 Assert-Equal $me.email $userEmail "USER /users/me email"
 Write-Host "USER registration/login/me: ok"
 
+$telecareProviders = Invoke-Json -Method GET -Path "/telecare/providers" -Headers $userHeaders
+Write-Host "telecare providers: ok"
+
+$telecareSessions = Invoke-Json -Method GET -Path "/telecare/sessions" -Headers $userHeaders
+Write-Host "telecare sessions: ok"
+
 $psychologist = Register-Account -Email $psychologistEmail -FullName "QA Psicologo MVP" -Password $password -Role "PSYCHOLOGIST" -Document "CRP-01/$runId"
 Assert-Equal $psychologist.user.status "PENDING_VERIFICATION" "PSYCHOLOGIST status"
 Assert-Equal $psychologist.user.subscription_status "PENDING" "PSYCHOLOGIST subscription"

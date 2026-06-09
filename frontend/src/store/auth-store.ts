@@ -1,8 +1,8 @@
 import * as SecureStore from "expo-secure-store";
-import { Platform } from "react-native";
 import { create } from "zustand";
 
 import { AuthUser } from "@/types/auth";
+import { getWebStorage } from "@/lib/web-storage";
 
 type AuthState = {
   accessToken: string | null;
@@ -19,35 +19,27 @@ const ACCESS_KEY = "bergmann_access_token";
 const REFRESH_KEY = "bergmann_refresh_token";
 const USER_KEY = "bergmann_user";
 
-const isWeb = Platform.OS === "web";
+const sessionStorageLike = getWebStorage("session");
 
 async function setStoredItem(key: string, value: string): Promise<void> {
-  if (isWeb) {
-    if (typeof window !== "undefined") {
-      window.localStorage.setItem(key, value);
-    }
+  if (typeof window !== "undefined") {
+    sessionStorageLike.setItem(key, value);
     return;
   }
-
   await SecureStore.setItemAsync(key, value);
 }
 
 async function getStoredItem(key: string): Promise<string | null> {
-  if (isWeb) {
-    if (typeof window === "undefined") {
-      return null;
-    }
-    return window.localStorage.getItem(key);
+  if (typeof window !== "undefined") {
+    return sessionStorageLike.getItem(key);
   }
 
   return SecureStore.getItemAsync(key);
 }
 
 async function deleteStoredItem(key: string): Promise<void> {
-  if (isWeb) {
-    if (typeof window !== "undefined") {
-      window.localStorage.removeItem(key);
-    }
+  if (typeof window !== "undefined") {
+    sessionStorageLike.removeItem(key);
     return;
   }
 

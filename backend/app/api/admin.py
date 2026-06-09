@@ -36,6 +36,7 @@ from app.services.commercial_plans import commercial_plan_for_role, list_commerc
 from app.services.email import send_admin_alert_email
 from app.services.mercado_pago import MercadoPagoIntegrationError, create_mercado_pago_checkout_preference
 from app.services.payment_adapters import list_payment_adapter_capabilities, validate_billing_reference
+from app.services.risk import normalize_text
 from app.services.verification import build_verification_triage
 
 router = APIRouter(prefix="/admin", tags=["admin"])
@@ -203,6 +204,30 @@ def admin_alert_response(log: AuditLog) -> AdminAlertResponse:
     )
 
 
+def admin_alert_matches_query(alert: AdminAlertResponse, term: str) -> bool:
+    needle = normalize_text(term)
+    if not needle:
+        return True
+    haystack = normalize_text(
+        " ".join(
+            str(value)
+            for value in (
+                alert.id,
+                alert.alert_type,
+                alert.source,
+                alert.subject,
+                alert.trigger,
+                alert.provider,
+                alert.event_id,
+                alert.error,
+                alert.created_at,
+            )
+            if value is not None
+        )
+    )
+    return needle in haystack
+
+
 def billing_activation_source(
     user: User,
     latest_webhook: AuditLog | None,
@@ -229,26 +254,26 @@ def billing_activation_blocker(
     if user.subscription_status == SubscriptionStatus.ACTIVE:
         return None
     if user.status != AccountStatus.ACTIVE:
-        return "Conta comercial ainda nao aprovada para ativacao paga."
+        return "Conta comercial ainda não aprovada para ativação paga."
     if not user.billing_provider:
-        return "Provider de pagamento ainda nao vinculado."
+        return "Provider de pagamento ainda não vinculado."
     if user.billing_provider != "MERCADO_PAGO":
-        return "Provider de pagamento nao suportado para ativacao automatica."
+        return "Provider de pagamento não suportado para ativação automática."
     if not latest_checkout and not user.billing_subscription_id:
-        return "Checkout Mercado Pago ainda nao foi criado para esta conta."
+        return "Checkout Mercado Pago ainda não foi criado para esta conta."
     if not latest_webhook:
         return "Nenhum webhook de pagamento validado foi recebido ainda."
     webhook_status = audit_external_status(latest_webhook) or "desconhecido"
     mapped = STATUS_MAP.get(webhook_status.strip().lower())
     if mapped is None:
-        return f"Ultimo webhook recebido com status nao mapeado: {webhook_status}."
+        return f"Último webhook recebido com status não mapeado: {webhook_status}."
     if mapped == SubscriptionStatus.PAST_DUE:
-        return f"Ultimo pagamento nao ativou acesso: status Mercado Pago {webhook_status}."
+        return f"Último pagamento não ativou acesso: status Mercado Pago {webhook_status}."
     if mapped == SubscriptionStatus.CANCELED:
         return f"Assinatura cancelada pelo status Mercado Pago {webhook_status}."
     if mapped == SubscriptionStatus.PENDING:
         return f"Pagamento ainda pendente no Mercado Pago: {webhook_status}."
-    return "Assinatura ainda nao ativa apesar de webhook recebido; revisar manualmente."
+    return "Assinatura ainda não ativa apesar de webhook recebido; revisar manualmente."
 
 
 def billing_financial_pending_reason(
@@ -526,7 +551,7 @@ def run_billing_pending_alert(
     email_sent = False
     if alert_accounts:
         email_sent = send_admin_alert_email(
-            subject="Bergmann: contas comerciais com pendencia financeira",
+            subject="Bergmann: contas comerciais com pendência financeira",
             body=build_billing_pending_alert_body(alert_accounts, days=days),
         )
 
@@ -537,7 +562,7 @@ def run_billing_pending_alert(
         resource_type="billing_pending_alert",
         metadata={
             "alert_type": "PENDING_FINANCIAL",
-            "subject": "Bergmann: contas comerciais com pendencia financeira",
+            "subject": "Bergmann: contas comerciais com pendência financeira",
             "trigger": trigger,
             "days_threshold": days,
             "checked_accounts": len(users),
@@ -563,7 +588,7 @@ def run_billing_pending_alert(
 
 def build_billing_pending_alert_body(accounts: list[SubscriptionAccountResponse], *, days: int) -> str:
     lines = [
-        "Existem contas comerciais aprovadas com pendencia financeira antiga.",
+        "Existem contas comerciais aprovadas com pendência financeira antiga.",
         "",
         f"Limite usado: {days} dia(s).",
         f"Contas no alerta: {len(accounts)}.",
@@ -577,12 +602,12 @@ def build_billing_pending_alert_body(accounts: list[SubscriptionAccountResponse]
                 f"  Plano: {account.subscription_plan.value}",
                 f"  Status assinatura: {account.subscription_status.value}",
                 f"  Motivo: {account.billing_financial_pending_reason or 'Sem pagamento confirmado.'}",
-                f"  Ultimo checkout: {account.billing_last_checkout_at or 'sem registro'}",
-                f"  Ultimo webhook: {account.billing_last_webhook_at or 'sem registro'}",
+                f"  Último checkout: {account.billing_last_checkout_at or 'sem registro'}",
+                f"  Último webhook: {account.billing_last_webhook_at or 'sem registro'}",
                 "",
             ]
         )
-    lines.append("Abra Pendencias financeiras no admin do Bergmann para cobrar ou reenviar checkout.")
+    lines.append("Abra Pendências financeiras no admin do Bergmann para cobrar ou reenviar checkout.")
     return "\n".join(lines)
 
 
@@ -713,9 +738,8 @@ def admin_alerts(
     db: Session = Depends(get_db),
 ) -> list[AdminAlertResponse]:
     query = db.query(AuditLog).filter(AuditLog.resource_type.in_(["admin_email_alert", "billing_pending_alert"]))
-    if q:
-        query = filter_audit_query_by_text(query, q)
-    logs = query.order_by(AuditLog.created_at.desc()).limit(limit).all()
+    fetch_limit = 500 if q or alert_type or email_sent is not None or trigger else limit
+    logs = query.order_by(AuditLog.created_at.desc()).limit(fetch_limit).all()
     alerts = [admin_alert_response(log) for log in logs]
     if alert_type:
         normalized_type = alert_type.strip().upper()
@@ -725,7 +749,9 @@ def admin_alerts(
     if trigger:
         normalized_trigger = trigger.strip().lower()
         alerts = [alert for alert in alerts if (alert.trigger or "").lower() == normalized_trigger]
-    return alerts
+    if q:
+        alerts = [alert for alert in alerts if admin_alert_matches_query(alert, q)]
+    return alerts[:limit]
 
 
 @router.get("/moderated-accounts", response_model=list[SubscriptionAccountResponse])

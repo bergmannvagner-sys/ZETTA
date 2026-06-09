@@ -1,24 +1,40 @@
+import { router } from "expo-router";
 import { useMutation } from "@tanstack/react-query";
 import { useState } from "react";
 import { Linking, Text, useWindowDimensions, View } from "react-native";
 
-import { AnimatedOrb } from "@/components/orb/AnimatedOrb";
+import { PageHero } from "@/components/page-hero";
 import { Screen } from "@/components/screen";
 import { SupportMap } from "@/components/support-map";
 import { Button, Card, ErrorText } from "@/components/ui";
+import { useI18n } from "@/i18n/i18n";
 import { registerSOSEvent, SOS_OFFLINE_MESSAGE } from "@/lib/sos";
 
-function mapsSearchUrl(query: string) {
-  return `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(query)}`;
+type SOSOption = "talk" | "breathe" | "silence" | "help" | null;
+
+type SupportSearchContext = {
+  hasLocation: boolean;
+  latitude: number;
+  longitude: number;
+};
+
+function mapsSearchUrl(query: string, context?: SupportSearchContext) {
+  const queryWithLocation = context?.hasLocation
+    ? `${query.replace(/ perto de mim$/iu, "")} ${context.latitude.toFixed(6)},${context.longitude.toFixed(6)}`
+    : query;
+  return `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(queryWithLocation)}`;
 }
 
 export default function SOS() {
+  const { t } = useI18n();
   const { width } = useWindowDimensions();
+  const wideSOS = width >= 820;
+  const [option, setOption] = useState<SOSOption>(null);
   const [confirmed, setConfirmed] = useState(false);
   const [registered, setRegistered] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
   const [mapError, setMapError] = useState<string | null>(null);
-  const orbSize = Math.min(232, Math.max(188, width * 0.5));
+  const orbSize = wideSOS ? Math.min(216, Math.max(176, width * 0.34)) : Math.min(188, Math.max(176, width * 0.46));
   const mutation = useMutation({
     mutationFn: registerSOSEvent,
     onSuccess: (data) => {
@@ -27,61 +43,125 @@ export default function SOS() {
     },
     onError: () => setMessage(SOS_OFFLINE_MESSAGE)
   });
+  const orbState =
+    mutation.isError
+      ? "error"
+      : option === "breathe"
+        ? "breathing"
+        : option === "silence"
+          ? "silent_presence"
+          : option === "talk"
+            ? "listening"
+            : "sos";
 
-  async function openMapSearch(query: string) {
-    const url = mapsSearchUrl(query);
+  async function openMapSearch(query: string, context?: SupportSearchContext) {
+    const url = mapsSearchUrl(query, context);
     setMapError(null);
     try {
       const supported = await Linking.canOpenURL(url);
       if (!supported) {
-        setMapError("Nao foi possivel abrir o mapa neste aparelho.");
+        setMapError(t("sos.mapErrorUnsupported"));
         return;
       }
       await Linking.openURL(url);
     } catch {
-      setMapError("Nao foi possivel abrir o mapa agora.");
+      setMapError(t("sos.mapErrorGeneric"));
     }
   }
 
   return (
     <Screen>
-      <AnimatedOrb state="crisis" size={orbSize} reducedMotion={mutation.isPending} />
-      <Text className="text-3xl font-semibold text-white">SOS emocional</Text>
-      <Card>
-        <Text className="text-base leading-6 text-white">
-          Se voce corre perigo agora, acione a emergencia local. No Brasil, o CVV atende pelo 188.
-        </Text>
-      </Card>
-      <SupportMap onOpenSearch={openMapSearch} />
-      <ErrorText message={mapError ?? undefined} />
-      {!confirmed ? (
-        <Button label="Confirmar SOS" tone="danger" onPress={() => setConfirmed(true)} />
-      ) : (
-        <View className="gap-3">
-          <Button
-            label={registered ? "Evento SOS registrado" : "Registrar evento SOS"}
-            tone="danger"
-            loading={mutation.isPending}
-            disabled={registered}
-            onPress={() => mutation.mutate()}
-          />
-          <Button
-            label={registered ? "Voltar" : "Cancelar"}
-            tone="soft"
-            onPress={() => {
-              setConfirmed(false);
-              setRegistered(false);
-              setMessage(null);
-            }}
-          />
+      <View style={{ alignItems: "center", gap: 24, width: "100%" }}>
+        <PageHero
+          kicker="SOS"
+          title={t("sos.title")}
+          subtitle={t("sos.guidance")}
+          orbReducedMotion={mutation.isPending}
+          orbSize={orbSize}
+          orbState={orbState}
+        />
+
+        <View style={{ gap: 18, maxWidth: 960, width: "100%" }}>
+          <Card>
+            <View className="gap-3">
+              <Text className="text-lg font-semibold text-ink dark:text-white">{t("sos.choiceTitle")}</Text>
+              <View style={{ gap: 12 }}>
+                <Button
+                  label={t("sos.choiceTalk")}
+                  tone={option === "talk" ? "primary" : "soft"}
+                  onPress={() => setOption("talk")}
+                />
+                <Button
+                  label={t("sos.choiceBreathe")}
+                  tone={option === "breathe" ? "primary" : "soft"}
+                  onPress={() => setOption("breathe")}
+                />
+                <Button
+                  label={t("sos.choiceSilence")}
+                  tone={option === "silence" ? "primary" : "soft"}
+                  onPress={() => setOption("silence")}
+                />
+                <Button label={t("sos.choiceHelp")} tone="danger" onPress={() => setOption("help")} />
+              </View>
+            </View>
+          </Card>
+
+          {option === "talk" ? (
+            <Card>
+              <Text className="text-base leading-6 text-ink dark:text-white">{t("sos.talkBody")}</Text>
+              <Button
+                label={t("sos.talkButton")}
+                onPress={() => router.push({ pathname: "/(app)/chat", params: { mode: "crisis" } })}
+              />
+            </Card>
+          ) : null}
+          {option === "breathe" ? (
+            <Card>
+              <Text className="text-base leading-7 text-ink dark:text-white">{t("sos.breatheBody")}</Text>
+            </Card>
+          ) : null}
+          {option === "silence" ? (
+            <Card>
+              <Text className="text-base leading-7 text-ink dark:text-white">{t("sos.silenceBody")}</Text>
+            </Card>
+          ) : null}
+          {option === "help" ? (
+            !confirmed ? (
+              <Button label={t("sos.confirm")} tone="danger" onPress={() => setConfirmed(true)} />
+            ) : (
+              <View className="gap-3">
+                <Button
+                  label={registered ? t("sos.registered") : t("sos.register")}
+                  tone="danger"
+                  loading={mutation.isPending}
+                  disabled={registered}
+                  onPress={() => mutation.mutate()}
+                />
+                <Button
+                  label={registered ? t("common.back") : t("common.cancel")}
+                  tone="soft"
+                  onPress={() => {
+                    setConfirmed(false);
+                    setRegistered(false);
+                    setMessage(null);
+                  }}
+                />
+              </View>
+            )
+          ) : null}
+          <ErrorText message={mutation.error?.message} />
+          {message ? (
+            <Card>
+              <Text selectable className="text-base leading-6 text-ink dark:text-white">
+                {message}
+              </Text>
+            </Card>
+          ) : null}
+
+          <SupportMap onOpenSearch={openMapSearch} />
+          <ErrorText message={mapError ?? undefined} />
         </View>
-      )}
-      <ErrorText message={mutation.error?.message} />
-      {message ? (
-        <Card>
-          <Text selectable className="text-base leading-6 text-white">{message}</Text>
-        </Card>
-      ) : null}
+      </View>
     </Screen>
   );
 }

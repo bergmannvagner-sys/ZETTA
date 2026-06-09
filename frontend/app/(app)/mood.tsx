@@ -1,12 +1,22 @@
 import { useMutation } from "@tanstack/react-query";
 import { useState } from "react";
-import { Pressable, Text, View } from "react-native";
+import { Pressable, Text, View, useWindowDimensions } from "react-native";
 
+import { AnimatedOrb } from "@/components/orb/AnimatedOrb";
 import { Screen } from "@/components/screen";
-import { Button, Card, ErrorText, Field } from "@/components/ui";
+import { Button, Card, ErrorText, Field, Header } from "@/components/ui";
+import { radii, useAppTheme } from "@/design-system/theme";
+import { useI18n } from "@/i18n/i18n";
 import { createEmotionLog } from "@/lib/emotional";
 
-const moods = ["calmo", "ansioso", "triste", "cansado", "esperancoso", "irritado"];
+const moods = [
+  { value: "calmo", labelKey: "mood.calm" },
+  { value: "ansioso", labelKey: "mood.anxious" },
+  { value: "triste", labelKey: "mood.sad" },
+  { value: "cansado", labelKey: "mood.tired" },
+  { value: "esperancoso", labelKey: "mood.hopeful" },
+  { value: "irritado", labelKey: "mood.irritated" }
+];
 
 function Scale({
   label,
@@ -17,20 +27,43 @@ function Scale({
   value: number;
   onChange: (value: number) => void;
 }) {
+  const { colors } = useAppTheme();
   return (
-    <View className="gap-3">
-      <Text className="text-sm font-medium text-muted">{label}: {value}</Text>
-      <View className="flex-row flex-wrap gap-2">
+    <View style={{ gap: 12 }}>
+      <Text style={{ color: colors.textSecondary, fontSize: 16, fontWeight: "800", lineHeight: 22 }}>
+        {label}: {value}
+      </Text>
+      <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 10 }}>
         {Array.from({ length: 10 }, (_, index) => index + 1).map((number) => (
           <Pressable
             key={number}
             accessibilityRole="button"
+            accessibilityState={{ selected: value === number }}
             onPress={() => onChange(number)}
-            className={`h-10 w-10 items-center justify-center rounded-full border ${
-              value === number ? "border-mint bg-mint" : "border-white/10 bg-surface/70"
-            }`}
+            style={({ pressed }) => ({
+              alignItems: "center",
+              backgroundColor: value === number ? colors.primaryLight : colors.surfaceStrong,
+              borderColor: value === number ? colors.primary : colors.primaryLight,
+              borderCurve: "continuous",
+              borderRadius: radii.pill,
+              borderWidth: 1.5,
+              boxShadow: value === number ? `0 8px 18px ${colors.shadow}` : "none",
+              justifyContent: "center",
+              minHeight: 48,
+              minWidth: 48,
+              opacity: pressed ? 0.82 : 1
+            })}
           >
-            <Text className={value === number ? "font-semibold text-ink" : "text-white"}>{number}</Text>
+            <Text
+              style={{
+                color: value === number ? "#120F1F" : colors.textPrimary,
+                fontSize: 17,
+                fontWeight: "800",
+                lineHeight: 22
+              }}
+            >
+              {number}
+            </Text>
           </Pressable>
         ))}
       </View>
@@ -39,6 +72,10 @@ function Scale({
 }
 
 export default function Mood() {
+  const { t } = useI18n();
+  const { colors } = useAppTheme();
+  const { width } = useWindowDimensions();
+  const wideMood = width >= 820;
   const [mood, setMood] = useState("calmo");
   const [intensity, setIntensity] = useState(5);
   const [energy, setEnergy] = useState(5);
@@ -46,74 +83,99 @@ export default function Mood() {
   const [stress, setStress] = useState(5);
   const [note, setNote] = useState("");
   const mutation = useMutation({ mutationFn: createEmotionLog });
+  const orbSize = wideMood ? Math.min(248, Math.max(188, width * 0.3)) : Math.min(180, Math.max(168, width * 0.52));
 
   return (
     <Screen>
-      <View className="gap-2">
-        <Text className="text-xs font-semibold tracking-[5px] text-mint">HUMOR</Text>
-        <Text className="text-3xl font-semibold text-white">Estado emocional</Text>
-        <Text className="text-base leading-6 text-muted">
-          Um registro rapido ajuda o Bergmann a perceber tendencias com cuidado e sem julgamento.
-        </Text>
-      </View>
+      <View style={{ alignItems: "center", gap: width < 420 ? 18 : 24, width: "100%" }}>
+        <View style={{ alignItems: "center", gap: width < 420 ? 12 : 14, maxWidth: 640, width: "100%" }}>
+          <AnimatedOrb state="calm" size={orbSize} />
+          <Header align="center" kicker={t("mood.kicker")} title={t("mood.title")} subtitle={t("mood.subtitle")} />
+        </View>
 
-      <View className="gap-3">
-        <Text className="text-sm font-medium text-muted">Humor principal</Text>
-        <View className="flex-row flex-wrap gap-2">
-          {moods.map((item) => (
-            <Pressable
-              key={item}
-              accessibilityRole="button"
-              onPress={() => setMood(item)}
-              className={`rounded-full border px-4 py-3 ${
-                mood === item ? "border-mint bg-mint" : "border-white/10 bg-surface/70"
-              }`}
-            >
-              <Text className={mood === item ? "font-semibold text-ink" : "text-white"}>{item}</Text>
-            </Pressable>
-          ))}
+        <View style={{ gap: 20, maxWidth: 960, width: "100%" }}>
+          <Card>
+            <View style={{ gap: 12 }}>
+              <Text style={{ color: colors.textSecondary, fontSize: 16, fontWeight: "800", lineHeight: 22 }}>
+                {t("mood.primary")}
+              </Text>
+              <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 10 }}>
+                {moods.map((item) => (
+                  <Pressable
+                    key={item.value}
+                    accessibilityRole="button"
+                    accessibilityState={{ selected: mood === item.value }}
+                    onPress={() => setMood(item.value)}
+                    style={({ pressed }) => ({
+                      backgroundColor: mood === item.value ? colors.primaryLight : colors.surfaceStrong,
+                      borderColor: mood === item.value ? colors.primary : colors.primaryLight,
+                      borderCurve: "continuous",
+                      borderRadius: radii.pill,
+                      borderWidth: 1.5,
+                      boxShadow: mood === item.value ? `0 10px 22px ${colors.shadow}` : "none",
+                      minHeight: 48,
+                      minWidth: 104,
+                      opacity: pressed ? 0.82 : 1,
+                      paddingHorizontal: 18,
+                      paddingVertical: 12
+                    })}
+                  >
+                    <Text
+                      style={{
+                        color: mood === item.value ? "#120F1F" : colors.textPrimary,
+                        fontSize: 16,
+                        fontWeight: "800",
+                        lineHeight: 22
+                      }}
+                    >
+                      {t(item.labelKey)}
+                    </Text>
+                  </Pressable>
+                ))}
+              </View>
+            </View>
+          </Card>
+
+          <Card>
+            <Scale label={t("mood.intensity")} value={intensity} onChange={setIntensity} />
+            <Scale label={t("mood.energy")} value={energy} onChange={setEnergy} />
+            <Scale label={t("mood.anxiety")} value={anxiety} onChange={setAnxiety} />
+            <Scale label={t("mood.stress")} value={stress} onChange={setStress} />
+          </Card>
+
+          <Field
+            label={t("mood.note")}
+            value={note}
+            onChangeText={setNote}
+            multiline
+            numberOfLines={4}
+            textAlignVertical="top"
+            maxLength={2000}
+          />
+
+          {mutation.data ? (
+            <Card>
+              <Text className="text-base leading-6 text-ink dark:text-white">{t("mood.saved")}</Text>
+            </Card>
+          ) : null}
+          <ErrorText message={mutation.error?.message} />
+          <Button
+            label={t("mood.submit")}
+            loading={mutation.isPending}
+            onPress={() =>
+              mutation.mutate({
+                mood,
+                emotions: [mood],
+                intensity,
+                energy,
+                anxiety,
+                stress,
+                note: note.trim() || null
+              })
+            }
+          />
         </View>
       </View>
-
-      <Card>
-        <Scale label="Intensidade emocional" value={intensity} onChange={setIntensity} />
-        <Scale label="Energia" value={energy} onChange={setEnergy} />
-        <Scale label="Ansiedade" value={anxiety} onChange={setAnxiety} />
-        <Scale label="Estresse" value={stress} onChange={setStress} />
-      </Card>
-
-      <Field
-        label="Observacao opcional"
-        value={note}
-        onChangeText={setNote}
-        multiline
-        numberOfLines={4}
-        textAlignVertical="top"
-        maxLength={2000}
-      />
-      {mutation.data ? (
-        <Card>
-          <Text className="text-base leading-6 text-white">
-            Registro salvo. Voce nao precisa resolver tudo agora; apenas perceber ja e um passo.
-          </Text>
-        </Card>
-      ) : null}
-      <ErrorText message={mutation.error?.message} />
-      <Button
-        label="Registrar humor"
-        loading={mutation.isPending}
-        onPress={() =>
-          mutation.mutate({
-            mood,
-            emotions: [mood],
-            intensity,
-            energy,
-            anxiety,
-            stress,
-            note: note.trim() || null
-          })
-        }
-      />
     </Screen>
   );
 }

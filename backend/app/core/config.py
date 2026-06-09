@@ -16,12 +16,13 @@ class Settings(BaseSettings):
     jwt_algorithm: str = "HS256"
     access_token_expire_minutes: int = 15
     refresh_token_expire_days: int = 30
+    data_encryption_key: str | None = None
     cors_origins: str = ""
     groq_api_key: str | None = None
     groq_model: str = "llama-3.3-70b-versatile"
     ai_temperature: float = 0.7
     ai_timeout_seconds: int = 30
-    super_admin_email: str = "admin@bergmann.local"
+    super_admin_email: str = "admin@example.com"
     super_admin_password: str | None = None
     super_admin_bootstrap_on_startup: bool = False
     smtp_host: str | None = None
@@ -31,16 +32,20 @@ class Settings(BaseSettings):
     smtp_from_email: str | None = None
     smtp_use_tls: bool = True
     admin_alert_email: str | None = None
-    password_reset_url: str = "bergmann://reset-password"
+    password_reset_url: str = "meuapp://reset-password"
     public_api_url: str | None = None
     billing_webhooks_enabled: bool = False
     billing_webhook_secret: str | None = None
     mercado_pago_access_token: str | None = None
     mercado_pago_public_key: str | None = None
     mercado_pago_webhook_secret: str | None = None
-    mercado_pago_success_url: str | None = None
-    mercado_pago_pending_url: str | None = None
-    mercado_pago_failure_url: str | None = None
+    mercado_pago_success_url: str | None = "meuapp://pagamento/sucesso"
+    mercado_pago_pending_url: str | None = "meuapp://pagamento/pendente"
+    mercado_pago_failure_url: str | None = "meuapp://pagamento/erro"
+    daily_api_key: str | None = None
+    daily_api_url: str = "https://api.daily.co/v1"
+    daily_room_expire_hours: int = 8
+    daily_join_token_expire_minutes: int = 180
     billing_pending_alerts_auto_enabled: bool = False
     billing_pending_alerts_auto_days: int = 7
     billing_pending_alerts_auto_interval_hours: int = 24
@@ -76,7 +81,7 @@ class Settings(BaseSettings):
     def admin_alert_recipient(self) -> str | None:
         if self.admin_alert_email:
             return self.admin_alert_email
-        if self.super_admin_email != "admin@bergmann.local":
+        if self.super_admin_email != "admin@example.com":
             return self.super_admin_email
         return None
 
@@ -87,6 +92,19 @@ class Settings(BaseSettings):
             and self.mercado_pago_public_key
             and self.mercado_pago_webhook_secret
         )
+
+    @property
+    def daily_configured(self) -> bool:
+        return bool(self.daily_api_key)
+
+    @property
+    def data_encryption_secret(self) -> str:
+        secret = (self.data_encryption_key or "").strip()
+        if secret:
+            return secret
+        if self.is_production:
+            raise RuntimeError("DATA_ENCRYPTION_KEY is required in production")
+        return self.jwt_secret_key
 
 
 @lru_cache

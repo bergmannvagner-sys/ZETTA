@@ -12,7 +12,14 @@ from app.services.connection_codes import generate_connection_code, normalize_co
 
 router = APIRouter(prefix="/connections", tags=["connections"])
 
-CONNECTABLE_ROLES = {UserRole.PSYCHOLOGIST, UserRole.COMPANY}
+CONNECTABLE_ROLES = {
+    UserRole.PSYCHOLOGIST,
+    UserRole.COMPANY,
+    UserRole.CLINIC,
+    UserRole.HOSPITAL,
+    UserRole.NGO,
+    UserRole.PUBLIC_INSTITUTION,
+}
 
 
 def _serialize_target(user: User) -> ConnectionSearchResponse:
@@ -36,7 +43,7 @@ def get_my_connection_code(
     if user.role not in CONNECTABLE_ROLES:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
-            detail="Only psychologist or company accounts can share connection code",
+            detail="Only professional or institutional accounts can share connection code",
         )
     if not has_paid_access(user):
         raise HTTPException(status_code=status.HTTP_402_PAYMENT_REQUIRED, detail="Paid plan required")
@@ -69,7 +76,10 @@ def search_connection_target(
         or target.status != AccountStatus.ACTIVE
         or not has_paid_access(target)
     ):
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Active psychologist or company not found")
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Active professional, company or institutional account not found",
+        )
     if not target.connection_code:
         target.connection_code = generate_connection_code(db)
         db.commit()

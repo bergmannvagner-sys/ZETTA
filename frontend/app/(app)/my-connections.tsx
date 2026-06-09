@@ -1,163 +1,247 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
-import { Pressable, Text, View } from "react-native";
+import { Text, useWindowDimensions, View } from "react-native";
 
+import { AnimatedOrb } from "@/components/orb/AnimatedOrb";
 import { Screen } from "@/components/screen";
-import { Button, Card, ErrorText } from "@/components/ui";
-import {
-  createSharingConsent,
-  listSharingConsents,
-  revokeSharingConsent,
-  SharingCategory,
-  SharingConsent
-} from "@/lib/emotional";
+import { Badge, Button, Card, ErrorText } from "@/components/ui";
+import { useI18n } from "@/i18n/i18n";
+import { getMyConnectionCode, listSharingConsents, revokeSharingConsent, SharingConsent } from "@/lib/emotional";
+import { useAuthStore } from "@/store/auth-store";
 
-const categoryLabels: Array<{ value: SharingCategory; label: string }> = [
-  { value: "AI_SUMMARY", label: "Resumo IA" },
-  { value: "TRENDS", label: "Tendencias" },
-  { value: "MOOD", label: "Humor" },
-  { value: "CRISIS", label: "Crises" },
-  { value: "JOURNAL", label: "Diario" }
-];
+const CONNECTABLE_ROLES = new Set(["PSYCHOLOGIST", "COMPANY", "CLINIC", "HOSPITAL", "NGO", "PUBLIC_INSTITUTION"]);
 
-function toggleCategory(current: SharingCategory[], category: SharingCategory): SharingCategory[] {
-  if (current.includes(category)) {
-    return current.filter((item) => item !== category);
-  }
-  return [...current, category];
+function formatDate(value?: string | null): string {
+  return value ? new Date(value).toLocaleString("pt-BR") : "Sem registro";
 }
 
-function ConnectionCard({ consent }: { consent: SharingConsent }) {
-  const queryClient = useQueryClient();
-  const [categories, setCategories] = useState<SharingCategory[]>(consent.categories);
-  const [summaryOnly, setSummaryOnly] = useState(consent.summary_only);
+function ConnectionCard({
+  consent,
+  onRevoke,
+  revoking
+}: {
+  consent: SharingConsent;
+  onRevoke: (id: string) => void;
+  revoking: boolean;
+}) {
+  const { t } = useI18n();
   const active = !consent.revoked_at;
-  const update = useMutation({
-    mutationFn: createSharingConsent,
-    onSuccess: async () => {
-      await queryClient.invalidateQueries({ queryKey: ["sharing-consents"] });
-    }
-  });
-  const revoke = useMutation({
-    mutationFn: revokeSharingConsent,
-    onSuccess: async () => {
-      await queryClient.invalidateQueries({ queryKey: ["sharing-consents"] });
-    }
-  });
 
   return (
     <Card>
-      <View className="gap-1">
-        <Text selectable className="text-base font-semibold text-white">{consent.target_email}</Text>
-        <Text selectable className="text-sm text-muted">Perfil: {consent.target_role}</Text>
-        <Text selectable className="text-sm text-muted">Status: {active ? "ativo" : "revogado"}</Text>
+      <View className="gap-3">
+        <View className="flex-row items-start gap-3">
+          <View className="flex-1 gap-1">
+            <Text selectable className="text-base font-semibold text-ink dark:text-white">
+              {consent.target_email}
+            </Text>
+            <Text selectable className="text-sm text-muted dark:text-[#D1D5DB]">
+              {t("profile.role", { value: consent.target_role })}
+            </Text>
+          </View>
+
+          <Badge label={active ? "Ativo" : "Revogado"} tone={active ? "success" : "warning"} />
+        </View>
+
+        <Text selectable className="text-sm leading-5 text-muted dark:text-[#D1D5DB]">
+          {t("sharing.categoriesValue", { value: consent.categories.join(", ") })}
+        </Text>
+        <Text selectable className="text-sm text-muted dark:text-[#D1D5DB]">
+          {t("sharing.status", { value: consent.revoked_at ? t("sharing.revoked") : t("sharing.active") })}
+        </Text>
+        <Text selectable className="text-xs text-muted dark:text-[#D1D5DB]">
+          Concedido: {formatDate(consent.granted_at)}
+        </Text>
+        {consent.revoked_at ? (
+          <Text selectable className="text-xs text-muted dark:text-[#D1D5DB]">
+            Revogado: {formatDate(consent.revoked_at)}
+          </Text>
+        ) : null}
+        <Text className="text-sm leading-5 text-muted dark:text-[#D1D5DB]">
+          {consent.summary_only
+            ? "Compartilhamento limitado ao resumo."
+            : "Compartilhamento com detalhes autorizados nas categorias escolhidas."}
+        </Text>
       </View>
 
       {active ? (
-        <View className="gap-3">
-          <Text className="text-sm font-medium text-muted">Categorias compartilhadas</Text>
-          <View className="flex-row flex-wrap gap-2">
-            {categoryLabels.map((item) => {
-              const selected = categories.includes(item.value);
-              return (
-                <Pressable
-                  key={item.value}
-                  accessibilityRole="checkbox"
-                  accessibilityState={{ checked: selected }}
-                  onPress={() => setCategories((current) => toggleCategory(current, item.value))}
-                  className={`rounded-full border px-4 py-3 ${
-                    selected ? "border-mint bg-mint" : "border-white/10 bg-surface/70"
-                  }`}
-                >
-                  <Text className={selected ? "font-semibold text-ink" : "text-white"}>{item.label}</Text>
-                </Pressable>
-              );
-            })}
-          </View>
-
-          <Pressable
-            accessibilityRole="switch"
-            accessibilityState={{ checked: summaryOnly }}
-            onPress={() => setSummaryOnly((current) => !current)}
-            className="rounded-xl border border-white/10 bg-surface/55 p-4"
-          >
-            <Text className="text-base font-semibold text-white">
-              {summaryOnly ? "Apenas resumo" : "Detalhes autorizados"}
-            </Text>
-            <Text className="text-sm leading-5 text-muted">
-              Use detalhes somente quando fizer sentido para acompanhamento real.
-            </Text>
-          </Pressable>
-
-          <ErrorText message={update.error?.message || revoke.error?.message} />
-          <Button
-            label="Salvar alteracoes"
-            loading={update.isPending}
-            disabled={categories.length === 0}
-            onPress={() =>
-              update.mutate({
-                target_email: consent.target_email,
-                categories,
-                summary_only: summaryOnly
-              })
-            }
-          />
-          <Button
-            label="Revogar vinculo"
-            tone="soft"
-            loading={revoke.isPending}
-            onPress={() => revoke.mutate(consent.id)}
-          />
-        </View>
-      ) : (
-        <Text className="text-sm leading-5 text-muted">
-          Este vinculo foi revogado. Nenhum novo dado deve ser compartilhado por esta autorizacao.
-        </Text>
-      )}
+        <Button label="sharing.revoke" tone="danger" loading={revoking} onPress={() => onRevoke(consent.id)} />
+      ) : null}
     </Card>
   );
 }
 
 export default function MyConnections() {
-  const consents = useQuery({ queryKey: ["sharing-consents"], queryFn: listSharingConsents });
-  const activeConsents = consents.data?.filter((item: SharingConsent) => !item.revoked_at) ?? [];
-  const revokedConsents = consents.data?.filter((item: SharingConsent) => item.revoked_at) ?? [];
+  const { t } = useI18n();
+  const queryClient = useQueryClient();
+  const { width } = useWindowDimensions();
+  const [pendingRevocationId, setPendingRevocationId] = useState<string | null>(null);
+  const hydrated = useAuthStore((state) => state.hydrated);
+  const user = useAuthStore((state) => state.user);
+
+  const wideConnections = width >= 860;
+  const orbSize = wideConnections ? Math.min(252, Math.max(188, width * 0.3)) : Math.min(212, Math.max(168, width * 0.56));
+  const canShowConnectionCode = Boolean(hydrated && user && CONNECTABLE_ROLES.has(user.role));
+
+  const code = useQuery({
+    queryKey: ["my-connection-code"],
+    queryFn: getMyConnectionCode,
+    enabled: canShowConnectionCode
+  });
+  const consents = useQuery({
+    queryKey: ["sharing-consents"],
+    queryFn: listSharingConsents
+  });
+  const revoke = useMutation({
+    mutationFn: revokeSharingConsent,
+    onMutate: (consentId: string) => {
+      setPendingRevocationId(consentId);
+    },
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({ queryKey: ["sharing-consents"] });
+    },
+    onSettled: () => {
+      setPendingRevocationId(null);
+    }
+  });
+
+  const allConsents: SharingConsent[] = consents.data ?? [];
+  const activeConsents = allConsents.filter((consent: SharingConsent) => !consent.revoked_at);
+  const revokedConsents = allConsents.filter((consent: SharingConsent) => consent.revoked_at);
 
   return (
     <Screen>
-      <View className="gap-2">
-        <Text className="text-xs font-semibold tracking-[5px] text-mint">VINCULOS</Text>
-        <Text className="text-3xl font-semibold text-white">Meus vinculos</Text>
-        <Text className="text-base leading-6 text-muted">
-          Veja quem pode receber seus dados emocionais, ajuste categorias ou revogue acesso quando quiser.
-        </Text>
-      </View>
-
-      {consents.isLoading ? <Text className="text-muted">Carregando vinculos...</Text> : null}
-      <ErrorText message={consents.error?.message} />
-
-      <View className="gap-3">
-        <Text className="text-base font-semibold text-white">Ativos</Text>
-        {activeConsents.map((consent: SharingConsent) => (
-          <ConnectionCard key={consent.id} consent={consent} />
-        ))}
-        {activeConsents.length === 0 ? (
-          <Card>
-            <Text className="text-base leading-6 text-muted">
-              Nenhum vinculo ativo. Conecte um psicologo ou empresa pela tela de compartilhamento.
-            </Text>
-          </Card>
-        ) : null}
-      </View>
-
-      {revokedConsents.length ? (
-        <View className="gap-3">
-          <Text className="text-base font-semibold text-white">Revogados</Text>
-          {revokedConsents.map((consent: SharingConsent) => (
-            <ConnectionCard key={consent.id} consent={consent} />
-          ))}
+      <View style={{ alignItems: "center", gap: 24, width: "100%" }}>
+        <View style={{ alignItems: "center", gap: 14, maxWidth: 640, width: "100%" }}>
+          <AnimatedOrb state="silent_presence" size={orbSize} />
+          <View className="gap-2">
+            <Text className="text-xs font-semibold text-primary text-center">{t("sharing.kicker")}</Text>
+            <Text className="text-3xl font-semibold text-ink dark:text-white text-center">{t("route.myConnections")}</Text>
+            <Text className="text-base leading-6 text-muted dark:text-[#D1D5DB] text-center">{t("sharing.subtitle")}</Text>
+          </View>
         </View>
-      ) : null}
+
+        <View style={{ gap: 18, maxWidth: 960, width: "100%" }}>
+          <Card>
+            <View className="gap-3">
+              <View className="gap-1">
+                <Text className="text-lg font-semibold text-ink dark:text-white">Código de conexão</Text>
+                <Text className="text-sm leading-5 text-muted dark:text-[#D1D5DB]">
+                  Compartilhe este código apenas com quem você confia.
+                </Text>
+              </View>
+
+              {!hydrated ? (
+                <Text className="text-sm text-muted dark:text-[#D1D5DB]">{t("common.loading")}</Text>
+              ) : !canShowConnectionCode ? (
+                <Text className="text-sm leading-5 text-muted dark:text-[#D1D5DB]">
+                  Perfis comuns não expõem código de conexão. Psicólogos, clínicas e instituições usam esse espaço
+                  para compartilhar o código com segurança.
+                </Text>
+              ) : code.isLoading ? (
+                <Text className="text-sm text-muted dark:text-[#D1D5DB]">{t("common.loading")}</Text>
+              ) : code.error ? (
+                <Text className="text-sm text-error">{code.error.message}</Text>
+              ) : (
+                <Text selectable className="text-xl font-semibold text-ink dark:text-white">
+                  {code.data?.connection_code ?? "Código indisponível"}
+                </Text>
+              )}
+            </View>
+          </Card>
+
+          <Card>
+            <View className="gap-2">
+              <Text className="text-lg font-semibold text-ink dark:text-white">Controle de exposição</Text>
+              <Text className="text-sm leading-5 text-muted dark:text-[#D1D5DB]">
+                Revogar um vínculo encerra novos acessos e mantém o histórico já auditado.
+              </Text>
+            </View>
+          </Card>
+
+          <Card>
+            <View className="gap-3">
+              <View className="gap-1">
+                <Text className="text-lg font-semibold text-ink dark:text-white">Resumo dos vínculos</Text>
+                <Text className="text-sm leading-5 text-muted dark:text-[#D1D5DB]">
+                  Veja o que ainda está ativo e o que já foi encerrado.
+                </Text>
+              </View>
+
+              <View className="flex-row flex-wrap gap-2">
+                <Badge label={`Ativos ${activeConsents.length}`} tone="success" />
+                <Badge label={`Revogados ${revokedConsents.length}`} tone="warning" />
+              </View>
+            </View>
+          </Card>
+
+          <ErrorText message={consents.error?.message ?? revoke.error?.message} />
+
+          {canShowConnectionCode && code.error ? <ErrorText message={code.error.message} /> : null}
+
+          {consents.isLoading ? <Text className="text-muted dark:text-[#D1D5DB]">{t("common.loading")}</Text> : null}
+
+          <View className="gap-4">
+            <Text className="text-sm font-semibold text-muted dark:text-[#D1D5DB]">Vínculos ativos</Text>
+            {activeConsents.length === 0 ? (
+              <Card>
+                <Text className="text-base leading-6 text-muted dark:text-[#D1D5DB]">{t("sharing.empty")}</Text>
+              </Card>
+            ) : (
+              <View
+                style={{
+                  flexDirection: wideConnections ? "row" : "column",
+                  flexWrap: wideConnections ? "wrap" : "nowrap",
+                  gap: 12
+                }}
+              >
+                {activeConsents.map((consent: SharingConsent) => (
+                  <View
+                    key={consent.id}
+                    style={{
+                      flexBasis: wideConnections ? "48%" : "100%",
+                      flexGrow: 1,
+                      minWidth: wideConnections ? 240 : undefined
+                    }}
+                  >
+                    <ConnectionCard
+                      consent={consent}
+                      onRevoke={(id) => revoke.mutate(id)}
+                      revoking={pendingRevocationId === consent.id && revoke.isPending}
+                    />
+                  </View>
+                ))}
+              </View>
+            )}
+          </View>
+
+          {revokedConsents.length ? (
+            <View className="gap-4">
+              <Text className="text-sm font-semibold text-muted dark:text-[#D1D5DB]">Vínculos revogados</Text>
+              <View
+                style={{
+                  flexDirection: wideConnections ? "row" : "column",
+                  flexWrap: wideConnections ? "wrap" : "nowrap",
+                  gap: 12
+                }}
+              >
+                {revokedConsents.map((consent: SharingConsent) => (
+                  <View
+                    key={consent.id}
+                    style={{
+                      flexBasis: wideConnections ? "48%" : "100%",
+                      flexGrow: 1,
+                      minWidth: wideConnections ? 240 : undefined
+                    }}
+                  >
+                    <ConnectionCard consent={consent} onRevoke={() => undefined} revoking={false} />
+                  </View>
+                ))}
+              </View>
+            </View>
+          ) : null}
+        </View>
+      </View>
     </Screen>
   );
 }

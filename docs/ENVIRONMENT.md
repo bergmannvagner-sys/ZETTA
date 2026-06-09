@@ -2,10 +2,11 @@
 
 ## Backend
 
-Obrigatórias:
+Obrigatórias em produção:
 
 - `DATABASE_URL`
 - `JWT_SECRET_KEY`
+- `DATA_ENCRYPTION_KEY`
 - `CORS_ORIGINS`
 - `GROQ_API_KEY`
 
@@ -33,6 +34,10 @@ Recomendadas:
 - `MERCADO_PAGO_SUCCESS_URL`
 - `MERCADO_PAGO_PENDING_URL`
 - `MERCADO_PAGO_FAILURE_URL`
+- `DAILY_API_KEY`
+- `DAILY_API_URL=https://api.daily.co/v1`
+- `DAILY_ROOM_EXPIRE_HOURS=8`
+- `DAILY_JOIN_TOKEN_EXPIRE_MINUTES=180`
 
 Nunca versionar `.env`. Use `backend/.env.example` como referência.
 
@@ -100,12 +105,37 @@ Remove-Item Env:\ZETTA_BILLING_TARGET_EMAIL
 Esse smoke exige uma conta comercial `ACTIVE`, cria uma preferencia real no Mercado Pago e nao imprime o
 link completo do checkout, access token, webhook secret ou senha.
 
+## Teleatendimento Daily
+
+O teleatendimento dentro do app usa Daily pelo backend. A API cria uma sala privada por sessao aceita
+e emite um token temporario de entrada para o usuario ou profissional autorizado.
+
+Variaveis:
+
+- `DAILY_API_KEY`: chave secreta da conta Daily. Configure apenas no backend/Render.
+- `DAILY_API_URL=https://api.daily.co/v1`: URL da API REST Daily.
+- `DAILY_ROOM_EXPIRE_HOURS=8`: tempo de vida da sala criada para a sessao.
+- `DAILY_JOIN_TOKEN_EXPIRE_MINUTES=180`: validade do link/token de entrada.
+
+Nunca coloque `DAILY_API_KEY` no Expo. O frontend chama `/telecare/sessions/{id}/join` e recebe apenas
+uma URL temporaria de entrada na sala. A primeira versao usa Daily Prebuilt dentro de WebView para manter
+compatibilidade com Expo Go. Uma interface de chamada totalmente customizada pode usar a SDK React Native
+do Daily depois, mas isso exigira development build.
+
 ## Frontend
 
 - `EXPO_PUBLIC_API_URL`: URL pública da API.
 - `APP_ENV=production`: exige `EXPO_PUBLIC_API_URL` no `app.config.ts`.
 
+No web em desenvolvimento, o cliente usa o backend local em `http://127.0.0.1:8000` quando a
+origem do browser e local. Se preferir manter o backend remoto no browser local, o Render precisa
+liberar `http://127.0.0.1:8082` e `http://localhost:8082` em `CORS_ORIGINS`.
+
 Nunca inserir `GROQ_API_KEY` no frontend.
+
+`DATA_ENCRYPTION_KEY` deve existir em producao para criptografia em repouso de conteudos
+sensiveis. Em desenvolvimento, o backend usa `JWT_SECRET_KEY` como fallback funcional,
+mas isso nao substitui a chave dedicada no ambiente real.
 
 ## Consentimento LGPD
 

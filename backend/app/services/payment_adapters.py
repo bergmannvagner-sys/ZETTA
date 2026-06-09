@@ -119,11 +119,11 @@ class MercadoPagoPaymentAdapter(LocalOnlyPaymentAdapter):
         "MERCADO_PAGO_FAILURE_URL",
     )
     activation_checkpoints = (
-        "Usar credenciais definitivas do Mercado Pago no ambiente seguro de producao.",
-        "Configurar MERCADO_PAGO_WEBHOOK_SECRET fora do repositorio.",
-        "Validar x-signature e x-request-id antes de processar notificacoes.",
+        "Usar credenciais definitivas do Mercado Pago no ambiente seguro de produção.",
+        "Configurar MERCADO_PAGO_WEBHOOK_SECRET fora do repositório.",
+        "Validar x-signature e x-request-id antes de processar notificações.",
         "Conferir pagamento real no Mercado Pago antes de liberar acesso pago.",
-        "Aceitar apenas status de pagamento previstos e manter idempotencia por evento.",
+        "Aceitar apenas status de pagamento previstos e manter idempotência por evento.",
     )
 
     def verify_provider_signature(

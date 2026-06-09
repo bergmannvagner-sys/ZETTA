@@ -2,6 +2,7 @@ import os
 
 os.environ.setdefault("DATABASE_URL", "sqlite+pysqlite:///:memory:")
 os.environ.setdefault("JWT_SECRET_KEY", "test-secret-key-with-more-than-thirty-two-chars")
+os.environ.setdefault("DATA_ENCRYPTION_KEY", "test-data-encryption-key-with-more-than-thirty-two-chars")
 os.environ.setdefault("CORS_ORIGINS", "http://localhost:8081")
 
 from fastapi.testclient import TestClient
@@ -33,6 +34,8 @@ def test_public_openapi_contract_matches_mobile_mvp() -> None:
     assert "/privacy/audit" in paths
     assert "/privacy/export" in paths
     assert "/chat/message" in paths
+    assert "/chat/history" in paths
+    assert "/chat/messages/{message_id}" in paths
     assert "/sos/event" in paths
     assert "/journal/entries" in paths
     assert "/emotions/logs" in paths
@@ -40,7 +43,13 @@ def test_public_openapi_contract_matches_mobile_mvp() -> None:
     assert "/reports/emotional/me" in paths
     assert "/professional/authorized-users" in paths
     assert "/professional/authorized-users/{owner_user_id}" in paths
+    assert "/telecare/providers" in paths
+    assert "/telecare/sessions" in paths
+    assert "/telecare/sessions/{session_id}" in paths
+    assert "/telecare/sessions/{session_id}/join" in paths
+    assert "/telecare/sessions/{session_id}/status" in paths
     assert "/nr1/report" in paths
+    assert "/institution/dashboard" in paths
     assert "/assistant/reminders" in paths
     assert "/connections/me" in paths
     assert "/connections/search" in paths

@@ -3,6 +3,7 @@ import { Redirect } from "expo-router";
 import { useState } from "react";
 import { Text, View } from "react-native";
 
+import { PageHero } from "@/components/page-hero";
 import { Screen } from "@/components/screen";
 import { Card, ErrorText, Field } from "@/components/ui";
 import { apiRequest } from "@/lib/api";
@@ -46,45 +47,48 @@ export default function AdminAudit() {
 
   return (
     <Screen>
-      <View className="gap-2">
-        <Text className="text-sm font-semibold tracking-[4px] text-mint">ADMIN</Text>
-        <Text className="text-3xl font-semibold text-white">Auditoria</Text>
-        <Text className="text-base leading-6 text-muted">
-          Eventos administrativos e de seguranca. Esta tela nao exibe conversas, diario ou conteudo emocional privado.
-        </Text>
-      </View>
+      <View style={{ alignItems: "center", gap: 24 }}>
+        <PageHero
+          kicker="Admin"
+          title="Auditoria"
+          subtitle="Eventos administrativos e de segurança. Esta tela não exibe conversas, diário ou conteúdo emocional privado."
+          orbState="thinking"
+        />
 
-      <Field label="Buscar por acao, recurso, ID ou metadado" value={search} onChangeText={setSearch} />
+        <View style={{ width: "100%", maxWidth: 880, gap: 16 }}>
+          <Field label="Buscar por ação, recurso, ID ou metadado" value={search} onChangeText={setSearch} />
 
-      <ErrorText message={auditLogs.error?.message} />
-      {auditLogs.isLoading ? <Text className="text-muted">Carregando...</Text> : null}
-      {logs.length === 0 && !auditLogs.isLoading ? (
-        <Text className="text-muted">Nenhum evento de auditoria encontrado.</Text>
-      ) : null}
+          <ErrorText message={auditLogs.error?.message} />
+          {auditLogs.isLoading ? <Text className="text-muted dark:text-[#D1D5DB]">Carregando...</Text> : null}
+          {logs.length === 0 && !auditLogs.isLoading ? (
+            <Text className="text-muted dark:text-[#D1D5DB]">Nenhum evento de auditoria encontrado.</Text>
+          ) : null}
 
-      <View className="gap-3">
-        {logs.map((log) => {
-          const metadata = Object.entries(log.metadata ?? {});
-          return (
-            <Card key={log.id}>
-              <Text className="text-lg font-semibold text-white">{log.action}</Text>
-              <Text className="text-sm text-muted">Recurso: {log.resource_type}</Text>
-              <Text selectable className="text-sm text-muted">ID: {shortId(log.resource_id)}</Text>
-              <Text selectable className="text-sm text-muted">Ator: {shortId(log.actor_user_id)}</Text>
-              <Text selectable className="text-sm text-muted">Alvo: {shortId(log.target_user_id)}</Text>
-              <Text className="text-xs text-muted">{log.created_at}</Text>
-              {metadata.length > 0 ? (
-                <View className="mt-2 gap-1 rounded-2xl border border-white/10 bg-ink/40 p-3">
-                  {metadata.map(([key, value]) => (
-                    <Text key={key} selectable className="text-xs leading-5 text-muted">
-                      {key}: {formatMetadataValue(value)}
-                    </Text>
-                  ))}
-                </View>
-              ) : null}
-            </Card>
-          );
-        })}
+          <View className="gap-3">
+            {logs.map((log) => {
+              const metadata = Object.entries(log.metadata ?? {});
+              return (
+                <Card key={log.id}>
+                  <Text className="text-lg font-semibold text-ink dark:text-white">{log.action}</Text>
+                  <Text className="text-sm text-muted dark:text-[#D1D5DB]">Recurso: {log.resource_type}</Text>
+                  <Text selectable className="text-sm text-muted dark:text-[#D1D5DB]">ID: {shortId(log.resource_id)}</Text>
+                  <Text selectable className="text-sm text-muted dark:text-[#D1D5DB]">Ator: {shortId(log.actor_user_id)}</Text>
+                  <Text selectable className="text-sm text-muted dark:text-[#D1D5DB]">Alvo: {shortId(log.target_user_id)}</Text>
+                  <Text className="text-xs text-muted dark:text-[#D1D5DB]">{log.created_at}</Text>
+                  {metadata.length > 0 ? (
+                    <View className="mt-2 gap-1 rounded-2xl border border-primaryLight dark:border-[#4C1D95]/40 bg-surfaceSoft dark:bg-[#261D42]/40 p-3">
+                      {metadata.map(([key, value]) => (
+                        <Text key={key} selectable className="text-xs leading-5 text-muted dark:text-[#D1D5DB]">
+                          {key}: {formatMetadataValue(value)}
+                        </Text>
+                      ))}
+                    </View>
+                  ) : null}
+                </Card>
+              );
+            })}
+          </View>
+        </View>
       </View>
     </Screen>
   );

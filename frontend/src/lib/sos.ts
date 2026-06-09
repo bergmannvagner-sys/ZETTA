@@ -6,10 +6,10 @@ export type SOSResponse = {
 };
 
 export const SOS_SAFETY_MESSAGE =
-  "Evento SOS registrado. Se voce estiver em risco imediato, ligue para a emergencia local agora. No Brasil, o CVV atende pelo 188. Tente ficar perto de alguem de confianca e afastar objetos perigosos.";
+  "Evento SOS registrado. Se você estiver em risco imediato, ligue para a emergência local agora. No Brasil, o CVV atende pelo 188. Tente ficar perto de alguém de confiança e afastar objetos perigosos.";
 
 export const SOS_OFFLINE_MESSAGE =
-  "Se voce estiver em risco imediato, ligue para a emergencia local agora. No Brasil, o CVV atende pelo 188. Tente ficar perto de alguem de confianca e afastar objetos perigosos.";
+  "Se você estiver em risco imediato, ligue para a emergência local agora. No Brasil, o CVV atende pelo 188. Tente ficar perto de alguém de confiança e afastar objetos perigosos.";
 
 export async function registerSOSEvent(): Promise<SOSResponse> {
   const data = await apiRequest<SOSResponse>("/sos/event", {

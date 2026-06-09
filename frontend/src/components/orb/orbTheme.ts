@@ -5,6 +5,9 @@ export const orbStateOrder: OrbState[] = [
   "listening",
   "thinking",
   "speaking",
+  "breathing",
+  "calm",
+  "sos",
   "crisis",
   "low_energy",
   "error",
@@ -16,27 +19,47 @@ export const orbStateIndex: Record<OrbState, number> = {
   listening: 1,
   thinking: 2,
   speaking: 3,
-  crisis: 4,
-  low_energy: 5,
-  error: 6,
-  silent_presence: 7
+  breathing: 4,
+  calm: 5,
+  sos: 6,
+  crisis: 7,
+  low_energy: 8,
+  error: 9,
+  silent_presence: 10
 };
 
 export const orbPalette = {
-  shell: ["#0D47FF", "#00E5FF", "#8A28E2", "#0D47FF", "#263456", "#1A2546", "#6B58A8", "#1D3C72"],
-  core: ["#F2F7FF", "#E7FCFF", "#F4D8FF", "#E7FCFF", "#BCC6EA", "#8EA4D2", "#E5D7FF", "#B8CFFF"],
-  halo: ["#132B86", "#064D69", "#36115E", "#193787", "#121C3A", "#0E1830", "#34235F", "#12294E"],
-  wave: ["#00E5FF", "#00E5FF", "#FF4DFF", "#8A28E2", "#7B8FDD", "#526993", "#B89BFF", "#6F8FE8"],
-  surface: "#0A0F1F"
+  shell: ["#8B5CF6", "#7C3AED", "#A855F7", "#C084FC", "#6D28D9", "#8B5CF6", "#9333EA", "#7E22CE", "#7C3AED", "#A855F7", "#C4B5FD"],
+  core: ["#FFFFFF", "#F5F3FF", "#F3E8FF", "#FAF5FF", "#EEF2FF", "#F8FAFC", "#F3E8FF", "#F5F3FF", "#F8FAFC", "#F3E8FF", "#F5F3FF"],
+  halo: ["#EDE9FE", "#DDD6FE", "#E9D5FF", "#F3E8FF", "#C7D2FE", "#EDE9FE", "#E9D5FF", "#DDD6FE", "#E2E8F0", "#E9D5FF", "#DDD6FE"],
+  wave: ["#8B5CF6", "#7C3AED", "#A855F7", "#C084FC", "#6366F1", "#8B5CF6", "#A855F7", "#7E22CE", "#7C3AED", "#9333EA", "#A78BFA"],
+  surface: "#FAFAFC"
 };
 
 export const orbAccessibilityLabels: Record<OrbState, string> = {
   idle: "Bergmann em repouso, respirando suavemente",
-  listening: "Bergmann ouvindo com atencao",
+  listening: "Bergmann ouvindo com atenção",
   thinking: "Bergmann pensando com calma",
   speaking: "Bergmann respondendo",
-  crisis: "Bergmann em modo de crise, com estimulo reduzido",
+  breathing: "Bergmann guiando respiração lenta",
+  calm: "Bergmann em modo calmo",
+  sos: "Bergmann em SOS com estímulo reduzido",
+  crisis: "Bergmann em modo de crise, com estímulo reduzido",
   low_energy: "Bergmann em modo de baixa energia",
   error: "Bergmann sinalizando falha discreta",
-  silent_presence: "Bergmann em presenca silenciosa"
+  silent_presence: "Bergmann em presença silenciosa"
+};
+
+export const orbAccessibilityLabelKeys: Record<OrbState, string> = {
+  idle: "orb.idle",
+  listening: "orb.listening",
+  thinking: "orb.thinking",
+  speaking: "orb.speaking",
+  breathing: "orb.breathing",
+  calm: "orb.calm",
+  sos: "orb.sos",
+  crisis: "orb.crisis",
+  low_energy: "orb.lowEnergy",
+  error: "orb.error",
+  silent_presence: "orb.silentPresence"
 };

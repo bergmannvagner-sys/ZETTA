@@ -69,6 +69,19 @@ $headers = @{ Authorization = "Bearer $($adminLogin.access_token)" }
 Write-Host "admin auth: ok"
 
 $billingConfig = Invoke-Json -Method GET -Path "/admin/billing-config" -Headers $headers
+$billingConfigText = $billingConfig | ConvertTo-Json -Depth 12
+$forbiddenConfigFields = @(
+  '"mercado_pago_access_token"\s*:',
+  '"mercado_pago_public_key"\s*:',
+  '"mercado_pago_webhook_secret"\s*:',
+  '"billing_webhook_secret"\s*:',
+  '"smtp_password"\s*:'
+)
+foreach ($pattern in $forbiddenConfigFields) {
+  if ($billingConfigText -match $pattern) {
+    Fail "Billing config response exposed a sensitive field."
+  }
+}
 $mercadoPago = $billingConfig.provider_capabilities | Where-Object { $_.provider -eq "MERCADO_PAGO" } | Select-Object -First 1
 if (-not $mercadoPago) {
   Fail "MERCADO_PAGO provider capability was not returned."
