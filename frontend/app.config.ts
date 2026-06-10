@@ -43,10 +43,10 @@ const config: ExpoConfig = {
   version: "0.1.0",
   orientation: "portrait",
   icon: "./assets/icon.png",
-  userInterfaceStyle: "automatic",
+  userInterfaceStyle: "light",
   newArchEnabled: true,
   splash: {
-    backgroundColor: "#0A0F1F",
+    backgroundColor: "#1A1030",
     image: "./assets/splash-icon.png",
     resizeMode: "contain"
   },
@@ -55,6 +55,7 @@ const config: ExpoConfig = {
     supportsTablet: true,
     bundleIdentifier: "com.zetta.bergmann",
     infoPlist: {
+      ITSAppUsesNonExemptEncryption: false,
       NSCameraUsageDescription:
         "Bergmann usa a câmera apenas durante teleatendimentos autorizados dentro do app.",
       NSMicrophoneUsageDescription:
@@ -63,9 +64,9 @@ const config: ExpoConfig = {
   },
   android: {
     package: "com.zetta.bergmann",
-    permissions: ["android.permission.CAMERA"],
+    permissions: ["android.permission.CAMERA", "android.permission.RECORD_AUDIO"],
     adaptiveIcon: {
-      backgroundColor: "#0A0F1F",
+      backgroundColor: "#1A1030",
       foregroundImage: "./assets/adaptive-icon.png"
     },
     config: googleMapsApiKey
@@ -97,7 +98,10 @@ const config: ExpoConfig = {
     typedRoutes: true
   },
   extra: {
-    apiUrl
+    apiUrl,
+    eas: {
+      projectId: "d44d4733-bbf0-487b-980e-a948ea541a27"
+    }
   }
 };
 

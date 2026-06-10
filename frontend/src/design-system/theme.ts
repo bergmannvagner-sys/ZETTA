@@ -1,4 +1,4 @@
-import { useColorScheme, useWindowDimensions } from "react-native";
+import { useWindowDimensions } from "react-native";
 
 export const breakpoints = {
   mobile: 767,
@@ -6,7 +6,6 @@ export const breakpoints = {
 } as const;
 
 export type AppBreakpoint = "mobile" | "tablet" | "desktop";
-export type AppThemeName = "light" | "dark";
 export type SurfaceRadii = {
   bottomLeft: number;
   bottomRight: number;
@@ -14,55 +13,29 @@ export type SurfaceRadii = {
   topRight: number;
 };
 
-export const appThemes = {
-  light: {
-    background: "#FAFAFC",
-    surface: "#FFFFFF",
-    surfaceSoft: "#F5F3FF",
-    surfaceStrong: "#EDE9FE",
-    glass: "rgba(255, 255, 255, 0.78)",
-    primary: "#8B5CF6",
-    primaryDark: "#7C3AED",
-    primaryLight: "#C4B5FD",
-    textPrimary: "#1F2937",
-    textSecondary: "#6B7280",
-    textMuted: "#9CA3AF",
-    border: "#DDD6FE",
-    success: "#22C55E",
-    warning: "#F59E0B",
-    error: "#EF4444",
-    info: "#3B82F6",
-    shadow: "rgba(31, 41, 55, 0.10)",
-    shadowStrong: "rgba(31, 41, 55, 0.16)",
-    overlay: "rgba(31, 41, 55, 0.32)",
-    gradientStart: "#F5F3FF",
-    gradientMid: "#DDD6FE",
-    gradientEnd: "#C4B5FD"
-  },
-  dark: {
-    background: "#120F1F",
-    surface: "#1C1630",
-    surfaceSoft: "#261D42",
-    surfaceStrong: "#352158",
-    glass: "rgba(28, 22, 48, 0.78)",
-    primary: "#A78BFA",
-    primaryDark: "#8B5CF6",
-    primaryLight: "#DDD6FE",
-    textPrimary: "#F9FAFB",
-    textSecondary: "#D1D5DB",
-    textMuted: "#A78BFA",
-    border: "#4C1D95",
-    success: "#22C55E",
-    warning: "#F59E0B",
-    error: "#F87171",
-    info: "#60A5FA",
-    shadow: "rgba(0, 0, 0, 0.24)",
-    shadowStrong: "rgba(0, 0, 0, 0.34)",
-    overlay: "rgba(0, 0, 0, 0.56)",
-    gradientStart: "#1C1630",
-    gradientMid: "#2E2250",
-    gradientEnd: "#4C1D95"
-  }
+export const appTheme = {
+  background: "#1A1030",
+  surface: "#24153E",
+  surfaceSoft: "#2B1849",
+  surfaceStrong: "#37215D",
+  glass: "rgba(28, 17, 49, 0.88)",
+  primary: "#A855F7",
+  primaryDark: "#DDD6FE",
+  primaryLight: "#D8B4FE",
+  textPrimary: "#F5EEFF",
+  textSecondary: "#D9C8F0",
+  textMuted: "#B7A3D8",
+  border: "#4B2D78",
+  success: "#22C55E",
+  warning: "#F59E0B",
+  error: "#EF4444",
+  info: "#3B82F6",
+  shadow: "rgba(7, 4, 20, 0.32)",
+  shadowStrong: "rgba(7, 4, 20, 0.44)",
+  overlay: "rgba(6, 5, 18, 0.58)",
+  gradientStart: "#1A1030",
+  gradientMid: "#2B1849",
+  gradientEnd: "#4C1D95"
 } as const;
 
 export const radii = {
@@ -119,21 +92,21 @@ export function getSurfaceRadii(width: number, kind: "card" | "control" = "card"
   const breakpoint = getBreakpoint(width);
   if (kind === "control") {
     if (breakpoint === "desktop") {
-      return { topLeft: 18, topRight: 28, bottomLeft: 22, bottomRight: 18 };
+      return { topLeft: 20, topRight: 20, bottomLeft: 20, bottomRight: 20 };
     }
     if (breakpoint === "tablet") {
-      return { topLeft: 16, topRight: 24, bottomLeft: 20, bottomRight: 16 };
+      return { topLeft: 18, topRight: 18, bottomLeft: 18, bottomRight: 18 };
     }
-    return { topLeft: 14, topRight: 22, bottomLeft: 18, bottomRight: 14 };
+    return { topLeft: 16, topRight: 16, bottomLeft: 16, bottomRight: 16 };
   }
 
   if (breakpoint === "desktop") {
-    return { topLeft: 24, topRight: 36, bottomLeft: 28, bottomRight: 24 };
+    return { topLeft: 30, topRight: 30, bottomLeft: 30, bottomRight: 30 };
   }
   if (breakpoint === "tablet") {
-    return { topLeft: 22, topRight: 32, bottomLeft: 26, bottomRight: 22 };
+    return { topLeft: 26, topRight: 26, bottomLeft: 26, bottomRight: 26 };
   }
-  return { topLeft: 20, topRight: 28, bottomLeft: 24, bottomRight: 20 };
+  return { topLeft: 22, topRight: 22, bottomLeft: 22, bottomRight: 22 };
 }
 
 export function useResponsiveLayout() {
@@ -154,11 +127,8 @@ export function useResponsiveLayout() {
 }
 
 export function useAppTheme() {
-  const colorScheme = useColorScheme();
-  const name: AppThemeName = colorScheme === "dark" ? "dark" : "light";
   return {
-    name,
-    colors: appThemes[name],
-    isDark: name === "dark"
+    name: "light" as const,
+    colors: appTheme
   };
 }

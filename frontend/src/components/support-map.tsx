@@ -1,8 +1,10 @@
 import * as Location from "expo-location";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { ActivityIndicator, Platform, Text, View, useWindowDimensions } from "react-native";
+import { WebView } from "react-native-webview";
 
 import { Button, Card } from "@/components/ui";
+import { radii, useAppTheme } from "@/design-system/theme";
 import { useI18n } from "@/i18n/i18n";
 
 type SupportMapProps = {
@@ -74,12 +76,14 @@ function withTimeout<T>(promise: Promise<T>, timeoutMs: number): Promise<T> {
 
 export function SupportMap({ onOpenSearch }: SupportMapProps) {
   const { t } = useI18n();
+  const { colors } = useAppTheme();
   const { width } = useWindowDimensions();
   const wideSupportMap = width >= 700;
   const [region, setRegion] = useState<MapRegion>(FALLBACK_REGION);
   const [hasLocation, setHasLocation] = useState(false);
   const [isLoadingLocation, setIsLoadingLocation] = useState(false);
   const [locationMessage, setLocationMessage] = useState<string | null>(null);
+  const [activeTargetId, setActiveTargetId] = useState<string>("psychologists");
 
   const loadLocation = useCallback(async () => {
     setIsLoadingLocation(true);
@@ -170,38 +174,100 @@ export function SupportMap({ onOpenSearch }: SupportMapProps) {
     }),
     [hasLocation, region.latitude, region.longitude]
   );
+  const activeTarget = SUPPORT_TARGETS.find((target) => target.id === activeTargetId) ?? SUPPORT_TARGETS[0];
+  const mapUrl = useMemo(() => {
+    const query = activeTarget?.query ?? SUPPORT_TARGETS[0].query;
+    const queryWithLocation = searchContext.hasLocation
+      ? `${query.replace(/ perto de mim$/iu, "")} ${searchContext.latitude.toFixed(6)},${searchContext.longitude.toFixed(6)}`
+      : query;
+    return `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(queryWithLocation)}`;
+  }, [activeTarget?.query, searchContext.hasLocation, searchContext.latitude, searchContext.longitude]);
 
   return (
     <Card>
       <Text className="text-xs font-semibold text-primary">{t("supportMap.title")}</Text>
       <Text className="text-base leading-6 text-muted dark:text-[#D1D5DB]">{t("supportMap.externalBody")}</Text>
 
-      <View className="rounded-3xl border border-primary/25 bg-surfaceSoft dark:bg-[#261D42]/70 p-5">
-        <View className="flex-row items-center gap-3">
-          <View className="h-3 w-3 rounded-full bg-primary" />
-          <Text className="flex-1 text-sm font-semibold text-ink dark:text-white">
-            {hasLocation ? t("supportMap.locationActive") : t("supportMap.locationInactive")}
+      <View
+        style={{
+          borderColor: colors.border,
+          borderCurve: "continuous",
+          borderRadius: radii.lg,
+          borderWidth: 1,
+          overflow: "hidden"
+        }}
+      >
+        <View style={{ backgroundColor: colors.surfaceStrong, gap: 10, padding: 14 }}>
+          <View style={{ flexDirection: "row", alignItems: "center", gap: 10 }}>
+            <View style={{ backgroundColor: colors.primary, borderRadius: 999, height: 10, width: 10 }} />
+            <Text style={{ color: colors.textPrimary, flex: 1, fontSize: 14, fontWeight: "800", lineHeight: 20 }}>
+              {hasLocation ? t("supportMap.locationActive") : t("supportMap.locationInactive")}
+            </Text>
+            {isLoadingLocation ? <ActivityIndicator color={colors.primaryDark} size="small" /> : null}
+          </View>
+          <Text style={{ color: colors.textSecondary, fontSize: 13, lineHeight: 19 }}>
+            {activeTarget ? t(activeTarget.labelKey) : t("supportMap.title")}
           </Text>
-          {isLoadingLocation ? <ActivityIndicator color="#8B5CF6" size="small" /> : null}
         </View>
-        {locationMessage ? (
-          <Text selectable className="mt-3 text-sm leading-5 text-muted dark:text-[#D1D5DB]">
-            {locationMessage}
-          </Text>
-        ) : null}
+        <View style={{ backgroundColor: colors.background, height: wideSupportMap ? 300 : 260 }}>
+          {Platform.OS === "web" ? (
+            <iframe
+              key={mapUrl}
+              src={mapUrl}
+              title={t("supportMap.title")}
+              referrerPolicy="no-referrer-when-downgrade"
+              loading="lazy"
+              allowFullScreen
+              style={{
+                border: 0,
+                backgroundColor: colors.background,
+                display: "block",
+                height: "100%",
+                width: "100%"
+              }}
+            />
+          ) : (
+            <WebView
+              key={mapUrl}
+              originWhitelist={["*"]}
+              source={{ uri: mapUrl }}
+              startInLoadingState
+              style={{ backgroundColor: colors.background, flex: 1 }}
+            />
+          )}
+        </View>
       </View>
 
+      {locationMessage ? (
+        <Text selectable className="text-sm leading-5 text-muted dark:text-[#D1D5DB]">
+          {locationMessage}
+        </Text>
+      ) : null}
+
+      <View style={{ gap: 10 }}>
+        <Button label="supportMap.refreshLocation" tone="soft" loading={isLoadingLocation} onPress={loadLocation} />
+        <Button
+          label="Abrir no mapa externo"
+          tone="soft"
+          onPress={() => onOpenSearch(activeTarget?.query ?? SUPPORT_TARGETS[0].query, searchContext)}
+        />
+      </View>
       <Text className="text-sm leading-5 text-muted dark:text-[#D1D5DB]">{t("supportMap.externalTruth")}</Text>
 
-      <Button label="supportMap.refreshLocation" tone="soft" loading={isLoadingLocation} onPress={loadLocation} />
-
-      <View style={{ flexDirection: wideSupportMap ? "row" : "column", flexWrap: "wrap", gap: 12 }}>
+      <View style={{ flexDirection: wideSupportMap ? "row" : "column", flexWrap: wideSupportMap ? "wrap" : "nowrap", gap: 12 }}>
         {SUPPORT_TARGETS.map((target) => (
-          <View key={target.id} style={{ flexBasis: wideSupportMap ? "48%" : "100%", flexGrow: 1 }}>
+          <View
+            key={target.id}
+            style={{
+              flexGrow: 0,
+              flexShrink: 0,
+              width: wideSupportMap ? "48%" : "100%"
+            }}
+          >
             <Button
               label={target.labelKey}
-              tone="soft"
-              onPress={() => onOpenSearch(target.query, searchContext)}
+              tone={activeTargetId === target.id ? "primary" : "soft"}
+              onPress={() => setActiveTargetId(target.id)}
             />
           </View>
         ))}

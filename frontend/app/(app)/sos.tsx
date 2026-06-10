@@ -1,12 +1,13 @@
 import { router } from "expo-router";
 import { useMutation } from "@tanstack/react-query";
 import { useState } from "react";
-import { Linking, Text, useWindowDimensions, View } from "react-native";
+import { Linking, Platform, Text, useWindowDimensions, View } from "react-native";
 
 import { PageHero } from "@/components/page-hero";
 import { Screen } from "@/components/screen";
 import { SupportMap } from "@/components/support-map";
 import { Button, Card, ErrorText } from "@/components/ui";
+import { useAppTheme } from "@/design-system/theme";
 import { useI18n } from "@/i18n/i18n";
 import { registerSOSEvent, SOS_OFFLINE_MESSAGE } from "@/lib/sos";
 
@@ -27,6 +28,7 @@ function mapsSearchUrl(query: string, context?: SupportSearchContext) {
 
 export default function SOS() {
   const { t } = useI18n();
+  const { colors } = useAppTheme();
   const { width } = useWindowDimensions();
   const wideSOS = width >= 820;
   const [option, setOption] = useState<SOSOption>(null);
@@ -50,17 +52,25 @@ export default function SOS() {
         ? "breathing"
         : option === "silence"
           ? "silent_presence"
-          : option === "talk"
-            ? "listening"
-            : "sos";
+        : option === "talk"
+          ? "listening"
+          : "sos";
+  const orbAccent =
+    orbState === "error"
+      ? colors.error
+      : orbState === "listening"
+        ? colors.primary
+        : colors.primaryDark;
 
   async function openMapSearch(query: string, context?: SupportSearchContext) {
     const url = mapsSearchUrl(query, context);
     setMapError(null);
     try {
-      const supported = await Linking.canOpenURL(url);
-      if (!supported) {
-        setMapError(t("sos.mapErrorUnsupported"));
+      if (Platform.OS === "web") {
+        const opened = typeof window !== "undefined" ? window.open(url, "_blank", "noopener,noreferrer") : null;
+        if (!opened) {
+          setMapError(t("sos.mapErrorGeneric"));
+        }
         return;
       }
       await Linking.openURL(url);
@@ -76,6 +86,7 @@ export default function SOS() {
           kicker="SOS"
           title={t("sos.title")}
           subtitle={t("sos.guidance")}
+          accent={orbAccent}
           orbReducedMotion={mutation.isPending}
           orbSize={orbSize}
           orbState={orbState}

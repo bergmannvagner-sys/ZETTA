@@ -27,36 +27,30 @@ type ButtonProps = {
 };
 
 export function Button({ label, onPress, tone = "primary", loading, disabled, compact }: ButtonProps) {
-  const { colors, isDark } = useAppTheme();
+  const { colors } = useAppTheme();
   const { width } = useResponsiveLayout();
   const { t } = useI18n();
   const isDisabled = loading || disabled;
   const radii = getSurfaceRadii(width, "control");
   const backgroundColor =
     tone === "primary"
-      ? colors.primaryLight
+      ? colors.gradientEnd
       : tone === "danger"
-        ? `${colors.error}18`
+        ? colors.error
         : tone === "soft"
           ? colors.surfaceStrong
           : "transparent";
   const borderColor =
     tone === "primary"
-      ? colors.primary
+      ? colors.primaryLight
     : tone === "danger"
         ? colors.error
         : tone === "soft"
-          ? colors.primaryLight
+          ? colors.primary
           : colors.primaryLight;
   const textColor =
-    tone === "primary"
-      ? "#120F1F"
-      : tone === "danger"
-        ? colors.error
-        : isDark
-          ? colors.primaryLight
-          : colors.primaryDark;
-  const loadingColor = tone === "primary" ? "#120F1F" : tone === "danger" ? colors.error : colors.primary;
+    tone === "danger" ? colors.textPrimary : colors.textPrimary;
+  const loadingColor = colors.textPrimary;
   const minHeight = compact ? touchTarget.comfortable : Math.max(touchTarget.comfortable, Platform.OS === "ios" ? touchTarget.ios : touchTarget.android);
 
   return (

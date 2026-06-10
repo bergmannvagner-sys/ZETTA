@@ -29,11 +29,11 @@ export const orbStateIndex: Record<OrbState, number> = {
 };
 
 export const orbPalette = {
-  shell: ["#8B5CF6", "#7C3AED", "#A855F7", "#C084FC", "#6D28D9", "#8B5CF6", "#9333EA", "#7E22CE", "#7C3AED", "#A855F7", "#C4B5FD"],
-  core: ["#FFFFFF", "#F5F3FF", "#F3E8FF", "#FAF5FF", "#EEF2FF", "#F8FAFC", "#F3E8FF", "#F5F3FF", "#F8FAFC", "#F3E8FF", "#F5F3FF"],
-  halo: ["#EDE9FE", "#DDD6FE", "#E9D5FF", "#F3E8FF", "#C7D2FE", "#EDE9FE", "#E9D5FF", "#DDD6FE", "#E2E8F0", "#E9D5FF", "#DDD6FE"],
-  wave: ["#8B5CF6", "#7C3AED", "#A855F7", "#C084FC", "#6366F1", "#8B5CF6", "#A855F7", "#7E22CE", "#7C3AED", "#9333EA", "#A78BFA"],
-  surface: "#FAFAFC"
+  shell: ["#A855F7", "#0EA5A4", "#3B82F6", "#EC4899", "#14B8A6", "#C084FC", "#F59E0B", "#EF4444", "#84CC16", "#F43F5E", "#8B5CF6"],
+  core: ["#F8F5FF", "#ECFEFF", "#EFF6FF", "#FFF1F7", "#F0FDFA", "#FAF5FF", "#FFFBEB", "#FEF2F2", "#F7FEE7", "#FFF1F2", "#EEF2FF"],
+  halo: ["#DDD6FE", "#A5F3FC", "#BFDBFE", "#FBCFE8", "#99F6E4", "#E9D5FF", "#FDE68A", "#FCA5A5", "#D9F99D", "#FDA4AF", "#C7D2FE"],
+  wave: ["#C084FC", "#2DD4BF", "#60A5FA", "#F472B6", "#14B8A6", "#A78BFA", "#F97316", "#FB7185", "#84CC16", "#FB7185", "#A78BFA"],
+  surface: "#1A1030"
 };
 
 export const orbAccessibilityLabels: Record<OrbState, string> = {

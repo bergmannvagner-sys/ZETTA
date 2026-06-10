@@ -1,21 +1,23 @@
 /** @type {import('tailwindcss').Config} */
 module.exports = {
+  darkMode: "class",
   content: ["./app/**/*.{ts,tsx}", "./src/**/*.{ts,tsx}"],
   presets: [require("nativewind/preset")],
   theme: {
     extend: {
       colors: {
-        background: "#FAFAFC",
-        surface: "#FFFFFF",
-        surfaceSoft: "#F5F3FF",
-        primary: "#8B5CF6",
-        primaryDark: "#7C3AED",
+        background: "#1A1030",
+        surface: "#24153E",
+        surfaceSoft: "#2B1849",
+        surfaceStrong: "#37215D",
+        primary: "#A855F7",
+        primaryDark: "#DDD6FE",
         primaryLight: "#C4B5FD",
-        textPrimary: "#1F2937",
-        textSecondary: "#6B7280",
-        textMuted: "#9CA3AF",
-        ink: "#1F2937",
-        muted: "#6B7280",
+        textPrimary: "#F5EEFF",
+        textSecondary: "#D9C8F0",
+        textMuted: "#B7A3D8",
+        ink: "#F5EEFF",
+        muted: "#D9C8F0",
         mint: "#8B5CF6",
         azure: "#3B82F6",
         violet: "#7C3AED",

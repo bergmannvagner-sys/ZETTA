@@ -1,6 +1,6 @@
 import { useMutation } from "@tanstack/react-query";
 import { useState } from "react";
-import { Pressable, Text, View, useWindowDimensions } from "react-native";
+import { DimensionValue, Pressable, Text, View, useWindowDimensions } from "react-native";
 
 import { AnimatedOrb } from "@/components/orb/AnimatedOrb";
 import { Screen } from "@/components/screen";
@@ -21,11 +21,13 @@ const moods = [
 function Scale({
   label,
   value,
-  onChange
+  onChange,
+  buttonBasis
 }: {
   label: string;
   value: number;
   onChange: (value: number) => void;
+  buttonBasis: DimensionValue;
 }) {
   const { colors } = useAppTheme();
   return (
@@ -42,21 +44,22 @@ function Scale({
             onPress={() => onChange(number)}
             style={({ pressed }) => ({
               alignItems: "center",
-              backgroundColor: value === number ? colors.primaryLight : colors.surfaceStrong,
-              borderColor: value === number ? colors.primary : colors.primaryLight,
+              backgroundColor: value === number ? colors.gradientEnd : colors.surfaceStrong,
+              borderColor: value === number ? colors.primaryLight : colors.primary,
               borderCurve: "continuous",
               borderRadius: radii.pill,
               borderWidth: 1.5,
-              boxShadow: value === number ? `0 8px 18px ${colors.shadow}` : "none",
+              boxShadow: value === number ? `0 8px 18px ${colors.shadowStrong}` : "none",
               justifyContent: "center",
               minHeight: 48,
               minWidth: 48,
+              flexBasis: buttonBasis,
               opacity: pressed ? 0.82 : 1
             })}
           >
             <Text
               style={{
-                color: value === number ? "#120F1F" : colors.textPrimary,
+                color: colors.textPrimary,
                 fontSize: 17,
                 fontWeight: "800",
                 lineHeight: 22
@@ -84,6 +87,8 @@ export default function Mood() {
   const [note, setNote] = useState("");
   const mutation = useMutation({ mutationFn: createEmotionLog });
   const orbSize = wideMood ? Math.min(248, Math.max(188, width * 0.3)) : Math.min(180, Math.max(168, width * 0.52));
+  const moodChipBasis: DimensionValue = width < 420 ? "100%" : width < 760 ? "48%" : "31.5%";
+  const scaleButtonBasis: DimensionValue = width < 420 ? "18%" : width < 760 ? "11%" : "9.5%";
 
   return (
     <Screen>
@@ -107,14 +112,17 @@ export default function Mood() {
                     accessibilityState={{ selected: mood === item.value }}
                     onPress={() => setMood(item.value)}
                     style={({ pressed }) => ({
-                      backgroundColor: mood === item.value ? colors.primaryLight : colors.surfaceStrong,
-                      borderColor: mood === item.value ? colors.primary : colors.primaryLight,
+                      alignItems: "center",
+                      backgroundColor: mood === item.value ? colors.gradientEnd : colors.surfaceStrong,
+                      borderColor: mood === item.value ? colors.primaryLight : colors.primary,
                       borderCurve: "continuous",
                       borderRadius: radii.pill,
                       borderWidth: 1.5,
-                      boxShadow: mood === item.value ? `0 10px 22px ${colors.shadow}` : "none",
-                      minHeight: 48,
-                      minWidth: 104,
+                      boxShadow: mood === item.value ? `0 10px 22px ${colors.shadowStrong}` : "none",
+                      flexBasis: moodChipBasis,
+                      justifyContent: "center",
+                      minHeight: 52,
+                      minWidth: 0,
                       opacity: pressed ? 0.82 : 1,
                       paddingHorizontal: 18,
                       paddingVertical: 12
@@ -122,7 +130,7 @@ export default function Mood() {
                   >
                     <Text
                       style={{
-                        color: mood === item.value ? "#120F1F" : colors.textPrimary,
+                        color: colors.textPrimary,
                         fontSize: 16,
                         fontWeight: "800",
                         lineHeight: 22
@@ -137,10 +145,10 @@ export default function Mood() {
           </Card>
 
           <Card>
-            <Scale label={t("mood.intensity")} value={intensity} onChange={setIntensity} />
-            <Scale label={t("mood.energy")} value={energy} onChange={setEnergy} />
-            <Scale label={t("mood.anxiety")} value={anxiety} onChange={setAnxiety} />
-            <Scale label={t("mood.stress")} value={stress} onChange={setStress} />
+            <Scale label={t("mood.intensity")} value={intensity} onChange={setIntensity} buttonBasis={scaleButtonBasis} />
+            <Scale label={t("mood.energy")} value={energy} onChange={setEnergy} buttonBasis={scaleButtonBasis} />
+            <Scale label={t("mood.anxiety")} value={anxiety} onChange={setAnxiety} buttonBasis={scaleButtonBasis} />
+            <Scale label={t("mood.stress")} value={stress} onChange={setStress} buttonBasis={scaleButtonBasis} />
           </Card>
 
           <Field

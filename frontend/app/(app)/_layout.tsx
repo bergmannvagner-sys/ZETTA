@@ -13,9 +13,6 @@ import { useAuthStore } from "@/store/auth-store";
 function TabMark({ label, focused, color }: { label: string; focused: boolean; color: string }) {
   const { isMobile } = useResponsiveLayout();
   const outerRadii = getSurfaceRadii(isMobile ? 375 : 840, "control");
-  const innerRadii = focused
-    ? { topLeft: outerRadii.topLeft, topRight: outerRadii.topRight + 4, bottomLeft: outerRadii.bottomLeft + 2, bottomRight: outerRadii.bottomRight }
-    : { topLeft: outerRadii.topLeft - 2, topRight: outerRadii.topRight, bottomLeft: outerRadii.bottomLeft, bottomRight: outerRadii.bottomRight - 1 };
   return (
     <View
       style={{
@@ -23,10 +20,7 @@ function TabMark({ label, focused, color }: { label: string; focused: boolean; c
         backgroundColor: focused ? `${color}20` : "transparent",
         borderColor: focused ? `${color}55` : "transparent",
         borderCurve: "continuous",
-        borderBottomLeftRadius: innerRadii.bottomLeft,
-        borderBottomRightRadius: innerRadii.bottomRight,
-        borderTopLeftRadius: innerRadii.topLeft,
-        borderTopRightRadius: innerRadii.topRight,
+        borderRadius: outerRadii.topLeft,
         borderWidth: 1,
         height: isMobile ? 30 : 32,
         justifyContent: "center",
@@ -164,10 +158,7 @@ export default function AppLayout() {
           backgroundColor: colors.surfaceSoft,
           borderColor: colors.border,
           borderTopWidth: 1,
-          borderTopLeftRadius: tabBarRadius,
-          borderTopRightRadius: tabBarRadius + 12,
-          borderBottomLeftRadius: isMobile ? 18 : 22,
-          borderBottomRightRadius: isMobile ? 14 : 18,
+          borderRadius: tabBarRadius,
           boxShadow: `0 -12px 28px ${colors.shadow}`,
           marginBottom: isDesktop ? 16 : 8,
           marginHorizontal: isDesktop ? 20 : isMobile ? 0 : 10,

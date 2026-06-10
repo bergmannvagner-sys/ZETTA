@@ -5,18 +5,14 @@ import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context"
 import { useAppTheme, useResponsiveLayout } from "@/design-system/theme";
 
 export function ScreenContainer({ children }: { children: ReactNode }) {
-  const { contentMaxWidth, isDesktop, isTablet } = useResponsiveLayout();
-  const rightInset = isDesktop ? 28 : isTablet ? 18 : 10;
-  const leftInset = isDesktop ? 6 : isTablet ? 4 : 0;
+  const { contentMaxWidth, isDesktop } = useResponsiveLayout();
 
   return (
     <View
       style={{
-        alignSelf: "flex-start",
+        alignSelf: "center",
         gap: 24,
         maxWidth: contentMaxWidth ?? (isDesktop ? 1120 : undefined),
-        paddingLeft: leftInset,
-        paddingRight: rightInset,
         width: "100%"
       }}
     >

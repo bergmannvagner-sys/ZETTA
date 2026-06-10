@@ -1,7 +1,8 @@
 import { useMutation, useQuery } from "@tanstack/react-query";
 import Constants from "expo-constants";
+import * as Speech from "expo-speech";
 import { useLocalSearchParams } from "expo-router";
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { Pressable, Text, TextInput, useWindowDimensions, View } from "react-native";
 
 import { AnimatedOrb } from "@/components/orb/AnimatedOrb";
@@ -114,6 +115,23 @@ function formatChatText(content: string): string {
     .trim();
 }
 
+function speakText(text: string, language: LanguageCode) {
+  const content = formatChatText(text);
+  if (!content) {
+    return;
+  }
+  try {
+    Speech.stop();
+    Speech.speak(content, {
+      language,
+      pitch: 1,
+      rate: 0.96
+    });
+  } catch {
+    // O texto continua funcionando se a síntese falhar.
+  }
+}
+
 function fromHistoryMessage(message: ChatHistoryMessage): Message {
   return {
     id: message.id,
@@ -200,6 +218,7 @@ export default function Chat() {
   const voicePreviewTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const microphone = useMicrophoneLevel();
   const chatScopeKey = userId ?? accessToken ?? "anonymous";
+  const voiceEnabled = microphone.isActive || voicePreview;
 
   const historyQuery = useQuery({
     queryKey: ["chat-history", chatScopeKey, language],
@@ -224,6 +243,9 @@ export default function Chat() {
         }
       ]);
       setOrbState(data.risk_level === "CRISIS" ? "crisis" : data.fallback ? "error" : "speaking");
+      if (voiceEnabled) {
+        speakText(data.answer, language);
+      }
     },
     onError: () => {
       setMessages(markLatestPendingUserMessageFailed);
@@ -259,6 +281,9 @@ export default function Chat() {
       setEditingMessageText("");
       setText("");
       setOrbState(data.risk_level === "CRISIS" ? "crisis" : data.fallback ? "error" : "speaking");
+      if (voiceEnabled) {
+        speakText(data.answer, language);
+      }
     },
     onError: () => setOrbState("error")
   });
@@ -372,6 +397,9 @@ export default function Chat() {
         setOrbState(
           answerPayload.risk_level === "CRISIS" ? "crisis" : answerPayload.fallback ? "error" : "speaking"
         );
+        if (voiceEnabled) {
+          speakText(answerPayload.answer, language);
+        }
         return;
       }
       if (payload.type === "error") {
@@ -418,6 +446,7 @@ export default function Chat() {
       if (voicePreviewTimeoutRef.current) {
         clearTimeout(voicePreviewTimeoutRef.current);
       }
+      Speech.stop();
     };
   }, []);
 
@@ -489,12 +518,14 @@ export default function Chat() {
       setVoicePreview(false);
       setVoiceNotice(null);
       setOrbState(initialState);
+      Speech.stop();
       return;
     }
     if (microphone.isActive) {
       await microphone.stop();
       setOrbState(initialState);
       setVoiceNotice(null);
+      Speech.stop();
       return;
     }
     if (Constants.appOwnership === "expo") {
@@ -504,12 +535,13 @@ export default function Chat() {
       voicePreviewTimeoutRef.current = setTimeout(() => {
         setVoicePreview(false);
         setOrbState(initialState);
+        Speech.stop();
       }, 9000);
       return;
     }
     await microphone.start();
     setOrbState(initialState);
-    setVoiceNotice(t("chat.voiceUnavailable"));
+    setVoiceNotice(null);
   }
 
   const pending = mutation.isPending || editMutation.isPending || realtimePending;
@@ -738,8 +770,9 @@ export default function Chat() {
               disabled={pending}
               style={({ pressed }) => ({
                 alignItems: "center",
-                backgroundColor: colors.primaryLight,
-                borderColor: colors.primary,
+                backgroundColor: colors.gradientEnd,
+                borderColor: colors.primaryLight,
+                boxShadow: `0 12px 26px ${colors.shadowStrong}`,
                 borderWidth: 1.5,
                 borderRadius: radii.lg,
                 justifyContent: "center",
@@ -750,7 +783,9 @@ export default function Chat() {
                 width: compactComposer ? "100%" : undefined
               })}
             >
-              <Text style={{ color: "#120F1F", fontSize: 16, fontWeight: "800", lineHeight: 22 }}>{sendLabel}</Text>
+              <Text style={{ color: colors.textPrimary, fontSize: 16, fontWeight: "800", lineHeight: 22 }}>
+                {sendLabel}
+              </Text>
             </Pressable>
           </View>
           <Button

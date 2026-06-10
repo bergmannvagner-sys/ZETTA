@@ -40,7 +40,7 @@ export default function Register() {
     mutationFn: register,
     onSuccess: async (data) => {
       await setSession(data.access_token, data.refresh_token, data.user);
-      router.replace(data.user.status === "ACTIVE" ? "/(app)/consent" : "/(app)/verification");
+      router.replace(data.user.status === "ACTIVE" ? "/(app)/home" : "/(app)/verification");
     }
   });
 

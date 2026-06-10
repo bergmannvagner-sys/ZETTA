@@ -11,6 +11,7 @@ type AuthHeroProps = {
   orbState?: OrbState;
   orbSize?: number;
   maxWidth?: number;
+  accent?: string;
 };
 
 export function AuthHero({
@@ -19,11 +20,12 @@ export function AuthHero({
   subtitle,
   orbState = "idle",
   orbSize = 220,
-  maxWidth = 620
+  maxWidth = 620,
+  accent
 }: AuthHeroProps) {
   return (
     <View style={{ alignItems: "center", gap: 18, maxWidth, width: "100%" }}>
-      <AnimatedOrb state={orbState} size={orbSize} />
+      <AnimatedOrb accent={accent} state={orbState} size={orbSize} />
       <EmotionalHeader align="center" kicker={kicker} title={title} subtitle={subtitle} />
     </View>
   );

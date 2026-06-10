@@ -19,11 +19,11 @@ const ACCESS_KEY = "bergmann_access_token";
 const REFRESH_KEY = "bergmann_refresh_token";
 const USER_KEY = "bergmann_user";
 
-const sessionStorageLike = getWebStorage("session");
+const persistentStorageLike = getWebStorage("local");
 
 async function setStoredItem(key: string, value: string): Promise<void> {
   if (typeof window !== "undefined") {
-    sessionStorageLike.setItem(key, value);
+    persistentStorageLike.setItem(key, value);
     return;
   }
   await SecureStore.setItemAsync(key, value);
@@ -31,7 +31,7 @@ async function setStoredItem(key: string, value: string): Promise<void> {
 
 async function getStoredItem(key: string): Promise<string | null> {
   if (typeof window !== "undefined") {
-    return sessionStorageLike.getItem(key);
+    return persistentStorageLike.getItem(key);
   }
 
   return SecureStore.getItemAsync(key);
@@ -39,7 +39,7 @@ async function getStoredItem(key: string): Promise<string | null> {
 
 async function deleteStoredItem(key: string): Promise<void> {
   if (typeof window !== "undefined") {
-    sessionStorageLike.removeItem(key);
+    persistentStorageLike.removeItem(key);
     return;
   }
 

@@ -15,7 +15,7 @@ import { useAuthStore } from "@/store/auth-store";
 const queryClient = new QueryClient();
 
 function AppShell() {
-  const { colors, isDark } = useAppTheme();
+  const { colors } = useAppTheme();
   const hydrated = useAuthStore((state) => state.hydrated);
   const hydrate = useAuthStore((state) => state.hydrate);
   const { ready: i18nReady } = useI18n();
@@ -36,7 +36,7 @@ function AppShell() {
     <GestureHandlerRootView style={{ flex: 1 }}>
       <SafeAreaProvider>
         <QueryClientProvider client={queryClient}>
-          <StatusBar style={isDark ? "light" : "dark"} backgroundColor={colors.background} />
+          <StatusBar style="light" backgroundColor={colors.background} />
           <Stack
             screenOptions={{
               headerStyle: { backgroundColor: colors.background },
@@ -48,6 +48,8 @@ function AppShell() {
             <Stack.Screen name="index" options={{ headerShown: false }} />
             <Stack.Screen name="(auth)" options={{ headerShown: false }} />
             <Stack.Screen name="(app)" options={{ headerShown: false }} />
+            <Stack.Screen name="privacy-policy" options={{ headerShown: false }} />
+            <Stack.Screen name="terms" options={{ headerShown: false }} />
             <Stack.Screen name="pagamento/sucesso" options={{ headerShown: false }} />
             <Stack.Screen name="pagamento/erro" options={{ headerShown: false }} />
             <Stack.Screen name="pagamento/pendente" options={{ headerShown: false }} />

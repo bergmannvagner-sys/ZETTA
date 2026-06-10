@@ -278,6 +278,15 @@ export default function Privacy() {
             </View>
           </View>
 
+          <View style={{ flexDirection: isWide ? "row" : "column", gap: 12 }}>
+            <View style={{ flex: 1 }}>
+              <Button label="Política pública" tone="soft" onPress={() => router.push("/privacy-policy" as never)} />
+            </View>
+            <View style={{ flex: 1 }}>
+              <Button label="Termos de uso" tone="soft" onPress={() => router.push("/terms" as never)} />
+            </View>
+          </View>
+
           <Button
             label="Revogar consentimento"
             tone="danger"

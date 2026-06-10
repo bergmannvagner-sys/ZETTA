@@ -43,13 +43,13 @@ function accessMessage(user?: AuthUser | null): string {
     return "O usuário comum usa o Bergmann gratuitamente. Psicólogos, empresas e contas institucionais entram em planos pagos após validação.";
   }
   if (user.status === "PENDING_VERIFICATION" || user.subscription_status === "PENDING") {
-    return "Seu cadastro está em validação. A aprovação libera o fluxo comercial somente com assinatura real, sem simular pagamento falso.";
+    return "Seu cadastro está em validação. A aprovação libera o fluxo comercial somente com contrato ativo, sem checkout público no app.";
   }
   if (user.subscription_status === "TRIAL") {
     return "Este status legado não libera acesso comercial. Regularize com assinatura ativa.";
   }
   if (user.subscription_status === "ACTIVE") {
-    return "Seu plano está ativo. O acesso continua limitado por permissão, status e consentimento do usuário.";
+    return "Seu plano está ativo. O acesso continua limitado por permissão, status, consentimento do usuário e contrato comercial externo.";
   }
   if (user.subscription_status === "PAST_DUE") {
     return "O acesso pago está suspenso até regularização.";
@@ -111,11 +111,14 @@ export default function Plans() {
 
           {paidRole ? (
             <Card>
-              <Text className="text-base font-semibold text-ink dark:text-white">Privacidade e pagamento</Text>
+              <Text className="text-base font-semibold text-ink dark:text-white">Cobrança comercial e teleatendimento</Text>
               <Text className="text-sm leading-5 text-muted dark:text-[#D1D5DB]">
-                Empresas e profissionais não acessam conversas, diário ou dados emocionais sem autorização
-                explícita. O modelo pago está preparado no sistema, mas a integração de pagamento real ainda
-                não foi ligada neste bloco local.
+                Usuários comuns seguem gratuitos. Perfis pagos são contratados fora do app, depois de validação
+                administrativa, e não usam checkout público dentro da aplicação.
+              </Text>
+              <Text className="text-sm leading-5 text-muted dark:text-[#D1D5DB]">
+                No teleatendimento, a plataforma retém comissão por sessão concluída e repassa o restante ao
+                psicólogo ou à clínica autorizada, sempre dentro do contrato comercial definido.
               </Text>
             </Card>
           ) : null}

@@ -38,28 +38,33 @@ type AppRoute =
 const INSTITUTION_ROLES = new Set(["CLINIC", "HOSPITAL", "NGO", "PUBLIC_INSTITUTION"]);
 
 function ActionChip({ label, route, tone = "soft" }: { label: string; route: AppRoute; tone?: "soft" | "danger" }) {
-  const { colors, isDark } = useAppTheme();
+  const { colors } = useAppTheme();
+  const { width } = useWindowDimensions();
   const isDanger = tone === "danger";
-  const labelColor = isDanger ? colors.error : isDark ? colors.primary : colors.primaryDark;
+  const labelColor = colors.textPrimary;
+  const chipBasis = width < 520 ? "100%" : width < 900 ? "48%" : "31.5%";
   return (
     <Pressable
       accessibilityRole="button"
       onPress={() => router.push(route as never)}
       style={({ pressed }) => ({
         alignItems: "center",
-        backgroundColor: isDanger ? `${colors.error}18` : colors.surfaceStrong,
-        borderColor: isDanger ? `${colors.error}88` : `${colors.primary}88`,
+        alignSelf: "stretch",
+        backgroundColor: isDanger ? colors.error : colors.surfaceStrong,
+        borderColor: isDanger ? colors.error : colors.primary,
         borderCurve: "continuous",
         borderRadius: radii.pill,
         borderWidth: 1.5,
-        boxShadow: `0 10px 24px ${colors.shadow}`,
-        flexGrow: 1,
+        boxShadow: `0 10px 24px ${isDanger ? colors.shadowStrong : colors.shadow}`,
+        flexBasis: chipBasis,
+        flexGrow: 0,
+        flexShrink: 0,
         justifyContent: "center",
-        minHeight: 48,
-        minWidth: 128,
+        minHeight: 56,
+        minWidth: 0,
         opacity: pressed ? 0.82 : 1,
-        paddingHorizontal: 16,
-        paddingVertical: 10,
+        paddingHorizontal: 18,
+        paddingVertical: 12,
         transform: [{ scale: pressed ? 0.985 : 1 }]
       })}
     >
@@ -68,8 +73,11 @@ function ActionChip({ label, route, tone = "soft" }: { label: string; route: App
           color: labelColor,
           fontSize: 15,
           fontWeight: "800",
-          lineHeight: 20
+          lineHeight: 20,
+          textAlign: "center"
         }}
+        numberOfLines={2}
+        ellipsizeMode="tail"
       >
         {label}
       </Text>
@@ -78,7 +86,7 @@ function ActionChip({ label, route, tone = "soft" }: { label: string; route: App
 }
 
 export default function Home() {
-  const { colors, isDark } = useAppTheme();
+  const { colors } = useAppTheme();
   const { t } = useI18n();
   const { width, height } = useWindowDimensions();
   const { isMobile } = useResponsiveLayout();
@@ -117,7 +125,7 @@ export default function Home() {
         <View
           style={{
             alignItems: "center",
-            backgroundColor: isDark ? colors.surfaceSoft : colors.surface,
+            backgroundColor: colors.surface,
             borderColor: colors.border,
             borderCurve: "continuous",
             borderRadius: radii.xl,

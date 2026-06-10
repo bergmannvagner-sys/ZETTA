@@ -59,6 +59,7 @@ export default function Consent() {
 
   const isWide = width >= 860;
   const orbSize = useMemo(() => Math.min(236, Math.max(176, width * 0.46)), [width]);
+  const accepted = consent.data?.accepted === true;
   const authRequired = consent.error?.message === "error.authRequired" || consent.error?.message === "error.sessionExpired";
 
   const actionPanel = authRequired ? (
@@ -68,6 +69,34 @@ export default function Consent() {
         body="Faça login para aceitar o consentimento e liberar os recursos sensíveis da Bergmann."
         resourceLabel="Consentimento LGPD"
       />
+    </Card>
+  ) : accepted ? (
+    <Card>
+      <View style={{ gap: 14 }}>
+        <View style={{ gap: 4 }}>
+          <Text className="text-lg font-semibold text-ink dark:text-white">Consentimento já ativo</Text>
+          <Text className="text-sm leading-5 text-muted dark:text-[#D1D5DB]">
+            Esta conta já aceitou a política vigente. Os recursos sensíveis continuam liberados enquanto o aceite
+            estiver válido.
+          </Text>
+        </View>
+
+        <View className="flex-row flex-wrap gap-2">
+          <Badge label={`Política ${consent.data?.policy_version ?? "..."}`} tone="success" />
+          <Badge label="Confirmado" tone="warning" />
+        </View>
+
+        {consent.data?.accepted_at ? (
+          <Text selectable className="text-xs text-muted dark:text-[#D1D5DB]">
+            Aceito em {new Date(consent.data.accepted_at).toLocaleString("pt-BR")}
+          </Text>
+        ) : null}
+
+        <View className="gap-2">
+          <Button label="Ir para a home" onPress={() => router.replace("/(app)/home")} />
+          <Button label="Ver privacidade" tone="soft" onPress={() => router.push("/(app)/privacy" as never)} />
+        </View>
+      </View>
     </Card>
   ) : (
     <Card>
@@ -105,6 +134,14 @@ export default function Consent() {
             }}
           />
           <Button label="Ver privacidade" tone="soft" onPress={() => router.push("/(app)/privacy" as never)} />
+          <View style={{ flexDirection: isWide ? "row" : "column", gap: 12 }}>
+            <View style={{ flex: 1 }}>
+              <Button label="Política pública" tone="soft" onPress={() => router.push("/privacy-policy" as never)} />
+            </View>
+            <View style={{ flex: 1 }}>
+              <Button label="Termos de uso" tone="soft" onPress={() => router.push("/terms" as never)} />
+            </View>
+          </View>
         </View>
       </View>
     </Card>

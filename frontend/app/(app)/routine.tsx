@@ -118,11 +118,11 @@ export default function Routine() {
                 }}
                 className={`rounded-full border px-4 py-3 ${
                   category === item.category
-                    ? "border-primary bg-primaryLight"
-                    : "border-primaryLight dark:border-[#4C1D95]/40 bg-surface dark:bg-[#1C1630]/70"
+                    ? "border-primaryLight bg-violet"
+                    : "border-primaryLight dark:border-[#4C1D95]/40 bg-surfaceStrong dark:bg-[#1C1630]/70"
                 }`}
               >
-                <Text className={category === item.category ? "font-semibold text-ink dark:text-white" : "text-ink dark:text-white"}>
+                <Text className="font-semibold text-ink dark:text-white">
                   {t(item.labelKey)}
                 </Text>
               </Pressable>

@@ -10,7 +10,6 @@ const MISSING_API_URL_MESSAGE = "API não configurada. Defina EXPO_PUBLIC_API_UR
 const AUTH_REQUIRED_MESSAGE = "error.authRequired";
 const EXPIRED_SESSION_MESSAGE = "error.sessionExpired";
 const PAID_PLAN_REQUIRED_MESSAGE = "error.paidPlanRequired";
-const LOCAL_WEB_API_PORT = 8000;
 
 export class ApiError extends Error {
   status: number;
@@ -35,33 +34,6 @@ function isLocalIpHttpUrl(value: string): boolean {
   );
 }
 
-function isLocalWebBrowser(): boolean {
-  if (!__DEV__ || Platform.OS !== "web" || typeof window === "undefined") {
-    return false;
-  }
-  return window.location.hostname === "localhost" || window.location.hostname === "127.0.0.1";
-}
-
-function getLocalWebApiUrl(): string | undefined {
-  if (!isLocalWebBrowser() || typeof window === "undefined") {
-    return undefined;
-  }
-  return `${window.location.protocol}//${window.location.hostname}:${LOCAL_WEB_API_PORT}`;
-}
-
-function shouldUseLocalWebApiFallback(apiUrl: string): boolean {
-  if (!isLocalWebBrowser()) {
-    return false;
-  }
-  if (/^https?:\/\/(localhost|127\.0\.0\.1)(:\d+)?$/u.test(apiUrl)) {
-    return false;
-  }
-  if (isLocalIpHttpUrl(apiUrl)) {
-    return false;
-  }
-  return true;
-}
-
 function resolveApiUrl(): string {
   const apiUrl = normalizeApiUrl(process.env.EXPO_PUBLIC_API_URL ?? extra?.apiUrl);
 
@@ -79,11 +51,6 @@ function resolveApiUrl(): string {
   }
   if (__DEV__ && apiUrl.startsWith("http://") && !isLocalIpHttpUrl(apiUrl)) {
     throw new Error("API mal configurada. Em desenvolvimento, http:// deve usar um IP local real.");
-  }
-
-  const localWebApiUrl = getLocalWebApiUrl();
-  if (localWebApiUrl && shouldUseLocalWebApiFallback(apiUrl)) {
-    return localWebApiUrl;
   }
 
   return apiUrl;

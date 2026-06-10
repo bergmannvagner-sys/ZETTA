@@ -38,10 +38,10 @@ export function ChoicePill({
       accessibilityRole="button"
       onPress={onPress}
       className={`rounded-full border px-4 py-3 ${
-        selected ? "border-primary bg-primaryLight" : "border-primaryLight dark:border-[#4C1D95]/40 bg-surface dark:bg-[#1C1630]/70"
+        selected ? "border-violet bg-violet" : "border-primaryLight dark:border-[#4C1D95]/40 bg-surfaceStrong dark:bg-[#1C1630]/70"
       }`}
     >
-      <Text className={selected ? "font-semibold text-ink dark:text-white" : "text-ink dark:text-white"}>{label}</Text>
+      <Text className="font-semibold text-ink dark:text-white">{label}</Text>
     </Pressable>
   );
 }
@@ -67,10 +67,10 @@ export function ScalePicker({
             accessibilityRole="button"
             onPress={() => onChange(number)}
             className={`h-10 w-10 items-center justify-center rounded-full border ${
-              value === number ? "border-primary bg-primaryLight" : "border-primaryLight dark:border-[#4C1D95]/40 bg-surface dark:bg-[#1C1630]/70"
+              value === number ? "border-violet bg-violet" : "border-primaryLight dark:border-[#4C1D95]/40 bg-surfaceStrong dark:bg-[#1C1630]/70"
             }`}
           >
-            <Text className={value === number ? "font-semibold text-ink dark:text-white" : "text-ink dark:text-white"}>{number}</Text>
+            <Text className="font-semibold text-ink dark:text-white">{number}</Text>
           </Pressable>
         ))}
       </View>

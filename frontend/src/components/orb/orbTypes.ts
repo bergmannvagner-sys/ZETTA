@@ -18,6 +18,7 @@ export type AnimatedOrbProps = {
   audioLevel?: number;
   size?: number;
   reducedMotion?: boolean;
+  accent?: string;
   onPress?: (event: GestureResponderEvent) => void;
 };
 

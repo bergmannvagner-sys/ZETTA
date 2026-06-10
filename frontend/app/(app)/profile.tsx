@@ -70,12 +70,14 @@ export default function Profile() {
                     accessibilityState={{ selected }}
                     onPress={() => void setLanguage(option.code)}
                     style={({ pressed }) => ({
-                      backgroundColor: selected ? colors.primaryLight : colors.surfaceStrong,
-                      borderColor: selected ? colors.primary : colors.primaryLight,
+                      alignItems: "center",
+                      backgroundColor: selected ? colors.gradientEnd : colors.surfaceStrong,
+                      borderColor: selected ? colors.primaryLight : colors.primary,
                       borderCurve: "continuous",
                       borderRadius: radii.pill,
                       borderWidth: 1.5,
-                      boxShadow: selected ? `0 8px 18px ${colors.shadow}` : "none",
+                      boxShadow: selected ? `0 8px 18px ${colors.shadowStrong}` : "none",
+                      justifyContent: "center",
                       minHeight: 48,
                       minWidth: 118,
                       opacity: pressed ? 0.82 : 1,
@@ -85,7 +87,7 @@ export default function Profile() {
                   >
                     <Text
                       style={{
-                        color: selected ? "#120F1F" : colors.textPrimary,
+                        color: colors.textPrimary,
                         fontSize: 15,
                         fontWeight: "800",
                         lineHeight: 20
