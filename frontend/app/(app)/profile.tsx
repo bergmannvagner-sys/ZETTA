@@ -1,6 +1,6 @@
 import { router } from "expo-router";
 import { useQuery } from "@tanstack/react-query";
-import { Pressable, Text, View } from "react-native";
+import { Pressable, Text, View, useWindowDimensions } from "react-native";
 
 import { Screen } from "@/components/screen";
 import { Button, Card, Header, SectionTitle } from "@/components/ui";
@@ -13,8 +13,10 @@ import { useAuthStore } from "@/store/auth-store";
 export default function Profile() {
   const { colors } = useAppTheme();
   const { language, languages, setLanguage, t } = useI18n();
+  const { width } = useWindowDimensions();
   const user = useAuthStore((state) => state.user);
   const clearSession = useAuthStore((state) => state.clearSession);
+  const languageChipBasis = width < 420 ? "31.5%" : "31.5%";
   const canShareCode =
     user?.status === "ACTIVE" && (user.role === "PSYCHOLOGIST" || user.role === "COMPANY") && hasPaidAccess(user);
 
@@ -60,7 +62,7 @@ export default function Profile() {
 
           <Card>
             <SectionTitle title={t("language.title")} subtitle={t("language.current")} />
-            <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 10 }}>
+            <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 6 }}>
               {languages.map((option) => {
                 const selected = option.code === language;
                 return (
@@ -78,10 +80,13 @@ export default function Profile() {
                       borderWidth: 1.5,
                       boxShadow: selected ? `0 8px 18px ${colors.shadowStrong}` : "none",
                       justifyContent: "center",
+                      flexBasis: languageChipBasis,
+                      flexGrow: 0,
+                      flexShrink: 0,
                       minHeight: 48,
-                      minWidth: 118,
+                      minWidth: 0,
                       opacity: pressed ? 0.82 : 1,
-                      paddingHorizontal: 16,
+                      paddingHorizontal: 12,
                       paddingVertical: 12
                     })}
                   >
