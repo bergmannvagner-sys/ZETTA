@@ -4,7 +4,7 @@ import { Text, View } from "react-native";
 import { PageHero } from "@/components/page-hero";
 import { QuietPanel } from "@/components/emotional";
 import { Screen } from "@/components/screen";
-import { ErrorText } from "@/components/ui";
+import { Badge, ErrorText } from "@/components/ui";
 import { useI18n } from "@/i18n/i18n";
 import { EmotionLog, JournalEntry, listEmotionLogs, listJournalEntries } from "@/lib/emotional";
 
@@ -76,6 +76,17 @@ export default function EmotionalTimeline() {
             <Text className="text-muted dark:text-[#D1D5DB]">{t("common.loading")}</Text>
           ) : null}
           <ErrorText message={emotions.error?.message || entries.error?.message} />
+          <QuietPanel>
+            <View className="flex-row flex-wrap gap-2">
+              <Badge label={t("timeline.kicker")} tone="info" />
+              <Badge label={t("report.kicker")} tone="soft" />
+            </View>
+            <Text className="text-base leading-7 text-muted dark:text-[#D1D5DB]">{t("timeline.subtitle")}</Text>
+            <Text className="text-sm leading-6 text-muted dark:text-[#D1D5DB]">
+              {t("report.emotionLogs", { value: emotions.data?.length ?? 0 })} ·{" "}
+              {t("report.journalEntries", { value: entries.data?.length ?? 0 })}
+            </Text>
+          </QuietPanel>
           {timeline.length ? (
             <View className="gap-3">
               {timeline.map((month) => (

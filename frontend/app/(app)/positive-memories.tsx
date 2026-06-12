@@ -4,7 +4,7 @@ import { Text, View } from "react-native";
 import { PageHero } from "@/components/page-hero";
 import { QuietPanel } from "@/components/emotional";
 import { Screen } from "@/components/screen";
-import { ErrorText } from "@/components/ui";
+import { Badge, ErrorText } from "@/components/ui";
 import { useI18n } from "@/i18n/i18n";
 import { JournalEntry, listJournalEntries } from "@/lib/emotional";
 
@@ -34,6 +34,19 @@ export default function PositiveMemories() {
         <View style={{ width: "100%", maxWidth: 960, gap: 16 }}>
           {entries.isLoading ? <Text className="text-muted dark:text-[#D1D5DB]">{t("common.loading")}</Text> : null}
           <ErrorText message={entries.error?.message} />
+          <QuietPanel>
+            <View className="flex-row flex-wrap gap-2">
+              <Badge label={t("positive.kicker")} tone="info" />
+              <Badge label={t("report.kicker")} tone="soft" />
+            </View>
+            <Text className="text-base leading-7 text-muted dark:text-[#D1D5DB]">{t("positive.subtitle")}</Text>
+            <Text className="text-sm leading-6 text-muted dark:text-[#D1D5DB]">
+              {t("positive.scanned", {
+                evaluated: entries.data?.length ?? 0,
+                selected: memories.length
+              })}
+            </Text>
+          </QuietPanel>
           {memories.length ? (
             <View className="gap-3">
               {memories.map((entry) => (

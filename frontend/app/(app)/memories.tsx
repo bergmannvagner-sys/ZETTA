@@ -6,7 +6,7 @@ import { Platform, Text, View } from "react-native";
 import { PageHero } from "@/components/page-hero";
 import { QuietPanel } from "@/components/emotional";
 import { Screen } from "@/components/screen";
-import { Button, ErrorText } from "@/components/ui";
+import { Badge, Button, ErrorText } from "@/components/ui";
 import { useI18n } from "@/i18n/i18n";
 import { listCareReminders } from "@/lib/assistant";
 import { listJournalEntries, listSharingConsents } from "@/lib/emotional";
@@ -153,7 +153,20 @@ export default function Memories() {
           ) : null}
           <ErrorText message={reminders.error?.message || consents.error?.message || entries.error?.message} />
           <QuietPanel>
+            <View className="flex-row flex-wrap gap-2">
+              <Badge label={t("memories.kicker")} tone="info" />
+              <Badge label={t("memories.source.profile")} tone="soft" />
+            </View>
             <Text className="text-base leading-7 text-muted dark:text-[#D1D5DB]">{t("memories.transparency")}</Text>
+            <View className="gap-1">
+              <Text className="text-sm leading-6 text-muted dark:text-[#D1D5DB]">
+                {t("memories.item.routineDetail", { count: reminders.data?.length ?? 0 })}
+              </Text>
+              <Text className="text-sm leading-6 text-muted dark:text-[#D1D5DB]">{t("memories.item.sharingDetail")}</Text>
+              <Text className="text-sm leading-6 text-muted dark:text-[#D1D5DB]">
+                {t("memories.item.journalDetail", { count: entries.data?.length ?? 0 })}
+              </Text>
+            </View>
           </QuietPanel>
           {visibleMemories.length ? (
             <View className="gap-3">
@@ -164,7 +177,12 @@ export default function Memories() {
                     {item.detail}
                   </Text>
                   <Text className="text-xs text-primaryDark">{item.source}</Text>
-                  <Button label={t("memories.forget")} tone="soft" onPress={() => void hideMemory(item.id)} />
+                  <Button
+                    label={t("memories.forget")}
+                    icon="trash-outline"
+                    tone="soft"
+                    onPress={() => void hideMemory(item.id)}
+                  />
                 </QuietPanel>
               ))}
             </View>

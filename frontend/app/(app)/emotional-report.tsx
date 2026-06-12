@@ -3,7 +3,7 @@ import { Share, Text, useWindowDimensions, View } from "react-native";
 
 import { AnimatedOrb } from "@/components/orb/AnimatedOrb";
 import { Screen } from "@/components/screen";
-import { Button, Card, ErrorText, Header, SectionTitle } from "@/components/ui";
+import { Badge, Button, Card, ErrorText, Header, SectionTitle } from "@/components/ui";
 import { useAppTheme, radii } from "@/design-system/theme";
 import { useI18n } from "@/i18n/i18n";
 import { EmotionalReport as EmotionalReportData, createMyEmotionalReport } from "@/lib/emotional";
@@ -54,8 +54,22 @@ function buildShareText(report: EmotionalReportData, t: (key: string, params?: R
     .join("\n");
 }
 
+function riskBadgeTone(riskLevel: string) {
+  const normalized = riskLevel.trim().toUpperCase();
+  if (normalized === "CRISIS" || normalized === "HIGH" || normalized === "ELEVATED") {
+    return "error" as const;
+  }
+  if (normalized === "MEDIUM" || normalized === "MODERATE") {
+    return "warning" as const;
+  }
+  if (normalized === "LOW") {
+    return "success" as const;
+  }
+  return "info" as const;
+}
+
 export default function EmotionalReport() {
-  const { t } = useI18n();
+  const { language, t } = useI18n();
   const { colors } = useAppTheme();
   const { width } = useWindowDimensions();
   const report = useMutation({ mutationFn: createMyEmotionalReport });
@@ -83,6 +97,30 @@ export default function EmotionalReport() {
         </View>
 
         <View style={{ gap: 18, maxWidth: 960, width: "100%" }}>
+          {report.data ? (
+            <Card>
+              <View className="flex-row flex-wrap gap-2">
+                <Badge label={t("report.kicker")} tone="info" />
+                <Badge label={report.data.risk_level} tone={riskBadgeTone(report.data.risk_level)} />
+              </View>
+              <Text className="text-base leading-6 text-muted dark:text-[#D1D5DB]">{t("report.subtitle")}</Text>
+              <Text className="text-sm leading-6 text-muted dark:text-[#D1D5DB]">
+                {t("report.period", { value: String(metadata.period_days ?? "-") })}
+              </Text>
+              <Text className="text-sm leading-6 text-muted dark:text-[#D1D5DB]">
+                {t("report.emotionLogs", { value: String(metadata.emotion_logs ?? 0) })} ·{" "}
+                {t("report.journalEntries", { value: String(metadata.journal_entries ?? 0) })}
+              </Text>
+              {report.data.created_at ? (
+                <Text selectable className="text-sm leading-6 text-muted dark:text-[#D1D5DB]">
+                  {new Intl.DateTimeFormat(language, { dateStyle: "medium", timeStyle: "short" }).format(
+                    new Date(report.data.created_at)
+                  )}
+                </Text>
+              ) : null}
+            </Card>
+          ) : null}
+
           {report.data ? (
             <Card>
               <Text selectable style={{ color: colors.primary, fontSize: 15, fontWeight: "800", lineHeight: 21 }}>
@@ -131,6 +169,7 @@ export default function EmotionalReport() {
 
           <Button
             label={report.data ? t("report.update") : t("report.generate")}
+            icon={report.data ? "refresh-outline" : "sparkles-outline"}
             loading={report.isPending}
             onPress={() => report.mutate()}
           />
@@ -190,7 +229,7 @@ export default function EmotionalReport() {
               <ReportList title={t("report.importantMoments")} items={importantMoments} />
               <ReportList title={t("report.nextQuestions")} items={nextQuestions} />
               <View style={{ paddingTop: 8 }}>
-                <Button label="report.share" tone="soft" onPress={shareReport} />
+                <Button label="report.share" icon="share-social-outline" tone="soft" onPress={shareReport} />
               </View>
             </Card>
           ) : null}
