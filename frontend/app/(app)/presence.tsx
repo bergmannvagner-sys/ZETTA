@@ -4,7 +4,7 @@ import { Text, useWindowDimensions, View } from "react-native";
 
 import { PageHero } from "@/components/page-hero";
 import { Screen } from "@/components/screen";
-import { Button } from "@/components/ui";
+import { Badge, Button, Card } from "@/components/ui";
 import { useAppTheme } from "@/design-system/theme";
 import { useI18n } from "@/i18n/i18n";
 
@@ -12,6 +12,7 @@ export default function Presence() {
   const { t } = useI18n();
   const { colors } = useAppTheme();
   const { width } = useWindowDimensions();
+  const widePresence = width >= 820;
   const orbSize = Math.min(300, Math.max(224, width * 0.56));
   const [phase, setPhase] = useState(0);
   const [isCalm, setIsCalm] = useState(false);
@@ -36,7 +37,7 @@ export default function Presence() {
           width: "100%"
         }}
       >
-        <View style={{ alignItems: "center", gap: 18, maxWidth: 640, width: "100%" }}>
+        <View style={{ alignItems: "center", gap: 18, maxWidth: widePresence ? 840 : 640, width: "100%" }}>
           <PageHero
             kicker={t("presence.kicker")}
             title={t("presence.title")}
@@ -45,6 +46,16 @@ export default function Presence() {
             orbSize={orbSize}
             orbState={isCalm ? "calm" : "breathing"}
           />
+
+          <Card>
+            <View className="flex-row flex-wrap gap-2">
+              <Badge label={t("presence.kicker")} tone="info" />
+              <Badge label={t("home.presence")} tone="soft" />
+              <Badge label={t("route.sos")} tone="warning" />
+            </View>
+            <Text className="text-base leading-7 text-muted dark:text-[#D1D5DB]">{t("presence.explainBody")}</Text>
+            <Text className="text-sm leading-6 text-muted dark:text-[#D1D5DB]">{t("presence.continueBody")}</Text>
+          </Card>
 
           <View style={{ alignItems: "center", gap: 10, width: "100%" }}>
             <Text style={{ color: colors.primary, fontSize: 13, fontWeight: "800", letterSpacing: 4 }}>
@@ -60,11 +71,30 @@ export default function Presence() {
 
           <View style={{ gap: 12, width: "100%", maxWidth: 360 }}>
             <Button
+              label={t("home.care.checkin")}
+              icon="checkmark-circle-outline"
+              tone="soft"
+              onPress={() => router.push("/(app)/quick-checkin" as never)}
+            />
+            <Button
+              label={t("home.care.mood")}
+              icon="heart-outline"
+              tone="soft"
+              onPress={() => router.push("/(app)/mood" as never)}
+            />
+            <Button
+              label={t("home.care.thoughtDump")}
+              icon="document-text-outline"
+              tone="soft"
+              onPress={() => router.push("/(app)/thought-dump" as never)}
+            />
+            <Button
               label={t("presence.chat")}
               tone="soft"
+              icon="chatbubble-ellipses-outline"
               onPress={() => router.push({ pathname: "/(app)/chat", params: { mode: "silent_presence" } })}
             />
-            <Button label="SOS" tone="danger" onPress={() => router.push("/(app)/sos")} />
+            <Button label="SOS" icon="warning-outline" tone="danger" onPress={() => router.push("/(app)/sos")} />
           </View>
         </View>
       </View>
