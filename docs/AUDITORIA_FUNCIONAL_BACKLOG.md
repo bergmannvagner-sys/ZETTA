@@ -28,7 +28,7 @@ Status usados:
 | `(app)/verification` | informativa/placeholder | tela de espera/triagem; nao muda o estado por si | P1 |
 | `(app)/telecare` | depende de backend | depende de aprovacao, sala e resposta do backend; nao e fluxo isolado | P1 |
 | `(app)/telecare-room` | depende de backend | depende de `join_url` e sala Daily vinda do backend | P1 |
-| `(app)/sos` | parcial | aciona SOS, mas o mapa usa busca externa e nao um diretorio real de apoio | P1 |
+| `(app)/sos` | parcial | agora tem acesso direto ao 188 e registro de crise, mas o mapa ainda usa busca externa e nao um diretorio real de apoio | P1 |
 | `src/components/support-map.tsx` | depende de backend | usa OpenStreetMap + buscas externas; nao e um catalogo local de profissionais | P1 |
 
 ## P2 - funcional, mas ainda curto ou heuristico

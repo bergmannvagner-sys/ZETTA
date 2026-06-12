@@ -58,8 +58,10 @@ export default function SOS() {
   const orbAccent =
     orbState === "error"
       ? colors.error
+      : orbState === "sos"
+        ? colors.warning
       : orbState === "listening"
-        ? colors.primary
+        ? colors.info
         : colors.primaryDark;
 
   async function openMapSearch(query: string, context?: SupportSearchContext) {
@@ -76,6 +78,14 @@ export default function SOS() {
       await Linking.openURL(url);
     } catch {
       setMapError(t("sos.mapErrorGeneric"));
+    }
+  }
+
+  async function openCvv() {
+    try {
+      await Linking.openURL("tel:188");
+    } catch {
+      router.push("/(app)/cannot-think" as never);
     }
   }
 
@@ -99,20 +109,23 @@ export default function SOS() {
               <View style={{ gap: 12 }}>
                 <Button
                   label={t("sos.choiceTalk")}
+                  icon="chatbubble-ellipses-outline"
                   tone={option === "talk" ? "primary" : "soft"}
                   onPress={() => setOption("talk")}
                 />
                 <Button
                   label={t("sos.choiceBreathe")}
+                  icon="leaf-outline"
                   tone={option === "breathe" ? "primary" : "soft"}
                   onPress={() => setOption("breathe")}
                 />
                 <Button
                   label={t("sos.choiceSilence")}
+                  icon="moon-outline"
                   tone={option === "silence" ? "primary" : "soft"}
                   onPress={() => setOption("silence")}
                 />
-                <Button label={t("sos.choiceHelp")} tone="danger" onPress={() => setOption("help")} />
+                <Button label={t("sos.choiceHelp")} icon="warning-outline" tone="danger" onPress={() => setOption("help")} />
               </View>
             </View>
           </Card>
@@ -122,6 +135,7 @@ export default function SOS() {
               <Text className="text-base leading-6 text-ink dark:text-white">{t("sos.talkBody")}</Text>
               <Button
                 label={t("sos.talkButton")}
+                icon="chatbubble-ellipses-outline"
                 onPress={() => router.push({ pathname: "/(app)/chat", params: { mode: "crisis" } })}
               />
             </Card>
@@ -137,28 +151,33 @@ export default function SOS() {
             </Card>
           ) : null}
           {option === "help" ? (
-            !confirmed ? (
-              <Button label={t("sos.confirm")} tone="danger" onPress={() => setConfirmed(true)} />
-            ) : (
-              <View className="gap-3">
-                <Button
-                  label={registered ? t("sos.registered") : t("sos.register")}
-                  tone="danger"
-                  loading={mutation.isPending}
-                  disabled={registered}
-                  onPress={() => mutation.mutate()}
-                />
-                <Button
-                  label={registered ? t("common.back") : t("common.cancel")}
-                  tone="soft"
-                  onPress={() => {
-                    setConfirmed(false);
-                    setRegistered(false);
-                    setMessage(null);
-                  }}
-                />
-              </View>
-            )
+            <View className="gap-3">
+              <Button label={t("sos.call188")} icon="call-outline" tone="danger" onPress={() => void openCvv()} />
+              {!confirmed ? (
+                <Button label={t("sos.confirm")} icon="warning-outline" tone="danger" onPress={() => setConfirmed(true)} />
+              ) : (
+                <View className="gap-3">
+                  <Button
+                    label={registered ? t("sos.registered") : t("sos.register")}
+                    icon="checkmark-circle-outline"
+                    tone="danger"
+                    loading={mutation.isPending}
+                    disabled={registered}
+                    onPress={() => mutation.mutate()}
+                  />
+                  <Button
+                    label={registered ? t("common.back") : t("common.cancel")}
+                    icon={registered ? "arrow-back-outline" : "close-outline"}
+                    tone="soft"
+                    onPress={() => {
+                      setConfirmed(false);
+                      setRegistered(false);
+                      setMessage(null);
+                    }}
+                  />
+                </View>
+              )}
+            </View>
           ) : null}
           <ErrorText message={mutation.error?.message} />
           {message ? (
