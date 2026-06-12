@@ -1,35 +1,37 @@
 import { Redirect, Tabs, useSegments } from "expo-router";
 import { useEffect } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { Text, View } from "react-native";
+import { View } from "react-native";
+import { Ionicons } from "@expo/vector-icons";
 
-import { getSurfaceRadii, useAppTheme, useResponsiveLayout } from "@/design-system/theme";
+import { useAppTheme, useResponsiveLayout } from "@/design-system/theme";
 import { useI18n } from "@/i18n/i18n";
+import { normalizeAuthUser } from "@/lib/auth-user";
 import { getMe } from "@/lib/auth";
 import { hasPaidAccess, isPaidRole } from "@/lib/billing";
 import { getConsentStatus } from "@/lib/privacy";
 import { useAuthStore } from "@/store/auth-store";
 
-function TabMark({ label, focused, color }: { label: string; focused: boolean; color: string }) {
+function TabMark({ name, focused, color }: { name: keyof typeof Ionicons.glyphMap; focused: boolean; color: string }) {
   const { isMobile } = useResponsiveLayout();
-  const outerRadii = getSurfaceRadii(isMobile ? 375 : 840, "control");
   return (
     <View
       style={{
         alignItems: "center",
-        backgroundColor: focused ? `${color}20` : "transparent",
+        backgroundColor: focused ? `${color}22` : "transparent",
         borderColor: focused ? `${color}55` : "transparent",
         borderCurve: "continuous",
-        borderRadius: outerRadii.topLeft,
+        borderRadius: 999,
         borderWidth: 1,
-        height: isMobile ? 30 : 32,
+        boxShadow: focused ? `0 0 18px ${color}33` : "none",
+        height: isMobile ? 38 : 40,
         justifyContent: "center",
-        minWidth: isMobile ? 34 : 38,
-        paddingHorizontal: isMobile ? 8 : 10,
+        minWidth: isMobile ? 38 : 40,
+        paddingHorizontal: isMobile ? 8 : 9,
         transform: [{ translateY: focused ? -1 : 0 }]
       }}
     >
-      <Text style={{ color, fontSize: 14, fontWeight: "800", lineHeight: 16 }}>{label}</Text>
+      <Ionicons name={name} color={color} size={isMobile ? 20 : 21} />
     </View>
   );
 }
@@ -62,8 +64,12 @@ export default function AppLayout() {
   });
 
   useEffect(() => {
-    if (me.data && JSON.stringify(me.data) !== JSON.stringify(user)) {
-      void updateUser(me.data);
+    if (!me.data) {
+      return;
+    }
+    const normalizedUser = normalizeAuthUser(me.data as Record<string, unknown>);
+    if (normalizedUser && JSON.stringify(normalizedUser) !== JSON.stringify(user)) {
+      void updateUser(normalizedUser);
     }
   }, [me.data, updateUser, user]);
 
@@ -145,28 +151,24 @@ export default function AppLayout() {
         tabBarActiveTintColor: colors.primary,
         tabBarInactiveTintColor: colors.textMuted,
         tabBarHideOnKeyboard: true,
+        tabBarShowLabel: false,
         tabBarItemStyle: {
-          paddingBottom: isMobile ? 2 : 4,
-          paddingTop: isMobile ? 2 : 5
-        },
-        tabBarLabelStyle: {
-          fontSize: isMobile ? 11 : 13,
-          fontWeight: "700",
-          lineHeight: isMobile ? 12 : 15
+          paddingBottom: isMobile ? 4 : 6,
+          paddingTop: isMobile ? 4 : 6
         },
         tabBarStyle: {
-          backgroundColor: colors.surfaceSoft,
+          backgroundColor: colors.glass,
           borderColor: colors.border,
           borderTopWidth: 1,
           borderRadius: tabBarRadius,
-          boxShadow: `0 -12px 28px ${colors.shadow}`,
+          boxShadow: `0 18px 34px ${colors.shadowStrong}`,
           marginBottom: isDesktop ? 16 : 8,
           marginHorizontal: isDesktop ? 20 : isMobile ? 0 : 10,
-          minHeight: isMobile ? 76 : 72,
+          minHeight: isMobile ? 78 : 74,
           overflow: "hidden",
           paddingBottom: isMobile ? 12 : 10,
-          paddingHorizontal: isMobile ? 8 : 14,
-          paddingTop: isMobile ? 6 : 10
+          paddingHorizontal: isMobile ? 10 : 16,
+          paddingTop: isMobile ? 8 : 10
         }
       }}
     >
@@ -174,35 +176,35 @@ export default function AppLayout() {
         name="home"
         options={{
           title: t("tab.home"),
-          tabBarIcon: ({ color, focused }) => <TabMark color={color} focused={focused} label="H" />
+          tabBarIcon: ({ color, focused }) => <TabMark color={color} focused={focused} name="home-outline" />
         }}
       />
       <Tabs.Screen
         name="mood"
         options={{
           title: t("tab.checkin"),
-          tabBarIcon: ({ color, focused }) => <TabMark color={color} focused={focused} label="C" />
+          tabBarIcon: ({ color, focused }) => <TabMark color={color} focused={focused} name="heart-outline" />
         }}
       />
       <Tabs.Screen
         name="chat"
         options={{
           title: t("tab.ai"),
-          tabBarIcon: ({ color, focused }) => <TabMark color={color} focused={focused} label="B" />
+          tabBarIcon: ({ color, focused }) => <TabMark color={color} focused={focused} name="chatbubble-ellipses-outline" />
         }}
       />
       <Tabs.Screen
         name="emotional-report"
         options={{
           title: t("tab.progress"),
-          tabBarIcon: ({ color, focused }) => <TabMark color={color} focused={focused} label="P" />
+          tabBarIcon: ({ color, focused }) => <TabMark color={color} focused={focused} name="analytics-outline" />
         }}
       />
       <Tabs.Screen
         name="profile"
         options={{
           title: t("tab.profile"),
-          tabBarIcon: ({ color, focused }) => <TabMark color={color} focused={focused} label="U" />
+          tabBarIcon: ({ color, focused }) => <TabMark color={color} focused={focused} name="person-outline" />
         }}
       />
       <Tabs.Screen name="presence" options={{ ...hiddenScreenOptions, title: t("route.presence") }} />

@@ -1,5 +1,6 @@
 import { router } from "expo-router";
 import { Pressable, Text, View, useWindowDimensions } from "react-native";
+import { Ionicons } from "@expo/vector-icons";
 
 import { AnimatedOrb } from "@/components/orb/AnimatedOrb";
 import { Screen } from "@/components/screen";
@@ -36,19 +37,47 @@ type AppRoute =
   | "/(app)/institution-dashboard";
 
 const INSTITUTION_ROLES = new Set(["CLINIC", "HOSPITAL", "NGO", "PUBLIC_INSTITUTION"]);
+const ROUTE_ICONS: Partial<Record<AppRoute, keyof typeof Ionicons.glyphMap>> = {
+  "/(app)/journal": "book-outline",
+  "/(app)/routine": "calendar-outline",
+  "/(app)/emotional-report": "analytics-outline",
+  "/(app)/sharing": "share-social-outline",
+  "/(app)/memories": "images-outline",
+  "/(app)/gratitude": "heart-outline",
+  "/(app)/thought-dump": "sparkles-outline",
+  "/(app)/emotional-timeline": "time-outline",
+  "/(app)/cannot-think": "help-circle-outline",
+  "/(app)/professional-users": "people-outline",
+  "/(app)/telecare": "videocam-outline",
+  "/(app)/nr1": "shield-checkmark-outline",
+  "/(app)/institution-dashboard": "business-outline",
+  "/(app)/chat": "chatbubble-ellipses-outline",
+  "/(app)/mood": "heart-outline",
+  "/(app)/sos": "warning-outline"
+};
 
-function ActionChip({ label, route, tone = "soft" }: { label: string; route: AppRoute; tone?: "soft" | "danger" }) {
+function ActionChip({
+  label,
+  route,
+  tone = "soft"
+}: {
+  label: string;
+  route: AppRoute;
+  tone?: "soft" | "danger";
+}) {
   const { colors } = useAppTheme();
   const { width } = useWindowDimensions();
   const isDanger = tone === "danger";
   const labelColor = colors.textPrimary;
   const chipBasis = width < 520 ? "100%" : width < 900 ? "48%" : "31.5%";
+  const icon = ROUTE_ICONS[route] ?? "arrow-forward";
   return (
     <Pressable
       accessibilityRole="button"
       onPress={() => router.push(route as never)}
       style={({ pressed }) => ({
         alignItems: "center",
+        flexDirection: "row",
         alignSelf: "stretch",
         backgroundColor: isDanger ? colors.error : colors.surfaceStrong,
         borderColor: isDanger ? colors.error : colors.primary,
@@ -59,22 +88,25 @@ function ActionChip({ label, route, tone = "soft" }: { label: string; route: App
         flexBasis: chipBasis,
         flexGrow: 0,
         flexShrink: 0,
-        justifyContent: "center",
+        gap: 10,
+        justifyContent: "flex-start",
         minHeight: 56,
         minWidth: 0,
         opacity: pressed ? 0.82 : 1,
-        paddingHorizontal: 18,
+        paddingHorizontal: 14,
         paddingVertical: 12,
         transform: [{ scale: pressed ? 0.985 : 1 }]
       })}
     >
+      <Ionicons color={labelColor} name={icon} size={18} />
       <Text
         style={{
           color: labelColor,
-          fontSize: 15,
+          flex: 1,
+          fontSize: 14,
           fontWeight: "800",
-          lineHeight: 20,
-          textAlign: "center"
+          lineHeight: 18,
+          textAlign: "left"
         }}
         numberOfLines={2}
         ellipsizeMode="tail"
@@ -89,9 +121,9 @@ export default function Home() {
   const { colors } = useAppTheme();
   const { t } = useI18n();
   const { width, height } = useWindowDimensions();
-  const { isMobile } = useResponsiveLayout();
+  const { isDesktop, isMobile } = useResponsiveLayout();
   const user = useAuthStore((state) => state.user);
-  const firstName = user?.full_name.split(" ")[0] ?? t("home.you");
+  const firstName = user?.full_name?.trim() ? user.full_name.trim().split(/\s+/u)[0] : t("home.you");
   const compactHero = width < 520;
   const tightHero = width < 420 || height < 500;
   const heroTitleSize = width <= 360 ? 31 : tightHero ? 32 : width < 700 ? 34 : 38;
@@ -122,73 +154,85 @@ export default function Home() {
   return (
     <Screen>
       <View style={{ gap: 24 }}>
-        <View
-          style={{
-            alignItems: "center",
-            backgroundColor: colors.surface,
-            borderColor: colors.border,
-            borderCurve: "continuous",
-            borderRadius: radii.xl,
-            borderWidth: 1,
-            boxShadow: `0 18px 54px ${colors.shadow}`,
-            gap: 24,
-            overflow: "hidden",
-            paddingHorizontal: isMobile ? 18 : 28,
-            paddingVertical: compactHero ? 22 : isMobile ? 24 : 30,
-            width: "100%"
-          }}
-        >
-          <View style={{ alignItems: "center", gap: 20, maxWidth: 760, width: "100%" }}>
-            <AnimatedOrb state="idle" size={orbSize} onPress={() => router.push("/(app)/presence")} />
-
-            <View style={{ alignItems: "center", gap: 10, maxWidth: 620, width: "100%" }}>
-              <Text style={{ color: colors.primary, fontSize: 14, fontWeight: "800", letterSpacing: 4 }}>
-                {t("home.care")}
-              </Text>
-              <Text style={{ color: colors.textSecondary, fontSize: 17, lineHeight: 24, textAlign: "center" }}>
-                {t("home.greeting", { name: firstName })}
-              </Text>
-              <Text
+        <View style={{ flexDirection: isDesktop ? "row" : "column", gap: 18, width: "100%" }}>
+          <View style={{ flex: isDesktop ? 0.92 : undefined, maxWidth: isDesktop ? 420 : undefined, width: "100%" }}>
+            <View style={{ alignItems: "center", gap: 16, width: "100%" }}>
+              <AnimatedOrb accent={colors.primaryDark} state="idle" size={orbSize} onPress={() => router.push("/(app)/presence")} />
+              <View
                 style={{
-                  color: colors.textPrimary,
-                  fontSize: heroTitleSize,
-                  fontWeight: "900",
-                  lineHeight: heroTitleLineHeight,
-                  textAlign: "center"
+                  alignItems: isDesktop ? "flex-start" : "center",
+                  alignSelf: "stretch",
+                  gap: 10,
+                  maxWidth: 340
                 }}
               >
-                {t("home.question")}
-              </Text>
-            </View>
-
-            <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 8, justifyContent: "center" }}>
-              <Badge label={t("presence.active")} tone="info" />
-              <Badge label={t("home.care.telecare")} tone="success" />
-            </View>
-
-            <View style={{ alignItems: "center", gap: 12, width: "100%", maxWidth: 560 }}>
-              <Button label={t("home.chat")} onPress={() => router.push("/(app)/chat")} />
-              <View style={{ flexDirection: isMobile && width <= 360 ? "column" : "row", gap: 12, width: "100%" }}>
-                <View style={{ flex: 1 }}>
-                  <Button label={t("home.care.mood")} tone="soft" onPress={() => router.push("/(app)/mood")} />
-                </View>
-                <View style={{ flex: 1 }}>
-                  <Button label="SOS" tone="danger" onPress={() => router.push("/(app)/sos")} />
-                </View>
+                <Text style={{ color: colors.primary, fontSize: 12, fontWeight: "900", letterSpacing: 4 }}>
+                  {t("home.care")}
+                </Text>
+                <Text
+                  style={{
+                    color: colors.textPrimary,
+                    fontSize: compactHero ? 28 : 30,
+                    fontWeight: "900",
+                    lineHeight: 38,
+                    textAlign: isDesktop ? "left" : "center"
+                  }}
+                >
+                  {t("home.greeting", { name: firstName })}
+                </Text>
+                <Text
+                  style={{
+                    color: colors.textSecondary,
+                    fontSize: 16,
+                    lineHeight: 24,
+                    textAlign: isDesktop ? "left" : "center"
+                  }}
+                >
+                  {t("home.orbHint")}
+                </Text>
+              </View>
+              <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 8, justifyContent: isDesktop ? "flex-start" : "center" }}>
+                <Badge label={t("presence.active")} tone="info" />
+                <Badge label={t("home.care.telecare")} tone="success" />
               </View>
             </View>
+          </View>
 
-            <Text
-              style={{
-                color: colors.textSecondary,
-                fontSize: 14,
-                lineHeight: 20,
-                maxWidth: 320,
-                textAlign: "center"
-              }}
-            >
-              {t("home.orbHint")}
-            </Text>
+          <View style={{ flex: isDesktop ? 1.08 : undefined, width: "100%" }}>
+            <Card>
+              <View style={{ gap: 16 }}>
+                <View style={{ gap: 10 }}>
+                  <Text style={{ color: colors.primary, fontSize: 12, fontWeight: "900", letterSpacing: 4 }}>
+                    {t("home.care")}
+                  </Text>
+                  <Text
+                    style={{
+                      color: colors.textPrimary,
+                      fontSize: heroTitleSize,
+                      fontWeight: "900",
+                      lineHeight: heroTitleLineHeight
+                    }}
+                  >
+                    {t("home.question")}
+                  </Text>
+                  <Text style={{ color: colors.textSecondary, fontSize: 17, lineHeight: 26 }}>
+                    {t("home.greeting", { name: firstName })}
+                  </Text>
+                </View>
+
+                <View style={{ alignItems: "center", gap: 12, width: "100%", maxWidth: 560 }}>
+                  <Button label={t("home.chat")} icon="chatbubble-ellipses-outline" onPress={() => router.push("/(app)/chat")} />
+                  <View style={{ flexDirection: isMobile && width <= 360 ? "column" : "row", gap: 12, width: "100%" }}>
+                    <View style={{ flex: 1 }}>
+                      <Button label={t("home.care.mood")} icon="heart-outline" tone="soft" onPress={() => router.push("/(app)/mood")} />
+                    </View>
+                    <View style={{ flex: 1 }}>
+                      <Button label="SOS" icon="warning-outline" tone="danger" onPress={() => router.push("/(app)/sos")} />
+                    </View>
+                  </View>
+                </View>
+              </View>
+            </Card>
           </View>
         </View>
       </View>
@@ -219,7 +263,7 @@ export default function Home() {
           <Text style={{ color: colors.textSecondary, fontSize: 15, lineHeight: 23 }}>
             {paidAccessBlockMessage(user)}
           </Text>
-          <Button label={paidAccessActionLabel(user)} tone="soft" onPress={() => router.push("/(app)/plans" as never)} />
+          <Button label={paidAccessActionLabel(user)} icon="card-outline" tone="soft" onPress={() => router.push("/(app)/plans" as never)} />
         </Card>
       ) : null}
 

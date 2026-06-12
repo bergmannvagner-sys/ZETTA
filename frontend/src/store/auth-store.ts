@@ -1,6 +1,7 @@
 import * as SecureStore from "expo-secure-store";
 import { create } from "zustand";
 
+import { normalizeAuthUser } from "@/lib/auth-user";
 import { AuthUser } from "@/types/auth";
 import { getWebStorage } from "@/lib/web-storage";
 
@@ -46,6 +47,10 @@ async function deleteStoredItem(key: string): Promise<void> {
   await SecureStore.deleteItemAsync(key);
 }
 
+function coerceStoredUser(value: unknown): AuthUser | null {
+  return normalizeAuthUser(value as Record<string, unknown> | null | undefined);
+}
+
 export const useAuthStore = create<AuthState>((set) => ({
   accessToken: null,
   refreshToken: null,
@@ -74,10 +79,16 @@ export const useAuthStore = create<AuthState>((set) => ({
         getStoredItem(REFRESH_KEY),
         getStoredItem(USER_KEY)
       ]);
+      const user = rawUser ? coerceStoredUser(JSON.parse(rawUser)) : null;
+      if (rawUser && !user) {
+        await deleteStoredItem(ACCESS_KEY);
+        await deleteStoredItem(REFRESH_KEY);
+        await deleteStoredItem(USER_KEY);
+      }
       set({
-        accessToken,
-        refreshToken,
-        user: rawUser ? (JSON.parse(rawUser) as AuthUser) : null,
+        accessToken: rawUser && !user ? null : accessToken,
+        refreshToken: rawUser && !user ? null : refreshToken,
+        user,
         hydrated: true
       });
     } catch {
