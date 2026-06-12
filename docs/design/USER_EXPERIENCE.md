@@ -1,8 +1,8 @@
-# Experiência do Usuário
+# Experiência do Usuário da ZETTA
 
 ## Tom
 
-O Bergmann fala com calma, sem julgamento e sem prometer cura.
+A ZETTA fala com calma, sem julgamento e sem prometer cura. A IA Bergmann é a camada que acolhe, organiza e orienta.
 
 Ele pode ajudar a organizar, acolher e encaminhar, mas não substitui psicólogo, médico ou emergência.
 

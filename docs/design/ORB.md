@@ -1,6 +1,6 @@
-# Orb do Bergmann
+# Orb da IA Bergmann
 
-A orb é o símbolo principal do ZETTA Bergmann. Ela representa presença, escuta, acolhimento, conexão e memória autorizada.
+A orb é o símbolo principal da ZETTA. Ela representa a IA Bergmann e materializa presença, escuta, acolhimento, conexão e memória autorizada.
 
 Ela não é decoração.
 

@@ -1,6 +1,6 @@
-# ZETTA Bergmann - Visão de Design
+# ZETTA - Visão de Design
 
-O ZETTA Bergmann não deve parecer apenas um aplicativo de humor, diário ou IA. A experiência deve parecer uma presença digital emocionalmente segura.
+O ZETTA não deve parecer apenas um aplicativo de humor, diário ou IA. A experiência deve parecer uma presença digital emocionalmente segura, com a IA Bergmann como camada de acolhimento e orientação.
 
 ## Princípio central
 
@@ -26,7 +26,7 @@ O usuário deve sentir:
 
 A Home deve permanecer minimalista:
 
-- Orb central do Bergmann
+- Orb central da IA Bergmann
 - Pergunta principal: "Como você está agora?"
 - Ações principais: Conversar, Apenas fique comigo, Não consigo falar, SOS
 - Recursos contínuos em chips discretos, sem transformar a Home em dashboard

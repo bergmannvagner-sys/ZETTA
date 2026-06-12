@@ -1,8 +1,8 @@
-# Bergmann Mobile Premium UX
+# ZETTA Mobile Premium UX
 
 ## Objetivo
 
-Aplicativo mobile-first de saúde mental com navegação simples, baixa carga cognitiva e aparência premium. O usuário comum deve acessar as funções principais em até duas ações: aba inferior ou Home.
+Aplicativo mobile-first da ZETTA com navegação simples, baixa carga cognitiva e aparência premium. A IA Bergmann deve ser sentida como presença emocional, mas a plataforma precisa continuar clara, rápida e orientada ao cuidado.
 
 ## Navegação Principal
 
@@ -10,7 +10,7 @@ Máximo de 5 abas:
 
 - Início: saudação, orb, indicadores rápidos e ações principais.
 - Check-in: registro rápido de humor, energia, ansiedade e estresse.
-- IA: conversa com Bergmann.
+- IA: conversa com a IA Bergmann.
 - Progresso: resumo emocional e evolução.
 - Perfil: conta, idioma, privacidade e acesso.
 
@@ -80,7 +80,7 @@ Componentes base:
 1. Marca compacta.
 2. Card principal com orb viva.
 3. Saudação personalizada.
-4. CTA principal: Conversar com Bergmann.
+4. CTA principal: Conversar com a IA Bergmann.
 5. CTAs secundários: Check-in e SOS.
 6. Indicadores: Humor, Energia, Sono, Progresso.
 7. Chips de cuidado: Diário, Rotina, Relatório, Compartilhamento, Teleatendimento, SOS.
