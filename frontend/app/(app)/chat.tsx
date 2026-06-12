@@ -1,9 +1,10 @@
 import { useMutation, useQuery } from "@tanstack/react-query";
 import Constants from "expo-constants";
+import { Ionicons } from "@expo/vector-icons";
 import * as Speech from "expo-speech";
 import { useLocalSearchParams } from "expo-router";
 import { useCallback, useEffect, useRef, useState } from "react";
-import { Pressable, Text, TextInput, useWindowDimensions, View } from "react-native";
+import { Platform, Pressable, Text, TextInput, useWindowDimensions, View } from "react-native";
 
 import { AnimatedOrb } from "@/components/orb/AnimatedOrb";
 import { OrbState } from "@/components/orb/orbTypes";
@@ -14,7 +15,13 @@ import { useMicrophoneLevel } from "@/hooks/useMicrophoneLevel";
 import { useI18n } from "@/i18n/i18n";
 import { LanguageCode } from "@/i18n/translations";
 import { getWebSocketUrl } from "@/lib/api";
-import { ChatHistoryMessage, editChatMessage, getChatHistory, sendChatMessage } from "@/lib/chat";
+import {
+  ChatHistoryMessage,
+  editChatMessage,
+  getChatHistory,
+  sendChatMessage,
+  sendVoiceChatAudio
+} from "@/lib/chat";
 import { getCachedChat, saveChatCache } from "@/lib/chat-cache";
 import { useAuthStore } from "@/store/auth-store";
 
@@ -216,9 +223,13 @@ export default function Chat() {
   const websocketRef = useRef<WebSocket | null>(null);
   const realtimePendingRef = useRef(false);
   const voicePreviewTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const voicePreviewRef = useRef(false);
+  const webSpeechRecognitionRef = useRef<any>(null);
+  const webSpeechActiveRef = useRef(false);
+  const speakNextAssistantResponseRef = useRef(false);
   const microphone = useMicrophoneLevel();
   const chatScopeKey = userId ?? accessToken ?? "anonymous";
-  const voiceEnabled = microphone.isActive || voicePreview;
+  const [webSpeechActive, setWebSpeechActive] = useState(false);
 
   const historyQuery = useQuery({
     queryKey: ["chat-history", chatScopeKey, language],
@@ -243,13 +254,15 @@ export default function Chat() {
         }
       ]);
       setOrbState(data.risk_level === "CRISIS" ? "crisis" : data.fallback ? "error" : "speaking");
-      if (voiceEnabled) {
+      if (voicePreviewRef.current || speakNextAssistantResponseRef.current) {
         speakText(data.answer, language);
+        speakNextAssistantResponseRef.current = false;
       }
     },
     onError: () => {
       setMessages(markLatestPendingUserMessageFailed);
       setOrbState("error");
+      speakNextAssistantResponseRef.current = false;
     }
   });
 
@@ -281,11 +294,51 @@ export default function Chat() {
       setEditingMessageText("");
       setText("");
       setOrbState(data.risk_level === "CRISIS" ? "crisis" : data.fallback ? "error" : "speaking");
-      if (voiceEnabled) {
+      if (voicePreviewRef.current || speakNextAssistantResponseRef.current) {
         speakText(data.answer, language);
+        speakNextAssistantResponseRef.current = false;
       }
     },
-    onError: () => setOrbState("error")
+    onError: () => {
+      setOrbState("error");
+      speakNextAssistantResponseRef.current = false;
+    }
+  });
+
+  const voiceMutation = useMutation({
+    mutationFn: ({ audioUri }: { audioUri: string }) => sendVoiceChatAudio(audioUri, sessionId, language),
+    onMutate: () => {
+      setOrbState("thinking");
+      setVoiceNotice(t("chat.voiceTranscribing"));
+    },
+    onSuccess: (data) => {
+      setSessionId(data.session_id);
+      setMessages((current) => [
+        ...current,
+        {
+          id: data.user_message_id ?? undefined,
+          sender: "USER",
+          content: data.transcript
+        },
+        {
+          id: data.assistant_message_id ?? undefined,
+          sender: "BERGMANN",
+          content: data.answer,
+          risk_level: data.risk_level
+        }
+      ]);
+      setOrbState(data.risk_level === "CRISIS" ? "crisis" : data.fallback ? "error" : "speaking");
+      setVoiceNotice(null);
+      if (voicePreview || speakNextAssistantResponseRef.current) {
+        speakText(data.answer, language);
+        speakNextAssistantResponseRef.current = false;
+      }
+    },
+    onError: () => {
+      setOrbState("error");
+      setVoiceNotice(t("chat.voiceUnavailable"));
+      speakNextAssistantResponseRef.current = false;
+    }
   });
 
   useEffect(() => {
@@ -324,6 +377,14 @@ export default function Chat() {
   useEffect(() => {
     realtimePendingRef.current = realtimePending;
   }, [realtimePending]);
+
+  useEffect(() => {
+    voicePreviewRef.current = voicePreview;
+  }, [voicePreview]);
+
+  useEffect(() => {
+    webSpeechActiveRef.current = webSpeechActive;
+  }, [webSpeechActive]);
 
   useEffect(() => {
     if (historyHydratedRef.current || !historyQuery.data || messages.some((message) => message.pending)) {
@@ -397,8 +458,9 @@ export default function Chat() {
         setOrbState(
           answerPayload.risk_level === "CRISIS" ? "crisis" : answerPayload.fallback ? "error" : "speaking"
         );
-        if (voiceEnabled) {
+        if (voicePreviewRef.current || speakNextAssistantResponseRef.current) {
           speakText(answerPayload.answer, language);
+          speakNextAssistantResponseRef.current = false;
         }
         return;
       }
@@ -409,6 +471,7 @@ export default function Chat() {
           setMessages(markLatestPendingUserMessageFailed);
         }
         setOrbState("error");
+        speakNextAssistantResponseRef.current = false;
       }
     };
     socket.onerror = () => {
@@ -420,6 +483,7 @@ export default function Chat() {
       }
       setRealtimeReady(false);
       setRealtimePending(false);
+      speakNextAssistantResponseRef.current = false;
     };
     socket.onclose = () => {
       if (websocketRef.current === socket) {
@@ -430,6 +494,7 @@ export default function Chat() {
       }
       setRealtimeReady(false);
       setRealtimePending(false);
+      speakNextAssistantResponseRef.current = false;
     };
 
     return () => {
@@ -446,6 +511,15 @@ export default function Chat() {
       if (voicePreviewTimeoutRef.current) {
         clearTimeout(voicePreviewTimeoutRef.current);
       }
+      if (webSpeechRecognitionRef.current) {
+        try {
+          webSpeechRecognitionRef.current.stop();
+        } catch {
+          // Ignorado: limpeza de reconhecimento não deve quebrar o unmount.
+        }
+        webSpeechRecognitionRef.current = null;
+      }
+      speakNextAssistantResponseRef.current = false;
       Speech.stop();
     };
   }, []);
@@ -478,6 +552,92 @@ export default function Chat() {
       )
     );
     mutation.mutate(failedMessage.content);
+  }
+
+  function stopWebSpeechRecognition() {
+    const recognition = webSpeechRecognitionRef.current;
+    webSpeechRecognitionRef.current = null;
+    setWebSpeechActive(false);
+    if (!recognition) {
+      return;
+    }
+    try {
+      recognition.onresult = null;
+      recognition.onerror = null;
+      recognition.onend = null;
+      recognition.stop();
+    } catch {
+      // Ignorado: a limpeza não deve bloquear o restante do fluxo.
+    }
+  }
+
+  function startWebSpeechRecognition() {
+    if (Platform.OS !== "web" || typeof window === "undefined") {
+      return false;
+    }
+    const SpeechRecognitionCtor =
+      (window as typeof window & { SpeechRecognition?: any; webkitSpeechRecognition?: any }).SpeechRecognition ??
+      (window as typeof window & { SpeechRecognition?: any; webkitSpeechRecognition?: any }).webkitSpeechRecognition;
+    if (!SpeechRecognitionCtor) {
+      return false;
+    }
+
+    try {
+      const recognition = new SpeechRecognitionCtor();
+      recognition.lang = language;
+      recognition.interimResults = false;
+      recognition.continuous = false;
+      recognition.maxAlternatives = 1;
+      webSpeechRecognitionRef.current = recognition;
+      setWebSpeechActive(true);
+      setVoiceNotice(t("chat.voiceRecording"));
+      setOrbState("listening");
+
+      let finished = false;
+      recognition.onresult = (event: any) => {
+        if (finished) {
+          return;
+        }
+        finished = true;
+        const transcript = Array.from(event.results ?? [])
+          .map((result: any) => result?.[0]?.transcript ?? "")
+          .join(" ")
+          .trim();
+        stopWebSpeechRecognition();
+        if (!transcript) {
+          setVoiceNotice(t("chat.voiceUnavailable"));
+          setOrbState(initialState);
+          return;
+        }
+        setVoiceNotice(null);
+        speakNextAssistantResponseRef.current = true;
+        mutation.mutate(transcript);
+      };
+      recognition.onerror = () => {
+        if (finished) {
+          return;
+        }
+        finished = true;
+        stopWebSpeechRecognition();
+        setVoiceNotice(t("chat.voiceUnavailable"));
+        setOrbState(initialState);
+      };
+      recognition.onend = () => {
+        if (finished) {
+          return;
+        }
+        finished = true;
+        stopWebSpeechRecognition();
+        setVoiceNotice(t("chat.voiceUnavailable"));
+        setOrbState(initialState);
+      };
+      recognition.start();
+      return true;
+    } catch {
+      webSpeechRecognitionRef.current = null;
+      setWebSpeechActive(false);
+      return false;
+    }
   }
 
   function send() {
@@ -514,6 +674,16 @@ export default function Chat() {
       clearTimeout(voicePreviewTimeoutRef.current);
       voicePreviewTimeoutRef.current = null;
     }
+    if (webSpeechActive) {
+      stopWebSpeechRecognition();
+      setVoiceNotice(null);
+      setOrbState(initialState);
+      Speech.stop();
+      return;
+    }
+    if (pending && !microphone.isActive && !voicePreview) {
+      return;
+    }
     if (voicePreview) {
       setVoicePreview(false);
       setVoiceNotice(null);
@@ -522,10 +692,14 @@ export default function Chat() {
       return;
     }
     if (microphone.isActive) {
-      await microphone.stop();
+      const audioUri = await microphone.stop();
       setOrbState(initialState);
-      setVoiceNotice(null);
-      Speech.stop();
+      if (!audioUri) {
+        setVoiceNotice(null);
+        speakNextAssistantResponseRef.current = false;
+        return;
+      }
+      voiceMutation.mutate({ audioUri });
       return;
     }
     if (Constants.appOwnership === "expo") {
@@ -539,13 +713,23 @@ export default function Chat() {
       }, 9000);
       return;
     }
-    await microphone.start();
-    setOrbState(initialState);
-    setVoiceNotice(null);
+    if (startWebSpeechRecognition()) {
+      return;
+    }
+    try {
+      await microphone.start();
+      speakNextAssistantResponseRef.current = true;
+      setOrbState("listening");
+      setVoiceNotice(t("chat.voiceRecording"));
+    } catch {
+      speakNextAssistantResponseRef.current = false;
+      setVoiceNotice(microphone.errorMessage ?? t("chat.voiceUnavailable"));
+      setOrbState(initialState);
+    }
   }
 
-  const pending = mutation.isPending || editMutation.isPending || realtimePending;
-  const currentOrbState = microphone.isActive || voicePreview ? "listening" : pending ? "thinking" : orbState;
+  const pending = mutation.isPending || editMutation.isPending || voiceMutation.isPending || realtimePending;
+  const currentOrbState = microphone.isActive || voicePreview || webSpeechActive ? "listening" : pending ? "thinking" : orbState;
   const statusLabel =
     currentOrbState === "listening"
       ? t("chat.status.listening")
@@ -581,8 +765,21 @@ export default function Chat() {
           }}
         >
           <AnimatedOrb
+            accent={
+              currentOrbState === "crisis" || currentOrbState === "sos"
+                ? colors.warning
+                : currentOrbState === "error"
+                  ? colors.error
+                  : currentOrbState === "listening"
+                    ? colors.info
+                    : currentOrbState === "speaking"
+                      ? colors.primaryDark
+                      : currentOrbState === "thinking"
+                        ? colors.primary
+                        : colors.primaryDark
+            }
             state={currentOrbState}
-            audioLevel={microphone.isActive ? microphone.level : voicePreview ? 0.34 : pending ? 0.22 : 0}
+            audioLevel={microphone.isActive ? microphone.level : voicePreview || webSpeechActive ? 0.34 : pending ? 0.22 : 0}
             size={orbSize}
             onPress={toggleMicrophoneLevel}
           />
@@ -753,10 +950,10 @@ export default function Chat() {
                 borderWidth: 1,
                 color: colors.textPrimary,
                 flex: compactComposer ? undefined : 1,
-                fontSize: 16,
+                fontSize: 15,
                 lineHeight: 22,
                 maxHeight: 150,
-                minHeight: 56,
+                minHeight: 54,
                 paddingHorizontal: 16,
                 paddingVertical: 14,
                 textAlignVertical: "top",
@@ -768,11 +965,11 @@ export default function Chat() {
               accessibilityState={{ disabled: pending }}
               onPress={send}
               disabled={pending}
-              style={({ pressed }) => ({
-                alignItems: "center",
-                backgroundColor: colors.gradientEnd,
-                borderColor: colors.primaryLight,
-                boxShadow: `0 12px 26px ${colors.shadowStrong}`,
+            style={({ pressed }) => ({
+              alignItems: "center",
+              backgroundColor: colors.gradientEnd,
+              borderColor: colors.primaryLight,
+              boxShadow: `0 12px 26px ${colors.shadowStrong}`,
                 borderWidth: 1.5,
                 borderRadius: radii.lg,
                 justifyContent: "center",
@@ -783,13 +980,17 @@ export default function Chat() {
                 width: compactComposer ? "100%" : undefined
               })}
             >
-              <Text style={{ color: colors.textPrimary, fontSize: 16, fontWeight: "800", lineHeight: 22 }}>
-                {sendLabel}
-              </Text>
+              <View style={{ alignItems: "center", flexDirection: "row", gap: 8 }}>
+                <Ionicons color={colors.textPrimary} name="send-outline" size={17} />
+                <Text style={{ color: colors.textPrimary, fontSize: 15, fontWeight: "800", lineHeight: 20 }}>
+                  {sendLabel}
+                </Text>
+              </View>
             </Pressable>
           </View>
           <Button
-            label={microphone.isActive || voicePreview ? t("chat.voiceOn") : t("chat.voiceOff")}
+            label={microphone.isActive || voicePreview || webSpeechActive ? t("chat.voiceOn") : t("chat.voiceOff")}
+            icon={microphone.isActive || voicePreview || webSpeechActive ? "mic-off-outline" : "mic-outline"}
             tone="soft"
             loading={microphone.status === "requesting_permission"}
             onPress={toggleMicrophoneLevel}

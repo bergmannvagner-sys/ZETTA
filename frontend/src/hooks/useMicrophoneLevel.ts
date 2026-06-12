@@ -10,7 +10,7 @@ type UseMicrophoneLevelResult = {
   isActive: boolean;
   errorMessage: string | null;
   start: () => Promise<void>;
-  stop: () => Promise<void>;
+  stop: () => Promise<string | null>;
 };
 
 const MIN_METERING_DB = -60;
@@ -44,6 +44,8 @@ export function useMicrophoneLevel(): UseMicrophoneLevelResult {
   const webStreamRef = useRef<any>(null);
   const webAudioContextRef = useRef<any>(null);
   const webAnalyserRef = useRef<any>(null);
+  const webMediaRecorderRef = useRef<MediaRecorder | null>(null);
+  const webRecordingChunksRef = useRef<BlobPart[]>([]);
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const [level, setLevel] = useState(0);
   const [status, setStatus] = useState<MicrophoneLevelStatus>("idle");
@@ -61,10 +63,13 @@ export function useMicrophoneLevel(): UseMicrophoneLevelResult {
 
     const stream = webStreamRef.current;
     const audioContext = webAudioContextRef.current;
+    const mediaRecorder = webMediaRecorderRef.current;
 
     webStreamRef.current = null;
     webAnalyserRef.current = null;
     webAudioContextRef.current = null;
+    webMediaRecorderRef.current = null;
+    webRecordingChunksRef.current = [];
 
     if (stream?.getTracks) {
       for (const track of stream.getTracks()) {
@@ -79,39 +84,98 @@ export function useMicrophoneLevel(): UseMicrophoneLevelResult {
         // Ignorado: a limpeza não deve esconder o erro original.
       }
     }
+
+    if (mediaRecorder && mediaRecorder.state !== "inactive") {
+      try {
+        mediaRecorder.stop();
+      } catch {
+        // O recorder pode já ter sido finalizado pelo fluxo normal.
+      }
+    }
   }, [clearMeteringInterval]);
 
   const stopNativeAudio = useCallback(async () => {
     try {
       clearMeteringInterval();
       const recorder = recorderRef.current;
+      let uri = recorder?.uri ?? null;
       if (recorder?.isRecording) {
         await recorder.stop();
       }
+      uri = recorder?.uri ?? uri;
       await audioModuleRef.current?.setAudioModeAsync?.({ allowsRecording: false });
       await audioModuleRef.current?.setIsAudioActiveAsync?.(false);
       recorderRef.current = null;
       setLevel(0);
       setStatus("idle");
       setErrorMessage(null);
+      return uri;
     } catch {
       setLevel(0);
       setStatus("error");
       setErrorMessage("Não foi possível desligar o microfone.");
+      return null;
     }
   }, [clearMeteringInterval]);
 
-  const stop = useCallback(async () => {
-    if (Platform.OS === "web") {
+  const stopWebAudio = useCallback(async (): Promise<string | null> => {
+    const mediaRecorder = webMediaRecorderRef.current;
+    if (!mediaRecorder) {
       await cleanupWebAudio();
       setLevel(0);
       setStatus("idle");
       setErrorMessage(null);
-      return;
+      return null;
     }
 
-    await stopNativeAudio();
-  }, [cleanupWebAudio, stopNativeAudio]);
+    const stopPromise = new Promise<string | null>((resolve) => {
+      mediaRecorder.ondataavailable = (event) => {
+        if (event.data.size > 0) {
+          webRecordingChunksRef.current.push(event.data);
+        }
+      };
+      mediaRecorder.onstop = () => {
+        try {
+          const mimeType = mediaRecorder.mimeType || "audio/webm";
+          const blob = new Blob(webRecordingChunksRef.current, { type: mimeType });
+          const uri = URL.createObjectURL(blob);
+          resolve(uri);
+        } catch {
+          resolve(null);
+        }
+      };
+      mediaRecorder.onerror = () => {
+        resolve(null);
+      };
+    });
+
+    if (mediaRecorder.state !== "inactive") {
+      try {
+        mediaRecorder.stop();
+      } catch {
+        await cleanupWebAudio();
+        setLevel(0);
+        setStatus("error");
+        setErrorMessage("Não foi possível desligar o microfone.");
+        return null;
+      }
+    }
+
+    const uri = await stopPromise;
+    await cleanupWebAudio();
+    setLevel(0);
+    setStatus("idle");
+    setErrorMessage(null);
+    return uri;
+  }, [cleanupWebAudio]);
+
+  const stop = useCallback(async (): Promise<string | null> => {
+    if (Platform.OS === "web") {
+      return await stopWebAudio();
+    }
+
+    return await stopNativeAudio();
+  }, [stopNativeAudio, stopWebAudio]);
 
   const startWebAudio = useCallback(async () => {
     setStatus("requesting_permission");
@@ -129,11 +193,19 @@ export function useMicrophoneLevel(): UseMicrophoneLevelResult {
 
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
       const AudioContextCtor = (window as any).AudioContext ?? (window as any).webkitAudioContext;
+      const MediaRecorderCtor = (window as any).MediaRecorder;
       if (!AudioContextCtor) {
         stream.getTracks().forEach((track: any) => track.stop());
         setLevel(0);
         setStatus("error");
         setErrorMessage("Medição de voz indisponível neste navegador.");
+        return;
+      }
+      if (!MediaRecorderCtor) {
+        stream.getTracks().forEach((track: any) => track.stop());
+        setLevel(0);
+        setStatus("error");
+        setErrorMessage("Gravação de voz indisponível neste navegador.");
         return;
       }
 
@@ -150,6 +222,16 @@ export function useMicrophoneLevel(): UseMicrophoneLevelResult {
       webStreamRef.current = stream;
       webAudioContextRef.current = audioContext;
       webAnalyserRef.current = analyser;
+      webRecordingChunksRef.current = [];
+
+      const mediaRecorder = new MediaRecorderCtor(stream);
+      mediaRecorder.ondataavailable = (event: BlobEvent) => {
+        if (event.data.size > 0) {
+          webRecordingChunksRef.current.push(event.data);
+        }
+      };
+      webMediaRecorderRef.current = mediaRecorder;
+      mediaRecorder.start();
 
       clearMeteringInterval();
       intervalRef.current = setInterval(() => {

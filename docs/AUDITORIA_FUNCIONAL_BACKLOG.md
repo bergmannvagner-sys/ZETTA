@@ -12,7 +12,7 @@ Status usados:
 
 | Tela | Status | Lacuna principal | Prioridade |
 | --- | --- | --- | --- |
-| `(auth)/forgot-password` | parcial | reset token fica visivel apenas em `__DEV__`; revisar smoke de producao para garantir que nunca vaze | P0 |
+| `(auth)/forgot-password` | pronta | token de desenvolvimento nao e exibido na tela e o fluxo real segue por e-mail | P0 |
 
 ## P1 - alto impacto de produto
 

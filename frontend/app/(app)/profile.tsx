@@ -110,28 +110,45 @@ export default function Profile() {
             <Card>
               <SectionTitle title="Painéis administrativos" subtitle="Acesso restrito ao administrador interno." />
               <View style={{ gap: 10 }}>
-                <Button label="Resumo operacional" tone="soft" onPress={() => router.push("/(app)/admin-operations" as never)} />
-                <Button label="Contas pendentes" tone="soft" onPress={() => router.push("/(app)/admin-pending-accounts" as never)} />
-                <Button label="Assinaturas" tone="soft" onPress={() => router.push("/(app)/admin-subscriptions" as never)} />
+                <Button
+                  label="Resumo operacional"
+                  icon="analytics-outline"
+                  tone="soft"
+                  onPress={() => router.push("/(app)/admin-operations" as never)}
+                />
+                <Button
+                  label="Contas pendentes"
+                  icon="hourglass-outline"
+                  tone="soft"
+                  onPress={() => router.push("/(app)/admin-pending-accounts" as never)}
+                />
+                <Button label="Assinaturas" icon="card-outline" tone="soft" onPress={() => router.push("/(app)/admin-subscriptions" as never)} />
                 <Button
                   label="Pendências financeiras"
+                  icon="warning-outline"
                   tone="soft"
                   onPress={() => router.push("/(app)/admin-billing-pending" as never)}
                 />
-                <Button label="Contas moderadas" tone="soft" onPress={() => router.push("/(app)/admin-moderated-accounts" as never)} />
-                <Button label="Planos comerciais" tone="soft" onPress={() => router.push("/(app)/admin-commercial-plans" as never)} />
-                <Button label="Configurar pagamentos" tone="soft" onPress={() => router.push("/(app)/admin-billing-config" as never)} />
-                <Button label="Monitorar webhooks" tone="soft" onPress={() => router.push("/(app)/admin-billing-webhooks" as never)} />
-                <Button label="Alertas administrativos" tone="soft" onPress={() => router.push("/(app)/admin-alerts" as never)} />
-                <Button label="Configurar e-mail" tone="soft" onPress={() => router.push("/(app)/admin-email-config" as never)} />
-                <Button label="Auditoria" tone="soft" onPress={() => router.push("/(app)/admin-audit" as never)} />
+                <Button
+                  label="Contas moderadas"
+                  icon="shield-checkmark-outline"
+                  tone="soft"
+                  onPress={() => router.push("/(app)/admin-moderated-accounts" as never)}
+                />
+                <Button label="Planos comerciais" icon="pricetag-outline" tone="soft" onPress={() => router.push("/(app)/admin-commercial-plans" as never)} />
+                <Button label="Configurar pagamentos" icon="cash-outline" tone="soft" onPress={() => router.push("/(app)/admin-billing-config" as never)} />
+                <Button label="Monitorar webhooks" icon="pulse-outline" tone="soft" onPress={() => router.push("/(app)/admin-billing-webhooks" as never)} />
+                <Button label="Alertas administrativos" icon="alert-circle-outline" tone="soft" onPress={() => router.push("/(app)/admin-alerts" as never)} />
+                <Button label="Configurar e-mail" icon="mail-outline" tone="soft" onPress={() => router.push("/(app)/admin-email-config" as never)} />
+                <Button label="Auditoria" icon="journal-outline" tone="soft" onPress={() => router.push("/(app)/admin-audit" as never)} />
               </View>
             </Card>
           ) : null}
 
-          <Button label={t("profile.planAccess")} tone="soft" onPress={() => router.push("/(app)/plans" as never)} />
+          <Button label={t("profile.planAccess")} icon="card-outline" tone="soft" onPress={() => router.push("/(app)/plans" as never)} />
           <Button
             label={t("common.exit")}
+            icon="log-out-outline"
             tone="soft"
             onPress={async () => {
               await clearSession();

@@ -27,6 +27,10 @@ class ChatMessageResponse(BaseModel):
     in_scope: bool = True
 
 
+class VoiceChatResponse(ChatMessageResponse):
+    transcript: str
+
+
 class ChatHistoryMessage(BaseModel):
     id: str
     sender: Sender

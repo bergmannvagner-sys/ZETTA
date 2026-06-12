@@ -3,16 +3,17 @@
 @tailwind utilities;
 
 :root {
-  color-scheme: light;
+  color-scheme: dark;
 }
 
 html,
 body,
 #root {
-  background: #1a1030;
+  background: #1A1030;
   min-height: 100%;
 }
 
 body {
   margin: 0;
+  background: #1A1030;
 }

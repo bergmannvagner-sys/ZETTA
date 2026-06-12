@@ -10,11 +10,11 @@ import { requestPasswordReset } from "@/lib/auth";
 
 export default function ForgotPassword() {
   const [email, setEmail] = useState("");
-  const showDevResetToken = __DEV__;
-
   const mutation = useMutation({
     mutationFn: requestPasswordReset
   });
+  const resetToken = mutation.data?.reset_token ?? null;
+  const showDevResetToken = __DEV__ && Boolean(resetToken);
 
   return (
     <Screen>
@@ -35,26 +35,25 @@ export default function ForgotPassword() {
                 <Text className="text-xs leading-5 text-muted dark:text-[#D1D5DB]">
                   Verifique também spam ou lixo eletrônico. O código expira em 30 minutos.
                 </Text>
-                {showDevResetToken && mutation.data.reset_token ? (
+                {showDevResetToken && resetToken ? (
                   <View className="gap-3">
-                    <Text selectable className="text-xs leading-5 text-muted dark:text-[#D1D5DB]">
-                      Código de desenvolvimento: {mutation.data.reset_token}
+                    <Text className="text-xs leading-5 text-muted dark:text-[#D1D5DB]">
+                      Recuperação de teste disponível apenas em ambiente local. O código não é exibido na tela.
                     </Text>
                     <Button
-                      label="Usar este código"
+                      label="Abrir redefinição local"
                       tone="soft"
                       onPress={() =>
                         router.push({
                           pathname: "/(auth)/reset-password",
-                          params: { token: mutation.data?.reset_token ?? "" }
+                          params: { token: resetToken }
                         })
                       }
                     />
                   </View>
                 ) : (
                   <Text className="text-xs leading-5 text-muted dark:text-[#D1D5DB]">
-                    Em build normal, siga as instruções enviadas por e-mail. O token de desenvolvimento aparece
-                    apenas em ambiente local.
+                    Em build normal, siga as instruções enviadas por e-mail. O token de desenvolvimento não é exibido.
                   </Text>
                 )}
               </View>

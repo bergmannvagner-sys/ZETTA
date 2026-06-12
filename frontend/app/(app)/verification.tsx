@@ -58,10 +58,11 @@ export default function Verification() {
             </Card>
 
             <View className="gap-3">
-              <Button label="Ver perfil" tone="soft" onPress={() => router.push("/(app)/profile")} />
-              <Button label="Plano e acesso" tone="soft" onPress={() => router.push("/(app)/plans" as never)} />
+              <Button label="Ver perfil" icon="person-outline" tone="soft" onPress={() => router.push("/(app)/profile")} />
+              <Button label="Plano e acesso" icon="card-outline" tone="soft" onPress={() => router.push("/(app)/plans" as never)} />
               <Button
                 label="Sair"
+                icon="log-out-outline"
                 tone="soft"
                 onPress={async () => {
                   await clearSession();

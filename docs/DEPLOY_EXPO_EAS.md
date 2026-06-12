@@ -12,6 +12,7 @@ Configure em EAS:
 
 - `EXPO_PUBLIC_API_URL=https://sua-api.onrender.com`
 - `APP_ENV=production`
+- `EXPO_PUBLIC_SUPPORT_EMAIL=contato@seu-dominio.com`
 
 Para este repositorio, o perfil de producao ja aponta para:
 
@@ -21,6 +22,13 @@ APP_ENV=production
 ```
 
 O perfil `preview` interno tambem usa a mesma API para evitar builds sem backend configurado.
+
+As rotas públicas de loja ficam em:
+
+- `/privacy-policy`
+- `/terms`
+
+Use estas URLs na política de privacidade e nos termos de uso da loja.
 
 ## Android
 

@@ -21,21 +21,24 @@ const moods = [
 function Scale({
   label,
   value,
-  onChange,
-  buttonBasis
+  onChange
 }: {
   label: string;
   value: number;
   onChange: (value: number) => void;
-  buttonBasis: DimensionValue;
 }) {
   const { colors } = useAppTheme();
+  const { width } = useWindowDimensions();
+  const gap = width < 520 ? 3 : 6;
+  const availableWidth = Math.max(280, width - (width <= 360 ? 32 : width < 768 ? 48 : 64));
+  const buttonSize = Math.max(26, Math.min(42, Math.floor((availableWidth - gap * 9) / 10)));
+  const numberSize = Math.max(12, Math.min(15, Math.floor(buttonSize * 0.38)));
   return (
     <View style={{ gap: 12 }}>
-      <Text style={{ color: colors.textSecondary, fontSize: 16, fontWeight: "800", lineHeight: 22 }}>
+      <Text style={{ color: colors.textSecondary, fontSize: 14, fontWeight: "800", lineHeight: 20 }}>
         {label}: {value}
       </Text>
-      <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 10 }}>
+      <View style={{ alignSelf: "stretch", flexDirection: "row", flexWrap: "nowrap", gap, justifyContent: "center", width: "100%" }}>
         {Array.from({ length: 10 }, (_, index) => index + 1).map((number) => (
           <Pressable
             key={number}
@@ -51,18 +54,23 @@ function Scale({
               borderWidth: 1.5,
               boxShadow: value === number ? `0 8px 18px ${colors.shadowStrong}` : "none",
               justifyContent: "center",
-              minHeight: 48,
-              minWidth: 48,
-              flexBasis: buttonBasis,
+              flexShrink: 0,
+              minHeight: buttonSize,
+              minWidth: buttonSize,
+              width: buttonSize,
               opacity: pressed ? 0.82 : 1
             })}
           >
             <Text
+              adjustsFontSizeToFit
+              minimumFontScale={0.82}
+              numberOfLines={1}
               style={{
                 color: colors.textPrimary,
-                fontSize: 17,
+                fontSize: numberSize,
                 fontWeight: "800",
-                lineHeight: 22
+                fontVariant: ["tabular-nums"],
+                lineHeight: Math.max(14, numberSize + 2)
               }}
             >
               {number}
@@ -88,13 +96,12 @@ export default function Mood() {
   const mutation = useMutation({ mutationFn: createEmotionLog });
   const orbSize = wideMood ? Math.min(248, Math.max(188, width * 0.3)) : Math.min(180, Math.max(168, width * 0.52));
   const moodChipBasis: DimensionValue = width < 420 ? "100%" : width < 760 ? "48%" : "31.5%";
-  const scaleButtonBasis: DimensionValue = width < 420 ? "18%" : width < 760 ? "11%" : "9.5%";
 
   return (
     <Screen>
       <View style={{ alignItems: "center", gap: width < 420 ? 18 : 24, width: "100%" }}>
         <View style={{ alignItems: "center", gap: width < 420 ? 12 : 14, maxWidth: 640, width: "100%" }}>
-          <AnimatedOrb state="calm" size={orbSize} />
+          <AnimatedOrb accent={colors.primary} state="calm" size={orbSize} />
           <Header align="center" kicker={t("mood.kicker")} title={t("mood.title")} subtitle={t("mood.subtitle")} />
         </View>
 
@@ -145,10 +152,10 @@ export default function Mood() {
           </Card>
 
           <Card>
-            <Scale label={t("mood.intensity")} value={intensity} onChange={setIntensity} buttonBasis={scaleButtonBasis} />
-            <Scale label={t("mood.energy")} value={energy} onChange={setEnergy} buttonBasis={scaleButtonBasis} />
-            <Scale label={t("mood.anxiety")} value={anxiety} onChange={setAnxiety} buttonBasis={scaleButtonBasis} />
-            <Scale label={t("mood.stress")} value={stress} onChange={setStress} buttonBasis={scaleButtonBasis} />
+            <Scale label={t("mood.intensity")} value={intensity} onChange={setIntensity} />
+            <Scale label={t("mood.energy")} value={energy} onChange={setEnergy} />
+            <Scale label={t("mood.anxiety")} value={anxiety} onChange={setAnxiety} />
+            <Scale label={t("mood.stress")} value={stress} onChange={setStress} />
           </Card>
 
           <Field
@@ -169,6 +176,7 @@ export default function Mood() {
           <ErrorText message={mutation.error?.message} />
           <Button
             label={t("mood.submit")}
+            icon="checkmark-circle-outline"
             loading={mutation.isPending}
             onPress={() =>
               mutation.mutate({

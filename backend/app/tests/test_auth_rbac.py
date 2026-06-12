@@ -515,6 +515,66 @@ def test_e2e_user_consent_chat_sos_and_audit() -> None:
     assert AuditAction.SOS_EVENT_CREATED in actions
 
 
+def test_voice_chat_transcribes_audio_and_generates_answer(monkeypatch) -> None:
+    register = client.post(
+        "/auth/register",
+        json={
+            "email": "voice-user@example.com",
+            "full_name": "Pessoa Voz",
+            "password": "strongpass123",
+            "role": "USER",
+            "document": "31415926590",
+            "lgpdConsent": True,
+        },
+    )
+    assert register.status_code == 201
+    access_token = register.json()["access_token"]
+    headers = {"Authorization": f"Bearer {access_token}"}
+
+    consent_status = client.get("/privacy/consent", headers=headers)
+    assert consent_status.status_code == 200
+    client.post(
+        "/privacy/consent",
+        json={"policy_version": consent_status.json()["policy_version"]},
+        headers=headers,
+    )
+
+    async def fake_transcribe_voice_audio(**kwargs) -> str:
+        assert kwargs["audio_bytes"] == b"voice-bytes"
+        assert kwargs["language"] == "pt-BR"
+        return "Quero conversar sobre meu dia"
+
+    async def fake_ask_bergmann(
+        message: str,
+        language: str | None = None,
+        *,
+        context_messages=None,
+        user_name=None,
+    ):
+        assert message == "Quero conversar sobre meu dia"
+        return ("Estou aqui com você.", "LOW", False, True)
+
+    monkeypatch.setattr("app.api.chat.transcribe_voice_audio", fake_transcribe_voice_audio)
+    monkeypatch.setattr("app.api.chat.ask_bergmann", fake_ask_bergmann)
+
+    voice = client.post(
+        "/chat/voice",
+        headers=headers,
+        data={"language": "pt-BR"},
+        files={"audio": ("voice.webm", b"voice-bytes", "audio/webm")},
+    )
+    assert voice.status_code == 200
+    payload = voice.json()
+    assert payload["transcript"] == "Quero conversar sobre meu dia"
+    assert payload["answer"] == "Estou aqui com você."
+
+    history = client.get("/chat/history", headers=headers)
+    assert history.status_code == 200
+    messages = history.json()["messages"]
+    assert [message["sender"] for message in messages] == ["USER", "BERGMANN"]
+    assert messages[0]["content"] == "Quero conversar sobre meu dia"
+
+
 def test_sensitive_content_is_encrypted_at_rest_and_decrypted_through_api() -> None:
     register = client.post(
         "/auth/register",

@@ -18,24 +18,24 @@ export const appTheme = {
   surface: "#24153E",
   surfaceSoft: "#2B1849",
   surfaceStrong: "#37215D",
-  glass: "rgba(28, 17, 49, 0.88)",
+  glass: "rgba(17, 11, 32, 0.88)",
   primary: "#A855F7",
   primaryDark: "#DDD6FE",
-  primaryLight: "#D8B4FE",
+  primaryLight: "#C4B5FD",
   textPrimary: "#F5EEFF",
   textSecondary: "#D9C8F0",
   textMuted: "#B7A3D8",
-  border: "#4B2D78",
+  border: "#4C1D95",
   success: "#22C55E",
   warning: "#F59E0B",
   error: "#EF4444",
   info: "#3B82F6",
-  shadow: "rgba(7, 4, 20, 0.32)",
-  shadowStrong: "rgba(7, 4, 20, 0.44)",
-  overlay: "rgba(6, 5, 18, 0.58)",
-  gradientStart: "#1A1030",
-  gradientMid: "#2B1849",
-  gradientEnd: "#4C1D95"
+  shadow: "rgba(0, 0, 0, 0.42)",
+  shadowStrong: "rgba(0, 0, 0, 0.64)",
+  overlay: "rgba(2, 4, 13, 0.72)",
+  gradientStart: "#120F1F",
+  gradientMid: "#24153E",
+  gradientEnd: "#A855F7"
 } as const;
 
 export const radii = {
@@ -128,7 +128,7 @@ export function useResponsiveLayout() {
 
 export function useAppTheme() {
   return {
-    name: "light" as const,
+    name: "dark" as const,
     colors: appTheme
   };
 }

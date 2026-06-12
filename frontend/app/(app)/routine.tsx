@@ -59,7 +59,13 @@ function ReminderCard({
         {item.note ? <Text className="text-sm leading-5 text-muted dark:text-[#D1D5DB]">{item.note}</Text> : null}
         {item.last_completed_at ? <Text className="text-xs text-primary">{t("routine.doneRecently")}</Text> : null}
       </View>
-      <Button label={t("routine.markDone")} tone="soft" loading={completing} onPress={() => onComplete(item.id)} />
+      <Button
+        label={t("routine.markDone")}
+        icon="checkmark-circle-outline"
+        tone="soft"
+        loading={completing}
+        onPress={() => onComplete(item.id)}
+      />
     </Card>
   );
 }
@@ -153,6 +159,7 @@ export default function Routine() {
             <ErrorText message={createMutation.error?.message || reminders.error?.message || completeMutation.error?.message} />
             <Button
               label={t("routine.create")}
+              icon="add-circle-outline"
               loading={createMutation.isPending}
               disabled={title.trim().length < 2}
               onPress={() =>

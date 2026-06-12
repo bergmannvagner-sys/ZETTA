@@ -9,6 +9,7 @@ import {
   TextInputProps,
   View
 } from "react-native";
+import { Ionicons } from "@expo/vector-icons";
 
 import { touchTarget, useAppTheme, useResponsiveLayout, radii } from "@/design-system/theme";
 import { useI18n } from "@/i18n/i18n";
@@ -24,9 +25,20 @@ type ButtonProps = {
   loading?: boolean;
   disabled?: boolean;
   compact?: boolean;
+  icon?: keyof typeof Ionicons.glyphMap;
+  iconPosition?: "left" | "right";
 };
 
-export function Button({ label, onPress, tone = "primary", loading, disabled, compact }: ButtonProps) {
+export function Button({
+  label,
+  onPress,
+  tone = "primary",
+  loading,
+  disabled,
+  compact,
+  icon,
+  iconPosition = "left"
+}: ButtonProps) {
   const { colors } = useAppTheme();
   const { width } = useResponsiveLayout();
   const { t } = useI18n();
@@ -42,16 +54,18 @@ export function Button({ label, onPress, tone = "primary", loading, disabled, co
           : "transparent";
   const borderColor =
     tone === "primary"
-      ? colors.primaryLight
-    : tone === "danger"
+      ? "rgba(255,255,255,0.18)"
+      : tone === "danger"
         ? colors.error
         : tone === "soft"
-          ? colors.primary
+          ? colors.primaryLight
           : colors.primaryLight;
-  const textColor =
-    tone === "danger" ? colors.textPrimary : colors.textPrimary;
-  const loadingColor = colors.textPrimary;
+  const textColor = tone === "ghost" ? colors.primaryLight : colors.textPrimary;
+  const loadingColor = textColor;
   const minHeight = compact ? touchTarget.comfortable : Math.max(touchTarget.comfortable, Platform.OS === "ios" ? touchTarget.ios : touchTarget.android);
+  const shineColor = tone === "primary" ? "rgba(255,255,255,0.16)" : "rgba(255,255,255,0.06)";
+  const shadowColor = tone === "primary" ? colors.info : tone === "danger" ? colors.error : colors.shadowStrong;
+  const iconSize = compact ? 16 : 17;
 
   return (
     <Pressable
@@ -69,27 +83,62 @@ export function Button({ label, onPress, tone = "primary", loading, disabled, co
         borderBottomRightRadius: radii.bottomRight,
         borderTopLeftRadius: radii.topLeft,
         borderTopRightRadius: radii.topRight,
-        borderWidth: tone === "ghost" ? 1.5 : 1.5,
-        boxShadow:
-          tone === "primary"
-            ? `0 14px 32px ${colors.shadowStrong}`
-            : `0 10px 26px ${colors.shadow}`,
+        borderWidth: 1.25,
+        boxShadow: tone === "ghost" ? "none" : `0 14px 34px ${shadowColor}40`,
         justifyContent: "center",
         minHeight,
         minWidth: 48,
         opacity: isDisabled ? 0.62 : pressed ? 0.86 : 1,
-        paddingHorizontal: 20,
-        paddingVertical: compact ? 10 : 14,
+        paddingHorizontal: compact ? 14 : 16,
+        paddingVertical: compact ? 10 : 11,
         transform: [{ scale: pressed && !isDisabled ? 0.985 : 1 }],
-        width: "100%"
+        width: "100%",
+        overflow: "hidden"
       })}
     >
+      <View
+        pointerEvents="none"
+        style={{
+          backgroundColor: shineColor,
+          height: 18,
+          left: 0,
+          position: "absolute",
+          right: 0,
+          top: 0
+        }}
+      />
       {loading ? (
         <ActivityIndicator color={loadingColor} />
       ) : (
-        <Text style={{ color: textColor, fontSize: 16, fontWeight: "800", lineHeight: 22, textAlign: "center" }}>
-          {t(label)}
-        </Text>
+        <View
+          style={{
+            alignItems: "center",
+            flexDirection: iconPosition === "right" ? "row-reverse" : "row",
+            gap: icon ? 10 : 0,
+            justifyContent: "center",
+            maxWidth: "100%",
+            minWidth: 0
+          }}
+        >
+          {icon ? <Ionicons name={icon} color={textColor} size={iconSize} /> : null}
+          <Text
+            numberOfLines={2}
+            ellipsizeMode="tail"
+            adjustsFontSizeToFit
+            minimumFontScale={0.82}
+            style={{
+              color: textColor,
+              flexShrink: 1,
+              fontSize: compact ? 14 : 14.5,
+              fontWeight: "800",
+              lineHeight: compact ? 18 : 19,
+              minWidth: 0,
+              textAlign: "center"
+            }}
+          >
+            {t(label)}
+          </Text>
+        </View>
       )}
     </Pressable>
   );
@@ -121,7 +170,7 @@ export function Input(props: InputProps) {
 
   return (
     <View style={{ gap: 8 }}>
-      <Text style={{ color: colors.textSecondary, fontSize: 14, fontWeight: "600", lineHeight: 20 }}>
+      <Text style={{ color: colors.textSecondary, fontSize: 13, fontWeight: "600", lineHeight: 18 }}>
         {t(props.label)}
       </Text>
       <TextInput
@@ -141,11 +190,11 @@ export function Input(props: InputProps) {
           borderTopRightRadius: radii.topRight,
           borderWidth: 1,
           color: colors.textPrimary,
-          fontSize: 16,
-          lineHeight: 22,
-          minHeight: props.multiline ? 136 : 56,
-          paddingHorizontal: 18,
-          paddingVertical: props.multiline ? 16 : 0,
+          fontSize: 14.5,
+          lineHeight: 20,
+          minHeight: props.multiline ? 144 : 54,
+          paddingHorizontal: 16,
+          paddingVertical: props.multiline ? 16 : 12,
           textAlignVertical: props.textAlignVertical ?? (props.multiline ? "top" : "center")
         }}
       />
@@ -170,15 +219,11 @@ export function Card({ children }: { children: ReactNode }) {
         borderTopLeftRadius: radii.topLeft,
         borderTopRightRadius: radii.topRight,
         borderWidth: 1,
-        boxShadow: `0 16px 40px ${colors.shadow}`,
-        gap: 12,
-        paddingBottom: 22,
-        paddingLeft: 20,
-        paddingRight: 22,
-        paddingTop: 18
+        boxShadow: `0 12px 28px ${colors.shadowStrong}`,
+        overflow: "hidden"
       }}
     >
-      {children}
+      <View style={{ gap: 12, paddingBottom: 18, paddingLeft: 18, paddingRight: 18, paddingTop: 16 }}>{children}</View>
     </View>
   );
 }
@@ -219,7 +264,8 @@ export function Modal({ visible, title, children, onClose }: AppModalProps) {
             gap: 16,
             maxWidth: 520,
             padding: 24,
-            width: "100%"
+            width: "100%",
+            boxShadow: `0 20px 42px ${colors.shadowStrong}`
           }}
         >
           {title ? (
@@ -254,6 +300,7 @@ export function Badge({ label, tone = "soft" }: { label: string; tone?: "soft" |
         borderColor: `${color}55`,
         borderRadius: radii.pill,
         borderWidth: 1,
+        boxShadow: `0 8px 20px ${colors.shadow}`,
         paddingHorizontal: 12,
         paddingVertical: 7
       }}
@@ -317,8 +364,9 @@ export function Header({
           style={{
             backgroundColor: colors.primary,
             borderRadius: 999,
+            boxShadow: `0 0 18px ${colors.primary}55`,
             height: 4,
-            opacity: 0.78,
+            opacity: 0.92,
             width: isMobile ? 42 : 60
           }}
         />
@@ -340,7 +388,7 @@ export function Header({
         style={{
           color: colors.textPrimary,
           fontSize: titleSize,
-          fontWeight: "800",
+          fontWeight: "900",
           lineHeight: Math.round(titleSize * 1.16),
           textAlign: centered ? "center" : "left"
         }}
@@ -349,11 +397,11 @@ export function Header({
       </Text>
       {subtitle ? (
         <Text
-          style={{
-            color: colors.textSecondary,
-            fontSize: 17,
-            lineHeight: 27,
-            textAlign: centered ? "center" : "left"
+        style={{
+          color: colors.textSecondary,
+          fontSize: 17,
+          lineHeight: 27,
+          textAlign: centered ? "center" : "left"
           }}
         >
           {subtitle}
@@ -381,8 +429,9 @@ export function SectionTitle({
         style={{
           backgroundColor: colors.primary,
           borderRadius: 999,
+          boxShadow: `0 0 14px ${colors.primary}44`,
           height: 3,
-          opacity: 0.74,
+          opacity: 0.9,
           width: isMobile ? 38 : 52
         }}
       />
@@ -390,7 +439,7 @@ export function SectionTitle({
         style={{
           color: colors.textPrimary,
           fontSize: 18,
-          fontWeight: "800",
+          fontWeight: "900",
           lineHeight: 24,
           textAlign: centered ? "center" : "left"
         }}
@@ -420,15 +469,16 @@ export function ErrorText({ message }: { message?: string }) {
   const isNetworkError = message === "Network request failed" || /failed to fetch/i.test(message);
   const friendlyMessage = isNetworkError ? t("error.network") : t(message);
   return (
-    <View
-      style={{
-        backgroundColor: `${colors.error}12`,
-        borderColor: `${colors.error}35`,
-        borderRadius: radii.md,
-        borderWidth: 1,
-        paddingHorizontal: 16,
-        paddingVertical: 14
-      }}
+      <View
+        style={{
+          backgroundColor: `${colors.error}12`,
+          borderColor: `${colors.error}35`,
+          borderRadius: radii.md,
+          borderWidth: 1,
+          boxShadow: `0 10px 24px ${colors.shadow}`,
+          paddingHorizontal: 16,
+          paddingVertical: 14
+        }}
     >
       <Text selectable style={{ color: colors.error, fontSize: 14, lineHeight: 21 }}>
         {friendlyMessage}

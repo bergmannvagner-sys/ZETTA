@@ -35,10 +35,12 @@ export function PaidAccessGate({ user, resourceLabel }: PaidAccessGateProps) {
       </View>
       <Button
         label={paidAccessActionLabel(user)}
+        icon="card-outline"
         onPress={() => router.push("/(app)/plans" as never)}
       />
       <Button
         label="Ver perfil"
+        icon="person-outline"
         tone="soft"
         onPress={() => router.push("/(app)/profile" as never)}
       />

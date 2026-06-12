@@ -25,10 +25,15 @@ export function AuthGate({ title, body, resourceLabel }: AuthGateProps) {
 
       <View style={{ flexDirection: isMobile ? "column" : "row", gap: 10 }}>
         <View style={{ flex: 1 }}>
-          <Button label="auth.login.submit" onPress={() => router.push("/(auth)/login" as never)} />
+          <Button label="auth.login.submit" icon="log-in-outline" onPress={() => router.push("/(auth)/login" as never)} />
         </View>
         <View style={{ flex: 1 }}>
-          <Button label="auth.login.create" tone="soft" onPress={() => router.push("/(auth)/select-role" as never)} />
+          <Button
+            label="auth.login.create"
+            icon="person-add-outline"
+            tone="soft"
+            onPress={() => router.push("/(auth)/select-role" as never)}
+          />
         </View>
       </View>
 

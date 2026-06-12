@@ -1,144 +1,118 @@
-import { memo, useEffect } from "react";
+import { memo } from "react";
 import { Pressable, View } from "react-native";
-import Animated, {
-  cancelAnimation,
-  interpolate,
-  useAnimatedStyle,
-  useSharedValue,
-  withRepeat,
-  withTiming
-} from "react-native-reanimated";
-import { Circle, Defs, Ellipse, LinearGradient, Path, RadialGradient, Stop, Svg } from "react-native-svg";
 
-import { calmEasing, clampAudioLevel } from "@/components/orb/orbAnimations";
+import { useAppTheme } from "@/design-system/theme";
+import { useI18n } from "@/i18n/i18n";
+
 import { AnimatedOrbProps, OrbState } from "@/components/orb/orbTypes";
 import { orbAccessibilityLabelKeys, orbAccessibilityLabels, orbPalette, orbStateIndex } from "@/components/orb/orbTheme";
-import { useOrbState } from "@/components/orb/useOrbState";
-import { useI18n } from "@/i18n/i18n";
-import { useAppTheme } from "@/design-system/theme";
 
 type OrbVisual = {
-  glow: string;
-  ring: string;
+  accent: string;
+  core: string;
   quiet: boolean;
+  ring: string;
+  shell: string;
+  glow: string;
 };
 
-type Sparkle = {
-  cx: number;
-  cy: number;
-  opacity: number;
-  r: number;
-  accent?: boolean;
-};
+const QUIET_STATES = new Set<OrbState>([
+  "breathing",
+  "calm",
+  "sos",
+  "crisis",
+  "low_energy",
+  "error",
+  "silent_presence"
+]);
 
-const STATE_VISUALS: Partial<Record<OrbState, OrbVisual>> = {
-  idle: { glow: "#7C3AED", quiet: false, ring: "#DDD6FE" },
-  listening: { glow: "#0EA5A4", quiet: false, ring: "#A5F3FC" },
-  thinking: { glow: "#3B82F6", quiet: false, ring: "#BFDBFE" },
-  speaking: { glow: "#EC4899", quiet: false, ring: "#FBCFE8" },
-  breathing: { glow: "#14B8A6", quiet: true, ring: "#99F6E4" },
-  calm: { glow: "#8B5CF6", quiet: true, ring: "#E9D5FF" },
-  silent_presence: { glow: "#6366F1", quiet: true, ring: "#C7D2FE" },
-  low_energy: { glow: "#84CC16", quiet: true, ring: "#D9F99D" },
-  sos: { glow: "#F59E0B", quiet: true, ring: "#FDE68A" },
-  crisis: { glow: "#EF4444", quiet: true, ring: "#FCA5A5" },
-  error: { glow: "#F43F5E", quiet: true, ring: "#FDA4AF" }
-};
-
-function getVisual(state: OrbState): OrbVisual {
-  return STATE_VISUALS[state] ?? { glow: "#7C3AED", quiet: false, ring: "#DDD6FE" };
+function getVisual(state: OrbState, accent: string): OrbVisual {
+  const index = orbStateIndex[state];
+  return {
+    accent,
+    core: orbPalette.core[index],
+    glow: orbPalette.halo[index],
+    quiet: QUIET_STATES.has(state),
+    ring: orbPalette.halo[index],
+    shell: orbPalette.shell[index]
+  };
 }
 
-type OrbPalette = {
-  shell: string;
-  core: string;
-  halo: string;
-  wave: string;
+type OrbLayerProps = {
+  backgroundColor: string;
+  borderColor?: string;
+  borderWidth?: number;
+  height: number;
+  opacity?: number;
+  shadowColor?: string;
+  shadowOpacity?: number;
+  shadowRadius?: number;
+  top?: number;
+  left?: number;
+  width: number;
+  zIndex?: number;
+  radius?: number;
 };
 
-function OrbSurface({ palette, visual, accent }: { palette: OrbPalette; visual: OrbVisual; accent: string }) {
-  const sparkles: Sparkle[] = [
-    { accent: true, cx: 42, cy: 66, opacity: 0.5, r: 1.38 },
-    { cx: 64, cy: 44, opacity: 0.26, r: 1.16 },
-    { accent: true, cx: 86, cy: 30, opacity: 0.34, r: 1.08 },
-    { cx: 112, cy: 24, opacity: 0.4, r: 1.22 },
-    { accent: true, cx: 132, cy: 22, opacity: 0.36, r: 1.08 },
-    { cx: 158, cy: 30, opacity: 0.28, r: 1.02 }
-  ];
-  const mirroredSparkles: Sparkle[] = [];
-  for (const sparkle of sparkles) {
-    mirroredSparkles.push(sparkle);
-    if (sparkle.cx !== 128) {
-      mirroredSparkles.push({ ...sparkle, cx: 256 - sparkle.cx });
-    }
-  }
-
+function OrbLayer({
+  backgroundColor,
+  borderColor,
+  borderWidth = 0,
+  height,
+  opacity = 1,
+  shadowColor,
+  shadowOpacity = 0,
+  shadowRadius = 0,
+  top = 0,
+  left = 0,
+  width,
+  zIndex = 0,
+  radius
+}: OrbLayerProps) {
+  const borderRadius = radius ?? Math.round(Math.min(height, width) / 2);
   return (
-    <Svg height="100%" viewBox="0 0 256 256" width="100%">
-      <Defs>
-        <RadialGradient cx="50%" cy="38%" id="orbBase" r="72%">
-          <Stop offset="0%" stopColor={accent} stopOpacity="0.78" />
-          <Stop offset="42%" stopColor="#22153B" stopOpacity="1" />
-          <Stop offset="76%" stopColor={palette.shell} stopOpacity="0.94" />
-          <Stop offset="100%" stopColor={visual.glow} stopOpacity="0.96" />
-        </RadialGradient>
-        <RadialGradient cx="50%" cy="36%" id="orbHalo" r="66%">
-          <Stop offset="0%" stopColor={palette.halo} stopOpacity="0.9" />
-          <Stop offset="42%" stopColor={palette.halo} stopOpacity="0.34" />
-          <Stop offset="78%" stopColor={visual.glow} stopOpacity="0.14" />
-          <Stop offset="100%" stopColor="#050816" stopOpacity="0" />
-        </RadialGradient>
-        <LinearGradient id="orbWave" x1="18%" x2="82%" y1="64%" y2="82%">
-          <Stop offset="0%" stopColor={palette.wave} stopOpacity="0.96" />
-          <Stop offset="48%" stopColor={visual.ring} stopOpacity="0.95" />
-          <Stop offset="100%" stopColor={palette.shell} stopOpacity="0.9" />
-        </LinearGradient>
-        <LinearGradient id="orbShine" x1="0%" x2="100%" y1="0%" y2="100%">
-          <Stop offset="0%" stopColor={accent} stopOpacity="0.9" />
-          <Stop offset="62%" stopColor={palette.core} stopOpacity="0.18" />
-          <Stop offset="100%" stopColor={palette.core} stopOpacity="0" />
-        </LinearGradient>
-      </Defs>
+    <View
+      pointerEvents="none"
+      style={{
+        backgroundColor,
+        borderColor,
+        borderRadius,
+        borderWidth,
+        height,
+        left,
+        opacity,
+        position: "absolute",
+        shadowColor,
+        shadowOffset: { width: 0, height: 0 },
+        shadowOpacity,
+        shadowRadius,
+        top,
+        width,
+        zIndex
+      }}
+    />
+  );
+}
 
-      <Circle cx="128" cy="128" fill="url(#orbBase)" r="112" />
-      <Circle cx="128" cy="128" fill="url(#orbHalo)" opacity={visual.quiet ? 0.58 : 0.76} r="112" />
-      <Circle cx="128" cy="128" fill="none" opacity={visual.quiet ? 0.24 : 0.4} r="108" stroke={palette.halo} strokeWidth="1.2" />
-      <Path
-        d="M 34 160 C 60 132, 92 118, 128 120 C 164 118, 196 132, 222 160 C 206 198, 174 220, 128 220 C 82 220, 50 198, 34 160 Z"
-        fill="url(#orbWave)"
-        opacity={visual.quiet ? 0.7 : 0.84}
-      />
-      <Path
-        d="M 52 156 C 74 142, 100 136, 128 136 C 156 136, 182 142, 204 156"
-        fill="none"
-        opacity={visual.quiet ? 0.22 : 0.34}
-        stroke={palette.core}
-        strokeLinecap="round"
-        strokeWidth="1.9"
-      />
-      <Ellipse
-        cx="128"
-        cy="82"
-        fill="url(#orbShine)"
-        opacity={visual.quiet ? 0.54 : 0.78}
-        rx="54"
-        ry="32"
-        transform="rotate(-8 128 82)"
-      />
-      <Circle cx="128" cy="122" fill={accent} opacity="0.92" r="18" />
-      <Circle cx="128" cy="122" fill={palette.core} opacity="0.12" r="34" />
-      <Circle cx="128" cy="122" fill="none" opacity="0.22" r="64" stroke={palette.halo} strokeWidth="1.1" />
-      {mirroredSparkles.map((sparkle, index) => (
-        <Circle
-          key={`${palette.shell}-${index}`}
-          cx={sparkle.cx}
-          cy={sparkle.cy}
-          fill={sparkle.accent ? accent : palette.core}
-          opacity={sparkle.opacity * (visual.quiet ? 0.7 : 1)}
-          r={sparkle.r}
-        />
-      ))}
-    </Svg>
+function OrbSpark({ accent, left, top, size, opacity }: { accent: string; left: number; top: number; size: number; opacity: number }) {
+  return (
+    <View
+      pointerEvents="none"
+      style={{
+        backgroundColor: accent,
+        borderRadius: size / 2,
+        height: size,
+        left,
+        opacity,
+        position: "absolute",
+        shadowColor: accent,
+        shadowOffset: { width: 0, height: 0 },
+        shadowOpacity: 0.5,
+        shadowRadius: 10,
+        top,
+        width: size
+      }}
+    />
   );
 }
 
@@ -151,242 +125,129 @@ function AnimatedOrbComponent({
   onPress
 }: AnimatedOrbProps) {
   const { t } = useI18n();
-  const visual = getVisual(state);
-  const { colors: themeColors } = useAppTheme();
-  const accent =
+  const { colors } = useAppTheme();
+  const resolvedSize = Math.max(156, Math.min(size, 380));
+  const visual = getVisual(
+    state,
     accentOverride ??
-    (state === "sos" || state === "crisis" || state === "error"
-      ? themeColors.error
-      : state === "low_energy"
-        ? themeColors.warning
-        : state === "listening" || state === "speaking"
-          ? themeColors.primary
-          : themeColors.primaryDark);
-  const paletteIndex = orbStateIndex[state];
-  const palette: OrbPalette = {
-    shell: orbPalette.shell[paletteIndex],
-    core: orbPalette.core[paletteIndex],
-    halo: orbPalette.halo[paletteIndex],
-    wave: orbPalette.wave[paletteIndex]
-  };
-  const orbSize = Math.max(156, Math.min(size, 380));
-  const imageWindowSize = orbSize * 0.82;
-  const { audio, breath, motion, shimmer } = useOrbState(state, audioLevel, reducedMotion);
-  const livingCycle = useSharedValue(0);
-
-  useEffect(() => {
-    cancelAnimation(livingCycle);
-
-    if (reducedMotion) {
-      livingCycle.value = 0.42;
-      return;
-    }
-
-    livingCycle.value = withRepeat(
-      withTiming(1, { duration: visual.quiet ? 9200 : 5600, easing: calmEasing }),
-      -1,
-      true
-    );
-
-    return () => {
-      cancelAnimation(livingCycle);
-    };
-  }, [livingCycle, reducedMotion, visual.quiet]);
-
-  const presenceStyle = useAnimatedStyle(() => {
-    const cycle = reducedMotion ? 0.42 : livingCycle.value;
-    const shimmerValue = reducedMotion ? 0.5 : shimmer.value;
-    const drift = visual.quiet ? 0 : motion.drift;
-    const pulse = interpolate(cycle, [0, 1], [1 - motion.pulseScale * 0.5, 1 + motion.pulseScale * 0.5]);
-
-    return {
-      transform: [
-        { translateY: interpolate(cycle, [0, 1], [visual.quiet ? -0.7 : -3 - drift * 0.35, visual.quiet ? 0.7 : 3 + drift * 0.35]) },
-        { translateX: visual.quiet ? 0 : interpolate(shimmerValue, [0, 1], [-drift, drift]) },
-        { scale: pulse }
-      ]
-    };
-  });
-
-  const haloStyle = useAnimatedStyle(() => {
-    const level = clampAudioLevel(audio.value);
-    const breathing = reducedMotion ? 0.48 : breath.value;
-    const cycle = reducedMotion ? 0.42 : livingCycle.value;
-
-    return {
-      backgroundColor: accent,
-      opacity: (visual.quiet ? 0.08 : 0.16) + motion.glowOpacity * 0.24 + breathing * 0.1 + level * 0.14,
-      transform: [
-        {
-          scale:
-            0.86 +
-            breathing * motion.breathScale * 4.4 +
-            level * motion.audioInfluence +
-            interpolate(cycle, [0, 1], [-motion.pulseScale * 0.2, motion.pulseScale * 0.2])
-        }
-      ]
-    };
-  });
-
-  const accentRingStyle = useAnimatedStyle(() => {
-    const cycle = reducedMotion ? 0.38 : livingCycle.value;
-    const breathing = reducedMotion ? 0.48 : breath.value;
-    const level = clampAudioLevel(audio.value);
-
-    return {
-      borderColor: accent,
-      opacity: (visual.quiet ? 0.14 : 0.24) + cycle * 0.12 + breathing * 0.08 + level * 0.08,
-      transform: [{ scale: 0.9 + cycle * motion.pulseScale * 2.2 + breathing * 0.018 }]
-    };
-  });
-
-  const ringStyle = useAnimatedStyle(() => {
-    const cycle = reducedMotion ? 0.38 : livingCycle.value;
-    const shimmerValue = reducedMotion ? 0.5 : shimmer.value;
-
-    return {
-      borderColor: visual.ring,
-      opacity: visual.quiet ? 0.32 : 0.5 + cycle * 0.18,
-      transform: [
-        { rotate: `${interpolate(shimmerValue, [0, 1], [-6, 6])}deg` },
-        { scale: 0.94 + cycle * 0.045 }
-      ]
-    };
-  });
-
-  const imageStyle = useAnimatedStyle(() => {
-    const level = clampAudioLevel(audio.value);
-    const breathing = reducedMotion ? 0.48 : breath.value;
-    const cycle = reducedMotion ? 0.42 : livingCycle.value;
-
-    return {
-      transform: [
-        { translateY: interpolate(cycle, [0, 1], [-2, 2]) },
-        { translateX: visual.quiet ? 0 : interpolate(shimmer.value, [0, 1], [-1.5, 1.5]) },
-        { scale: 1.01 + breathing * motion.breathScale * 1.6 + level * 0.03 + interpolate(cycle, [0, 1], [-motion.pulseScale * 0.18, motion.pulseScale * 0.18]) }
-      ]
-    };
-  });
-
-  const coreStyle = useAnimatedStyle(() => {
-    const level = clampAudioLevel(audio.value);
-    const breathing = reducedMotion ? 0.48 : breath.value;
-
-    return {
-      opacity: 0.3 + breathing * 0.3 + level * 0.28,
-      transform: [{ scale: 0.9 + breathing * 0.14 + level * 0.18 + interpolate(reducedMotion ? 0.42 : livingCycle.value, [0, 1], [-motion.pulseScale * 0.06, motion.pulseScale * 0.06]) }]
-    };
-  });
+      (state === "sos" || state === "crisis" || state === "error"
+        ? colors.error
+        : state === "low_energy"
+          ? colors.warning
+          : state === "listening" || state === "speaking"
+            ? colors.primary
+            : colors.primary)
+  );
+  const auraSize = resolvedSize + 30;
+  const shellSize = resolvedSize * 0.98;
+  const ringSize = resolvedSize * 0.9;
+  const innerSize = resolvedSize * 0.74;
+  const coreSize = Math.max(16, resolvedSize * 0.14);
+  const highlightWidth = resolvedSize * 0.46;
+  const highlightHeight = resolvedSize * 0.18;
+  const shimmerOpacity = reducedMotion ? 0.18 : 0.3 + Math.min(0.12, Math.max(0, audioLevel) * 0.12);
+  const glowOpacity = reducedMotion ? 0.16 : visual.quiet ? 0.24 : 0.38;
+  const label = t(orbAccessibilityLabelKeys[state]) ?? orbAccessibilityLabels[state];
 
   return (
     <Pressable
-      accessibilityLabel={t(orbAccessibilityLabelKeys[state]) ?? orbAccessibilityLabels[state]}
+      accessibilityLabel={label}
       accessibilityRole={onPress ? "button" : "image"}
-      className="items-center justify-center"
       disabled={!onPress}
       onPress={onPress}
-      style={{ minHeight: orbSize + 30 }}
+      style={({ pressed }) => ({
+        alignItems: "center",
+        justifyContent: "center",
+        minHeight: auraSize,
+        opacity: pressed && onPress ? 0.92 : 1,
+        transform: [{ scale: pressed && onPress ? 0.986 : 1 }]
+      })}
     >
-      <Animated.View
-        className="items-center justify-center"
-        style={[presenceStyle, { height: orbSize + 30, width: orbSize + 30 }]}
+      <View
+        style={{
+          alignItems: "center",
+          height: auraSize,
+          justifyContent: "center",
+          width: auraSize
+        }}
       >
-        <Animated.View
-          pointerEvents="none"
-          style={[
-            haloStyle,
-            {
-              borderRadius: orbSize,
-              height: orbSize,
-              position: "absolute",
-              width: orbSize
-            }
-          ]}
+        <OrbLayer
+          backgroundColor={visual.glow}
+          height={resolvedSize}
+          left={15}
+          opacity={glowOpacity}
+          shadowColor={visual.accent}
+          shadowOpacity={visual.quiet ? 0.32 : 0.62}
+          shadowRadius={visual.quiet ? 20 : 30}
+          top={15}
+          width={resolvedSize}
         />
-        <Animated.View
-          pointerEvents="none"
-          style={[
-            ringStyle,
-            {
-              borderRadius: orbSize,
-              borderWidth: 1.2,
-              height: orbSize * 0.94,
-              position: "absolute",
-              width: orbSize * 0.94
-            }
-          ]}
+        <OrbLayer
+          backgroundColor={visual.shell}
+          borderColor={visual.ring}
+          borderWidth={1.25}
+          height={shellSize}
+          opacity={visual.quiet ? 0.54 : 0.8}
+          shadowColor={visual.accent}
+          shadowOpacity={visual.quiet ? 0.22 : 0.44}
+          shadowRadius={visual.quiet ? 14 : 22}
+          top={(auraSize - shellSize) / 2}
+          width={shellSize}
         />
-        <Animated.View
-          pointerEvents="none"
-          style={[
-            accentRingStyle,
-            {
-              borderRadius: orbSize,
-              borderWidth: 1.1,
-              height: orbSize * 0.9,
-              position: "absolute",
-              width: orbSize * 0.9
-            }
-          ]}
+        <OrbLayer
+          backgroundColor={visual.core}
+          borderColor={`${visual.accent}66`}
+          borderWidth={1}
+          height={ringSize}
+          opacity={visual.quiet ? 0.72 : 0.92}
+          shadowColor={visual.accent}
+          shadowOpacity={0.24}
+          shadowRadius={18}
+          top={(auraSize - ringSize) / 2}
+          width={ringSize}
         />
-        <Animated.View
-          pointerEvents="none"
-          style={[
-            ringStyle,
-            {
-              borderColor: palette.shell,
-              borderRadius: orbSize,
-              borderWidth: imageWindowSize * 0.16,
-              height: orbSize * 0.98,
-              opacity: visual.quiet ? 0.14 : 0.22,
-              position: "absolute",
-              width: orbSize * 0.98
-            }
-          ]}
+        <OrbLayer
+          backgroundColor={`${visual.accent}1A`}
+          height={innerSize}
+          opacity={1}
+          shadowColor={visual.accent}
+          shadowOpacity={0.22}
+          shadowRadius={12}
+          top={(auraSize - innerSize) / 2}
+          width={innerSize}
         />
-        <View
-          style={{
-            backgroundColor: "#1A1030",
-            borderColor: `${accent}66`,
-            borderRadius: imageWindowSize / 2,
-            borderWidth: 1,
-            boxShadow: `0 0 ${visual.quiet ? 22 : 36}px ${accent}55`,
-            height: imageWindowSize,
-            overflow: "hidden",
-            width: imageWindowSize
-          }}
-        >
-          <Animated.View
-            pointerEvents="none"
-            style={[
-              imageStyle,
-              {
-                height: imageWindowSize,
-                position: "absolute",
-                width: imageWindowSize
-              }
-            ]}
-          >
-            <OrbSurface palette={palette} visual={visual} accent={accent} />
-          </Animated.View>
-          <Animated.View
-            pointerEvents="none"
-            style={[
-              coreStyle,
-              {
-                backgroundColor: accent,
-                borderRadius: 999,
-                boxShadow: `0 0 18px ${accent}AA`,
-                height: imageWindowSize * 0.032,
-                left: imageWindowSize * 0.484,
-                position: "absolute",
-                top: imageWindowSize * 0.41,
-                width: imageWindowSize * 0.032
-              }
-            ]}
-          />
-        </View>
-      </Animated.View>
+        <OrbLayer
+          backgroundColor={visual.accent}
+          height={highlightHeight}
+          opacity={shimmerOpacity}
+          radius={999}
+          top={resolvedSize * 0.23}
+          width={highlightWidth}
+        />
+        <OrbLayer
+          backgroundColor="#FFFFFF"
+          height={Math.max(10, coreSize * 0.52)}
+          opacity={visual.quiet ? 0.82 : 0.92}
+          radius={999}
+          top={resolvedSize * 0.43}
+          width={Math.max(10, coreSize * 0.52)}
+        />
+        <OrbLayer
+          backgroundColor={visual.accent}
+          height={coreSize}
+          opacity={visual.quiet ? 0.88 : 0.98}
+          radius={999}
+          shadowColor={visual.accent}
+          shadowOpacity={0.76}
+          shadowRadius={12}
+          top={resolvedSize * 0.41}
+          width={coreSize}
+        />
+        <OrbSpark accent={visual.accent} left={resolvedSize * 0.24} opacity={0.92} size={6} top={resolvedSize * 0.28} />
+        <OrbSpark accent={visual.ring} left={resolvedSize * 0.7} opacity={0.72} size={5} top={resolvedSize * 0.18} />
+        <OrbSpark accent={visual.core} left={resolvedSize * 0.66} opacity={0.65} size={4} top={resolvedSize * 0.72} />
+        <OrbSpark accent={visual.glow} left={resolvedSize * 0.18} opacity={0.5} size={4} top={resolvedSize * 0.66} />
+      </View>
     </Pressable>
   );
 }

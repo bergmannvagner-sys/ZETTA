@@ -156,6 +156,14 @@ $me = Invoke-Json -Method GET -Path "/users/me" -Headers $userHeaders
 Assert-Equal $me.email $userEmail "USER /users/me email"
 Write-Host "USER registration/login/me: ok"
 
+$consentStatus = Invoke-Json -Method GET -Path "/privacy/consent" -Headers $userHeaders
+Assert-Equal $consentStatus.accepted $false "USER consent accepted"
+$acceptedConsent = Invoke-Json -Method POST -Path "/privacy/consent" -Headers $userHeaders -Body @{
+  policy_version = $consentStatus.policy_version
+}
+Assert-Equal $acceptedConsent.accepted $true "USER consent accepted response"
+Write-Host "privacy consent: ok"
+
 $telecareProviders = Invoke-Json -Method GET -Path "/telecare/providers" -Headers $userHeaders
 Write-Host "telecare providers: ok"
 

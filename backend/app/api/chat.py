@@ -1,6 +1,6 @@
 from typing import Annotated
 
-from fastapi import APIRouter, Depends, HTTPException, Request, WebSocket, WebSocketDisconnect, status
+from fastapi import APIRouter, Depends, File, Form, HTTPException, Request, UploadFile, WebSocket, WebSocketDisconnect, status
 from sqlalchemy import case, or_
 from sqlalchemy.orm import Session
 
@@ -17,13 +17,29 @@ from app.schemas.chat import (
     ChatHistoryResponse,
     ChatMessageRequest,
     ChatMessageResponse,
+    VoiceChatResponse,
 )
 from app.services.audit import write_audit_log
 from app.services.consent import get_active_lgpd_consent
 from app.services.groq import ask_bergmann
 from app.services.rate_limit import client_identifier, enforce_rate_limit, rate_limit_key
+from app.services.voice import transcribe_voice_audio
 
 router = APIRouter(prefix="/chat", tags=["chat"])
+
+MAX_VOICE_AUDIO_BYTES = 15 * 1024 * 1024
+ALLOWED_VOICE_CONTENT_TYPES = {
+    "audio/webm",
+    "audio/ogg",
+    "audio/wav",
+    "audio/x-wav",
+    "audio/mpeg",
+    "audio/mp4",
+    "audio/m4a",
+    "audio/x-m4a",
+    "audio/aac",
+    "application/octet-stream",
+}
 
 
 def _get_or_create_session(db: Session, user: User, session_id: str | None) -> ChatSession:
@@ -160,6 +176,52 @@ async def _store_chat_turn(
         fallback=fallback,
         in_scope=in_scope,
     )
+
+
+@router.post("/voice", response_model=VoiceChatResponse)
+async def voice_message(
+    request: Request,
+    user: Annotated[User, Depends(require_lgpd_consent)],
+    db: Session = Depends(get_db),
+    audio: UploadFile = File(...),
+    session_id: str | None = Form(default=None),
+    language: str | None = Form(default=None),
+) -> VoiceChatResponse:
+    _require_common_chat_user(user)
+    settings = get_settings()
+    enforce_rate_limit(
+        key=rate_limit_key("chat-voice", user.id, client_identifier(request)),
+        max_requests=settings.chat_rate_limit_requests,
+        window_seconds=settings.chat_rate_limit_window_seconds,
+    )
+
+    audio_bytes = await audio.read()
+    if not audio_bytes:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Audio file is empty")
+    if len(audio_bytes) > MAX_VOICE_AUDIO_BYTES:
+        raise HTTPException(status_code=status.HTTP_413_REQUEST_ENTITY_TOO_LARGE, detail="Audio file too large")
+    normalized_content_type = (audio.content_type or "").split(";", 1)[0].strip().lower()
+    if normalized_content_type and normalized_content_type not in ALLOWED_VOICE_CONTENT_TYPES:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Unsupported audio format")
+
+    transcript = await transcribe_voice_audio(
+        audio_bytes=audio_bytes,
+        filename=audio.filename or "voice-message.webm",
+        content_type=normalized_content_type or audio.content_type,
+        language=language,
+    )
+    transcript = transcript.strip()
+    if not transcript:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Could not transcribe audio")
+
+    response = await _store_chat_turn(
+        db=db,
+        user=user,
+        message_text=transcript,
+        session_id=session_id,
+        language=language,
+    )
+    return VoiceChatResponse(**response.model_dump(), transcript=transcript)
 
 
 @router.get("/history", response_model=ChatHistoryResponse)

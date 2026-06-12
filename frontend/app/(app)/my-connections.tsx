@@ -65,7 +65,13 @@ function ConnectionCard({
       </View>
 
       {active ? (
-        <Button label="sharing.revoke" tone="danger" loading={revoking} onPress={() => onRevoke(consent.id)} />
+        <Button
+          label="sharing.revoke"
+          icon="trash-outline"
+          tone="danger"
+          loading={revoking}
+          onPress={() => onRevoke(consent.id)}
+        />
       ) : null}
     </Card>
   );
