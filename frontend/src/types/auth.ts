@@ -102,6 +102,18 @@ export type CommercialPlan = {
   included_features: string[];
   checkout_public_enabled: boolean;
   admin_only_pricing: boolean;
+  is_overridden: boolean;
+};
+
+export type CommercialPlanUpdateRequest = {
+  title?: string | null;
+  description?: string | null;
+  admin_price_placeholder?: string | null;
+  price_brl?: number | null;
+  billing_interval_placeholder?: string | null;
+  included_features?: string[] | null;
+  checkout_public_enabled?: boolean | null;
+  admin_only_pricing?: boolean | null;
 };
 
 export type AuditLogEntry = {
@@ -136,6 +148,7 @@ export type AdminAlertEntry = {
 export type BillingConfig = {
   webhooks_enabled: boolean;
   webhook_secret_configured: boolean;
+  billing_webhook_secret_configured: boolean;
   webhook_path: string;
   signature_header: string;
   supported_providers: string[];
@@ -143,6 +156,23 @@ export type BillingConfig = {
   secret_env_name: string;
   enabled_env_name: string;
   provider_capabilities: PaymentAdapterCapability[];
+  mercado_pago_access_token_configured: boolean;
+  mercado_pago_public_key_configured: boolean;
+  mercado_pago_webhook_secret_configured: boolean;
+  mercado_pago_success_url?: string | null;
+  mercado_pago_pending_url?: string | null;
+  mercado_pago_failure_url?: string | null;
+};
+
+export type BillingConfigUpdateRequest = {
+  billing_webhooks_enabled?: boolean | null;
+  billing_webhook_secret?: string | null;
+  mercado_pago_access_token?: string | null;
+  mercado_pago_public_key?: string | null;
+  mercado_pago_webhook_secret?: string | null;
+  mercado_pago_success_url?: string | null;
+  mercado_pago_pending_url?: string | null;
+  mercado_pago_failure_url?: string | null;
 };
 
 export type BillingWebhookMonitorEntry = {
@@ -169,12 +199,32 @@ export type EmailConfig = {
   smtp_use_tls: boolean;
   smtp_port: number;
   admin_alert_recipient_configured: boolean;
+  smtp_host?: string | null;
+  smtp_username?: string | null;
+  smtp_from_email?: string | null;
+  admin_alert_email?: string | null;
+  password_reset_url?: string | null;
   billing_pending_alerts_auto_enabled: boolean;
   billing_pending_alerts_auto_days: number;
   billing_pending_alerts_auto_interval_hours: number;
   billing_pending_alerts_auto_limit: number;
   password_reset_url_configured: boolean;
   required_env_names: string[];
+};
+
+export type EmailConfigUpdateRequest = {
+  smtp_host?: string | null;
+  smtp_port?: number | null;
+  smtp_username?: string | null;
+  smtp_password?: string | null;
+  smtp_from_email?: string | null;
+  smtp_use_tls?: boolean | null;
+  admin_alert_email?: string | null;
+  password_reset_url?: string | null;
+  billing_pending_alerts_auto_enabled?: boolean | null;
+  billing_pending_alerts_auto_days?: number | null;
+  billing_pending_alerts_auto_interval_hours?: number | null;
+  billing_pending_alerts_auto_limit?: number | null;
 };
 
 export type AdminOperationsSummary = {
