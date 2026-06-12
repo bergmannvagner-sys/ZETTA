@@ -66,7 +66,7 @@ export default function Consent() {
     <Card>
       <AuthGate
         title="Entre para continuar."
-        body="Faça login para aceitar o consentimento e liberar os recursos sensíveis da Bergmann."
+        body="Faça login para aceitar o consentimento e liberar os recursos sensíveis da ZETTA."
         resourceLabel="Consentimento LGPD"
       />
     </Card>
@@ -93,8 +93,8 @@ export default function Consent() {
         ) : null}
 
         <View className="gap-2">
-          <Button label="Ir para a home" onPress={() => router.replace("/(app)/home")} />
-          <Button label="Ver privacidade" tone="soft" onPress={() => router.push("/(app)/privacy" as never)} />
+          <Button label="Ir para a home" icon="home-outline" onPress={() => router.replace("/(app)/home")} />
+          <Button label="Ver privacidade" icon="shield-checkmark-outline" tone="soft" onPress={() => router.push("/(app)/privacy" as never)} />
         </View>
       </View>
     </Card>
@@ -126,6 +126,7 @@ export default function Consent() {
         <View className="gap-2">
           <Button
             label="Aceitar e continuar"
+            icon="checkmark-circle-outline"
             loading={accept.isPending || consent.isLoading}
             disabled={!consent.data?.policy_version || consent.isLoading}
             onPress={() => {
@@ -133,13 +134,13 @@ export default function Consent() {
               if (version) accept.mutate(version);
             }}
           />
-          <Button label="Ver privacidade" tone="soft" onPress={() => router.push("/(app)/privacy" as never)} />
+          <Button label="Ver privacidade" icon="shield-checkmark-outline" tone="soft" onPress={() => router.push("/(app)/privacy" as never)} />
           <View style={{ flexDirection: isWide ? "row" : "column", gap: 12 }}>
             <View style={{ flex: 1 }}>
-              <Button label="Política pública" tone="soft" onPress={() => router.push("/privacy-policy" as never)} />
+              <Button label="Política pública" icon="document-text-outline" tone="soft" onPress={() => router.push("/privacy-policy" as never)} />
             </View>
             <View style={{ flex: 1 }}>
-              <Button label="Termos de uso" tone="soft" onPress={() => router.push("/terms" as never)} />
+              <Button label="Termos de uso" icon="reader-outline" tone="soft" onPress={() => router.push("/terms" as never)} />
             </View>
           </View>
         </View>
@@ -151,7 +152,7 @@ export default function Consent() {
     <Card>
       <View className="gap-3">
         <View className="gap-1">
-          <Text className="text-lg font-semibold text-ink dark:text-white">Como a Bergmann usa seus dados</Text>
+          <Text className="text-lg font-semibold text-ink dark:text-white">Como a ZETTA usa seus dados</Text>
           <Text className="text-sm leading-5 text-muted dark:text-[#D1D5DB]">
             O objetivo é cuidar, registrar com auditoria e permitir que você tenha suporte sem perder controle.
           </Text>
@@ -232,7 +233,7 @@ export default function Consent() {
           kicker={t("auth.gate.kicker")}
           orbState="calm"
           orbSize={orbSize}
-          subtitle="Para usar recursos sensíveis da Bergmann, você precisa autorizar o tratamento dos seus dados emocionais com foco em cuidado, segurança da conta e apoio humano quando necessário."
+          subtitle="Para usar recursos sensíveis da ZETTA, você precisa autorizar o tratamento dos seus dados emocionais com foco em cuidado, segurança da conta e apoio humano quando necessário."
           title="Consentimento LGPD"
         />
 

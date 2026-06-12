@@ -68,7 +68,7 @@ export function paidAccessBlockTitle(user?: AuthUser | null): string {
 export function paidAccessBlockMessage(user?: AuthUser | null): string {
   if (!user) return "Entre novamente para carregar seu plano e status.";
   if (!isPaidRole(user.role)) {
-    return "O usuário comum usa o Bergmann gratuitamente.";
+    return "O usuário comum usa a ZETTA gratuitamente. A IA Bergmann acompanha o cuidado emocional.";
   }
   if (hasPaidAccess(user)) {
     return "Seu acesso comercial está liberado, sempre limitado por consentimento e permissão.";

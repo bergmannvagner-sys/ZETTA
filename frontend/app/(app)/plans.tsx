@@ -40,7 +40,7 @@ function accessTitle(user?: AuthUser | null): string {
 function accessMessage(user?: AuthUser | null): string {
   if (!user) return "Entre novamente para carregar seu plano.";
   if (!isPaidRole(user.role)) {
-    return "O usuário comum usa o Bergmann gratuitamente. Psicólogos, empresas e contas institucionais entram em planos pagos após validação.";
+    return "O usuário comum usa a ZETTA gratuitamente. A IA Bergmann acompanha o cuidado emocional. Psicólogos, empresas e contas institucionais entram em planos pagos após validação.";
   }
   if (user.status === "PENDING_VERIFICATION" || user.subscription_status === "PENDING") {
     return "Seu cadastro está em validação. A aprovação libera o fluxo comercial somente com contrato ativo, sem checkout público no app.";
@@ -69,7 +69,7 @@ export default function Plans() {
         <PageHero
           kicker="Acesso"
           title="Plano e acesso"
-          subtitle="Presença emocional para usuários e acesso validado para profissionais e instituições."
+          subtitle="Presença emocional para usuários, com a IA Bergmann, e acesso validado para profissionais e instituições na ZETTA."
           orbState="calm"
         />
 

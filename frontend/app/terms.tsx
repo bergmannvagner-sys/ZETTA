@@ -68,7 +68,7 @@ export default function Terms() {
         <PageHero
           kicker="Legal"
           title="Termos de Uso"
-          subtitle="Regras públicas de uso da Bergmann, cobrança e limites de responsabilidade."
+          subtitle="Regras públicas de uso da ZETTA, cobrança e limites de responsabilidade. A IA Bergmann continua sendo o assistente emocional da plataforma."
           orbState="calm"
         />
 
@@ -77,9 +77,9 @@ export default function Terms() {
             <View style={{ gap: 12 }}>
               <Text className="text-lg font-semibold text-ink dark:text-white">Resumo do serviço</Text>
               <Text className="text-sm leading-6 text-muted dark:text-[#D1D5DB]">
-                A Bergmann oferece suporte emocional, prevenção de crises, teleatendimento e painéis por perfil.
-                O app não faz diagnóstico, não prescreve medicamento e não substitui atendimento médico, psicológico
-                ou de emergência.
+                A ZETTA oferece suporte emocional, prevenção de crises, teleatendimento e painéis por perfil com a IA
+                Bergmann. A plataforma não faz diagnóstico, não prescreve medicamento e não substitui atendimento
+                médico, psicológico ou de emergência.
               </Text>
               <Text className="text-sm leading-6 text-muted dark:text-[#D1D5DB]">
                 O acesso pago é comercial e depende de contrato externo. O aplicativo só libera recursos conforme
@@ -105,10 +105,15 @@ export default function Terms() {
 
           <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 12 }}>
             <View style={{ flex: 1, minWidth: 220 }}>
-              <Button label="Política de privacidade" tone="soft" onPress={() => router.push("/privacy-policy" as never)} />
+              <Button
+                label="Política de privacidade"
+                icon="shield-checkmark-outline"
+                tone="soft"
+                onPress={() => router.push("/privacy-policy" as never)}
+              />
             </View>
             <View style={{ flex: 1, minWidth: 220 }}>
-              <Button label="Acessar o app" onPress={() => router.push("/(auth)/login" as never)} />
+              <Button label="Acessar o app" icon="log-in-outline" onPress={() => router.push("/(auth)/login" as never)} />
             </View>
           </View>
         </View>

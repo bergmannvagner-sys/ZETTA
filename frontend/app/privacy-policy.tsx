@@ -35,10 +35,10 @@ const sections = [
       "Doações e apoios, quando habilitados, devem seguir canal separado e nunca desbloquear dados sensíveis sem autorização."
     ]
   },
-  {
-    title: "Segurança e retenção",
-    items: [
-      "A Bergmann limita o acesso por papel, consentimento e necessidade operacional.",
+    {
+      title: "Segurança e retenção",
+      items: [
+      "A ZETTA limita o acesso por papel, consentimento e necessidade operacional.",
       "Dados sensíveis devem ser protegidos por controles de acesso, logs auditáveis e políticas de retenção adequadas.",
       "Quando um consentimento é revogado, os recursos sensíveis são interrompidos até novo aceite.",
       "A plataforma não substitui psicólogo, psiquiatra, médico ou emergência."
@@ -70,7 +70,7 @@ export default function PrivacyPolicy() {
         <PageHero
           kicker="Legal"
           title="Política de Privacidade"
-          subtitle="Versão pública da Bergmann para usuários, revisores e parceiros. Este resumo descreve como o app trata dados, pagamento e teleatendimento."
+          subtitle="Versão pública da ZETTA para usuários, revisores e parceiros. Este resumo descreve como a plataforma trata dados, pagamento e teleatendimento, com a IA Bergmann como assistente emocional."
           orbState="calm"
         />
 
@@ -79,8 +79,8 @@ export default function PrivacyPolicy() {
             <View style={{ gap: 12 }}>
               <Text className="text-lg font-semibold text-ink dark:text-white">Resumo operacional</Text>
               <Text className="text-sm leading-6 text-muted dark:text-[#D1D5DB]">
-                A Bergmann trata dados de saúde emocional com consentimento explícito, segregação por perfil e
-                controles de acesso. O usuário comum usa o app gratuitamente. Perfis pagos são contratados fora do
+                A ZETTA trata dados de saúde emocional com consentimento explícito, segregação por perfil e controles
+                de acesso. O usuário comum usa a plataforma gratuitamente. Perfis pagos são contratados fora do
                 mobile e o teleatendimento possui comissão por sessão concluída.
               </Text>
               <Text className="text-sm leading-6 text-muted dark:text-[#D1D5DB]">
@@ -111,10 +111,10 @@ export default function PrivacyPolicy() {
 
           <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 12 }}>
             <View style={{ flex: 1, minWidth: 220 }}>
-              <Button label="Termos de uso" tone="soft" onPress={() => router.push("/terms" as never)} />
+              <Button label="Termos de uso" icon="reader-outline" tone="soft" onPress={() => router.push("/terms" as never)} />
             </View>
             <View style={{ flex: 1, minWidth: 220 }}>
-              <Button label="Acessar o app" onPress={() => router.push("/(auth)/login" as never)} />
+              <Button label="Acessar o app" icon="log-in-outline" onPress={() => router.push("/(auth)/login" as never)} />
             </View>
           </View>
         </View>

@@ -271,24 +271,25 @@ export default function Privacy() {
         <View style={{ gap: 12 }}>
           <View style={{ flexDirection: isWide ? "row" : "column", gap: 12 }}>
             <View style={{ flex: 1 }}>
-              <Button label="Exportar dados" loading={exportData.isPending} onPress={() => exportData.mutate()} />
+              <Button label="Exportar dados" icon="download-outline" loading={exportData.isPending} onPress={() => exportData.mutate()} />
             </View>
             <View style={{ flex: 1 }}>
-              <Button label="Ver consentimento" tone="soft" onPress={() => router.push("/(app)/consent" as never)} />
+              <Button label="Ver consentimento" icon="shield-checkmark-outline" tone="soft" onPress={() => router.push("/(app)/consent" as never)} />
             </View>
           </View>
 
           <View style={{ flexDirection: isWide ? "row" : "column", gap: 12 }}>
             <View style={{ flex: 1 }}>
-              <Button label="Política pública" tone="soft" onPress={() => router.push("/privacy-policy" as never)} />
+              <Button label="Política pública" icon="document-text-outline" tone="soft" onPress={() => router.push("/privacy-policy" as never)} />
             </View>
             <View style={{ flex: 1 }}>
-              <Button label="Termos de uso" tone="soft" onPress={() => router.push("/terms" as never)} />
+              <Button label="Termos de uso" icon="reader-outline" tone="soft" onPress={() => router.push("/terms" as never)} />
             </View>
           </View>
 
           <Button
             label="Revogar consentimento"
+            icon="trash-outline"
             tone="danger"
             loading={revoke.isPending}
             disabled={!accepted}
@@ -393,7 +394,7 @@ export default function Privacy() {
           kicker="Acesso protegido"
           orbState="calm"
           orbSize={orbSize}
-          subtitle="Revise o que a Bergmann registra, exporte seus dados e revogue o consentimento sem perder visibilidade do histórico de auditoria."
+          subtitle="Revise o que a ZETTA registra, exporte seus dados e revogue o consentimento sem perder visibilidade do histórico de auditoria."
           title="Privacidade e controle"
         />
 
