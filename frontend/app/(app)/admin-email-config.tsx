@@ -4,7 +4,7 @@ import { Text, View } from "react-native";
 
 import { PageHero } from "@/components/page-hero";
 import { Screen } from "@/components/screen";
-import { Card, ErrorText } from "@/components/ui";
+import { Badge, Card, ErrorText } from "@/components/ui";
 import { apiRequest } from "@/lib/api";
 import { useAuthStore } from "@/store/auth-store";
 import { BillingPendingAlertStatus, EmailConfig } from "@/types/auth";
@@ -65,6 +65,18 @@ export default function AdminEmailConfig() {
           <ErrorText message={config.error?.message} />
           <ErrorText message={alertStatus.error?.message} />
           {config.isLoading ? <Text className="text-muted dark:text-[#D1D5DB]">Carregando...</Text> : null}
+
+          <Card>
+            <View className="flex-row flex-wrap gap-2">
+              <Badge label="Somente leitura" tone="info" />
+              <Badge label="SMTP via backend" tone="warning" />
+              <Badge label="Sem formulário no app" tone="soft" />
+            </View>
+            <Text className="text-sm leading-6 text-muted dark:text-[#D1D5DB]">
+              A recuperação de senha já depende do backend. Aqui você confere apenas a prontidão operacional e a
+              automação de alertas.
+            </Text>
+          </Card>
 
           {data ? (
             <>

@@ -4,7 +4,7 @@ import { Text, View } from "react-native";
 
 import { PageHero } from "@/components/page-hero";
 import { Screen } from "@/components/screen";
-import { Card, ErrorText } from "@/components/ui";
+import { Badge, Card, ErrorText } from "@/components/ui";
 import { apiRequest } from "@/lib/api";
 import { useAuthStore } from "@/store/auth-store";
 import { BillingConfig, PaymentAdapterCapability } from "@/types/auth";
@@ -54,6 +54,18 @@ export default function AdminBillingConfig() {
         <View style={{ width: "100%", maxWidth: 880, gap: 16 }}>
           <ErrorText message={config.error?.message} />
           {config.isLoading ? <Text className="text-muted dark:text-[#D1D5DB]">Carregando configuração...</Text> : null}
+
+          <Card>
+            <View className="flex-row flex-wrap gap-2">
+              <Badge label="Somente leitura" tone="info" />
+              <Badge label="Depende do backend" tone="warning" />
+              <Badge label="Sem segredos no app" tone="soft" />
+            </View>
+            <Text className="text-sm leading-6 text-muted dark:text-[#D1D5DB]">
+              Esta tela só espelha prontidão operacional. Ajustes reais de variáveis e webhooks devem ser feitos no
+              ambiente seguro do backend ou do Render.
+            </Text>
+          </Card>
 
           {data ? (
             <>

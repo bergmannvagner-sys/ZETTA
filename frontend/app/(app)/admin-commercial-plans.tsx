@@ -4,7 +4,7 @@ import { Text, View } from "react-native";
 
 import { PageHero } from "@/components/page-hero";
 import { Screen } from "@/components/screen";
-import { Card, ErrorText } from "@/components/ui";
+import { Badge, Card, ErrorText } from "@/components/ui";
 import { apiRequest } from "@/lib/api";
 import { planLabel } from "@/lib/billing";
 import { useAuthStore } from "@/store/auth-store";
@@ -44,6 +44,18 @@ export default function AdminCommercialPlans() {
         <View style={{ width: "100%", maxWidth: 880, gap: 16 }}>
           <ErrorText message={plans.error?.message} />
           {plans.isLoading ? <Text className="text-muted dark:text-[#D1D5DB]">Carregando planos...</Text> : null}
+
+          <Card>
+            <View className="flex-row flex-wrap gap-2">
+              <Badge label="Somente leitura" tone="info" />
+              <Badge label="Sem editor no app" tone="warning" />
+              <Badge label="Checkout público desativado" tone="soft" />
+            </View>
+            <Text className="text-sm leading-6 text-muted dark:text-[#D1D5DB]">
+              O backend entrega o catálogo interno e o app apenas exibe o estado atual. Alterações reais de preço e
+              intervalo ainda precisam de endpoints de escrita.
+            </Text>
+          </Card>
 
           <Card>
             <Text className="text-base font-semibold text-ink dark:text-white">Regra do MVP</Text>

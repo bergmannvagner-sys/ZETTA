@@ -3,7 +3,7 @@ import { Text, View } from "react-native";
 
 import { PageHero } from "@/components/page-hero";
 import { Screen } from "@/components/screen";
-import { Button, Card } from "@/components/ui";
+import { Badge, Button, Card } from "@/components/ui";
 import {
   hasPaidAccess,
   isPaidRole,
@@ -75,6 +75,18 @@ export default function Plans() {
 
         <View style={{ width: "100%", maxWidth: 760, gap: 16 }}>
           <Card>
+            <View className="flex-row flex-wrap gap-2">
+              <Badge label="Hub de acesso" tone="info" />
+              <Badge label="Sem checkout público" tone="warning" />
+              <Badge label="Contratação externa" tone="soft" />
+            </View>
+            <Text className="text-sm leading-6 text-muted dark:text-[#D1D5DB]">
+              Esta tela resume status comercial e permissões. Não há compra local aqui; a ativação depende de contrato,
+              validação administrativa e backend.
+            </Text>
+          </Card>
+
+          <Card>
             <Text className="text-xl font-semibold text-ink dark:text-white">{accessTitle(user)}</Text>
             <Text selectable className="text-sm text-muted dark:text-[#D1D5DB]">
               Perfil: {user?.role ?? "Não autenticado"}
@@ -127,19 +139,21 @@ export default function Plans() {
             {paidAccess && user?.role === "PSYCHOLOGIST" ? (
               <Button
                 label="Usuários autorizados"
+                icon="people-outline"
                 onPress={() => router.push("/(app)/professional-users" as never)}
               />
             ) : null}
             {paidAccess && user?.role === "COMPANY" ? (
-              <Button label="Painel NR-1" onPress={() => router.push("/(app)/nr1" as never)} />
+              <Button label="Painel NR-1" icon="shield-checkmark-outline" onPress={() => router.push("/(app)/nr1" as never)} />
             ) : null}
             {paidAccess && user?.role && INSTITUTION_ROLES.has(user.role) ? (
               <Button
                 label="Painel institucional"
+                icon="business-outline"
                 onPress={() => router.push("/(app)/institution-dashboard" as never)}
               />
             ) : null}
-            <Button label="Ver perfil" tone="soft" onPress={() => router.push("/(app)/profile" as never)} />
+            <Button label="Ver perfil" icon="person-outline" tone="soft" onPress={() => router.push("/(app)/profile" as never)} />
           </View>
         </View>
       </View>
