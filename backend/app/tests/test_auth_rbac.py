@@ -1575,6 +1575,13 @@ def test_super_admin_can_manage_paid_subscription_status(monkeypatch) -> None:
     assert config_payload["secret_env_name"] == "MERCADO_PAGO_WEBHOOK_SECRET"
     assert "MERCADO_PAGO" in config_payload["supported_providers"]
     assert "billing_webhook_secret" not in config_payload
+    assert config_payload["billing_webhook_secret_configured"] is False
+    assert config_payload["mercado_pago_access_token_configured"] is False
+    assert config_payload["mercado_pago_public_key_configured"] is False
+    assert config_payload["mercado_pago_webhook_secret_configured"] is False
+    assert "mercado_pago_success_url" in config_payload
+    assert "mercado_pago_pending_url" in config_payload
+    assert "mercado_pago_failure_url" in config_payload
 
     email_config = client.get("/admin/email-config", headers=admin_headers)
     assert email_config.status_code == 200
@@ -1590,6 +1597,11 @@ def test_super_admin_can_manage_paid_subscription_status(monkeypatch) -> None:
         "smtp_use_tls",
         "smtp_port",
         "admin_alert_recipient_configured",
+        "smtp_host",
+        "smtp_username",
+        "smtp_from_email",
+        "admin_alert_email",
+        "password_reset_url",
         "billing_pending_alerts_auto_enabled",
         "billing_pending_alerts_auto_days",
         "billing_pending_alerts_auto_interval_hours",
@@ -1978,7 +1990,7 @@ def test_mercado_pago_webhook_validates_signature_and_updates_subscription(monke
                 full_name="Empresa Mercado Pago",
                 password_hash=hash_password("strongpass123"),
                 role=UserRole.COMPANY,
-                status=AccountStatus.ACTIVE,
+                status=AccountStatus.PENDING_VERIFICATION,
                 subscription_plan="COMPANY_NR1",
                 subscription_status=SubscriptionStatus.PAST_DUE,
                 billing_provider="MERCADO_PAGO",
@@ -2037,6 +2049,7 @@ def test_mercado_pago_webhook_validates_signature_and_updates_subscription(monke
         try:
             company = db.get(User, company_id)
             assert company is not None
+            assert company.status == AccountStatus.ACTIVE
             assert company.subscription_status == SubscriptionStatus.ACTIVE
             assert company.billing_customer_id == "payer-mercado@example.com"
             assert company.billing_subscription_id == "pref-mp-company"

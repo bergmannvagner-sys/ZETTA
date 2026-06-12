@@ -9,6 +9,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from app.api import admin, assistant, auth, billing, chat, connections, emotional, privacy, sos, telecare, users
 from app.core.config import get_settings
 from app.db.session import SessionLocal
+from app.services.admin_config import effective_settings
 from app.services.super_admin import sync_super_admin
 
 logging.basicConfig(
@@ -32,9 +33,8 @@ async def lifespan(_: FastAPI) -> AsyncIterator[None]:
             logger.info("Super admin bootstrap completed for configured email")
         finally:
             db.close()
-    if settings.billing_pending_alerts_auto_enabled:
-        billing_pending_alert_task = asyncio.create_task(periodic_billing_pending_alerts())
-        logger.info("Automated billing pending alerts enabled")
+    billing_pending_alert_task = asyncio.create_task(periodic_billing_pending_alerts())
+    logger.info("Automated billing pending alert monitor started")
     try:
         yield
     finally:
@@ -48,28 +48,32 @@ async def lifespan(_: FastAPI) -> AsyncIterator[None]:
 
 async def periodic_billing_pending_alerts() -> None:
     await asyncio.sleep(5)
-    interval_seconds = max(settings.billing_pending_alerts_auto_interval_hours, 1) * 60 * 60
     while True:
+        interval_seconds = 5 * 60
         try:
-            await asyncio.to_thread(run_billing_pending_alert_once)
+            current_settings = effective_settings()
+            if current_settings.billing_pending_alerts_auto_enabled:
+                await asyncio.to_thread(run_billing_pending_alert_once, current_settings)
+                interval_seconds = max(current_settings.billing_pending_alerts_auto_interval_hours, 1) * 60 * 60
         except Exception as exc:
             logger.error("Automated billing pending alert failed: %s", exc.__class__.__name__)
         await asyncio.sleep(interval_seconds)
 
 
-def run_billing_pending_alert_once() -> None:
+def run_billing_pending_alert_once(current_settings=None) -> None:
+    current_settings = current_settings or effective_settings()
     db = SessionLocal()
     try:
         if admin.recent_scheduled_billing_pending_alert_exists(
             db,
-            interval_hours=settings.billing_pending_alerts_auto_interval_hours,
+            interval_hours=current_settings.billing_pending_alerts_auto_interval_hours,
         ):
             logger.info("Automated billing pending alert skipped: recent scheduled alert exists")
             return
         result = admin.run_billing_pending_alert(
             db,
-            days=settings.billing_pending_alerts_auto_days,
-            limit=settings.billing_pending_alerts_auto_limit,
+            days=current_settings.billing_pending_alerts_auto_days,
+            limit=current_settings.billing_pending_alerts_auto_limit,
             trigger="scheduled",
         )
         logger.info(

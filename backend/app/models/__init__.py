@@ -1,4 +1,5 @@
 from app.models.assistant import CareReminder, CareReminderCategory
+from app.models.admin_config import AdminConfig
 from app.models.billing import BillingWebhookEvent
 from app.models.chat import ChatMessage, ChatSession
 from app.models.emotional import (
@@ -18,6 +19,7 @@ from app.models.user import AccountStatus, User, UserRole
 
 __all__ = [
     "AccountStatus",
+    "AdminConfig",
     "AuditAction",
     "AuditLog",
     "BillingWebhookEvent",

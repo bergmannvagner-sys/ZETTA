@@ -9,7 +9,7 @@ import httpx
 from app.core.config import Settings
 from app.models.user import User
 from app.schemas.billing import BillingWebhookPayload
-from app.services.commercial_plans import commercial_plan_for_role
+from app.services.admin_config import effective_commercial_plan
 
 MERCADO_PAGO_PREFERENCES_URL = "https://api.mercadopago.com/checkout/preferences"
 MERCADO_PAGO_PAYMENTS_URL = "https://api.mercadopago.com/v1/payments/{payment_id}"
@@ -27,7 +27,7 @@ def create_mercado_pago_checkout_preference(
     if not settings.mercado_pago_configured:
         raise MercadoPagoIntegrationError("Mercado Pago credentials are not configured")
 
-    plan = commercial_plan_for_role(user.role)
+    plan = effective_commercial_plan(user.role)
     if not plan:
         raise MercadoPagoIntegrationError("Mercado Pago plan is not configured for this account")
 

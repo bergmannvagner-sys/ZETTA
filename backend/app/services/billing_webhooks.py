@@ -7,9 +7,20 @@ from sqlalchemy.orm import Session
 
 from app.models.billing import BillingWebhookEvent
 from app.models.privacy import AuditAction
-from app.models.user import SubscriptionStatus, User
+from app.models.user import AccountStatus, SubscriptionStatus, User, UserRole
 from app.schemas.billing import BillingWebhookPayload
 from app.services.audit import write_audit_log
+
+
+AUTO_ACTIVATED_PAYMENT_ROLES = {
+    UserRole.PSYCHOLOGIST,
+    UserRole.COMPANY,
+    UserRole.NGO,
+    UserRole.HOSPITAL,
+    UserRole.CLINIC,
+    UserRole.SPONSOR,
+    UserRole.PUBLIC_INSTITUTION,
+}
 
 
 STATUS_MAP: dict[str, SubscriptionStatus] = {
@@ -125,7 +136,10 @@ def apply_billing_webhook(db: Session, payload: BillingWebhookPayload) -> tuple[
         raise ValueError("Unsupported billing status")
 
     previous_status = user.subscription_status
+    previous_account_status = user.status
     user.subscription_status = mapped_status
+    if mapped_status == SubscriptionStatus.ACTIVE and user.role in AUTO_ACTIVATED_PAYMENT_ROLES:
+        user.status = AccountStatus.ACTIVE
     user.billing_provider = payload.provider
     user.billing_customer_id = payload.customer_id or user.billing_customer_id
     user.billing_subscription_id = payload.subscription_id or user.billing_subscription_id
@@ -153,6 +167,9 @@ def apply_billing_webhook(db: Session, payload: BillingWebhookPayload) -> tuple[
             "has_account_reference_id": bool(payload.account_reference_id),
             "previous_status": previous_status.value,
             "subscription_status": user.subscription_status.value,
+            "previous_account_status": previous_account_status.value,
+            "account_status": user.status.value,
+            "auto_activated_account": previous_account_status != user.status,
             "processing_status": "processed",
             "duplicate": False,
         },

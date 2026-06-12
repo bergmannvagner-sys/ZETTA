@@ -6,10 +6,10 @@ from fastapi.responses import HTMLResponse
 from pydantic import ValidationError
 from sqlalchemy.orm import Session
 
-from app.core.config import get_settings
 from app.db.session import get_db
 from app.models.privacy import AuditAction
 from app.schemas.billing import BillingWebhookPayload, BillingWebhookResponse
+from app.services.admin_config import effective_settings
 from app.services.audit import write_audit_log
 from app.services.billing_webhooks import apply_billing_webhook, record_billing_webhook_error, verify_signature
 from app.services.email import send_admin_alert_email
@@ -62,7 +62,7 @@ async def billing_webhook(
     db: Annotated[Session, Depends(get_db)],
     x_bergmann_billing_signature: str | None = Header(default=None),
 ) -> BillingWebhookResponse:
-    settings = get_settings()
+    settings = effective_settings(db)
     if not settings.billing_webhooks_enabled:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Billing webhooks disabled")
     if not settings.billing_webhook_secret:
@@ -135,7 +135,7 @@ async def mercado_pago_webhook(
     x_signature: str | None = Header(default=None),
     x_request_id: str | None = Header(default=None),
 ) -> BillingWebhookResponse:
-    settings = get_settings()
+    settings = effective_settings(db)
     if not settings.billing_webhooks_enabled:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Billing webhooks disabled")
     if not settings.mercado_pago_webhook_secret:
@@ -266,7 +266,7 @@ def send_billing_webhook_failure_alert(
             ]
         ),
     )
-    settings = get_settings()
+    settings = effective_settings(db)
     write_audit_log(
         db,
         action=AuditAction.BILLING_WEBHOOK_PROCESSED,

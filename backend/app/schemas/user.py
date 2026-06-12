@@ -1,6 +1,6 @@
-from typing import Literal
+from typing import Any, Literal
 
-from pydantic import BaseModel, EmailStr, Field
+from pydantic import BaseModel, EmailStr, Field, model_validator
 
 from app.models.user import AccountStatus, SubscriptionPlan, SubscriptionStatus, UserRole
 
@@ -98,6 +98,34 @@ class CommercialPlanResponse(BaseModel):
     included_features: list[str]
     checkout_public_enabled: bool
     admin_only_pricing: bool
+    is_overridden: bool = False
+
+
+class CommercialPlanUpdateRequest(BaseModel):
+    title: str | None = Field(default=None, min_length=1, max_length=120)
+    description: str | None = Field(default=None, min_length=1, max_length=500)
+    admin_price_placeholder: str | None = Field(default=None, min_length=1, max_length=200)
+    price_brl: float | None = Field(default=None, ge=0)
+    billing_interval_placeholder: str | None = Field(default=None, min_length=1, max_length=200)
+    included_features: list[str] | None = None
+    checkout_public_enabled: bool | None = None
+    admin_only_pricing: bool | None = None
+
+    @model_validator(mode="before")
+    @classmethod
+    def normalize_payload(cls, data: Any) -> Any:
+        if not isinstance(data, dict):
+            return data
+        normalized = dict(data)
+        for key in ("title", "description", "admin_price_placeholder", "billing_interval_placeholder"):
+            if key in normalized and isinstance(normalized[key], str):
+                value = normalized[key].strip()
+                normalized[key] = value or None
+        if "included_features" in normalized and isinstance(normalized["included_features"], list):
+            normalized["included_features"] = [
+                str(item).strip() for item in normalized["included_features"] if str(item).strip()
+            ]
+        return normalized
 
 
 class AuditLogResponse(BaseModel):
@@ -151,6 +179,44 @@ class BillingConfigResponse(BaseModel):
     secret_env_name: str
     enabled_env_name: str
     provider_capabilities: list[PaymentAdapterCapabilityResponse]
+    billing_webhook_secret_configured: bool
+    mercado_pago_access_token_configured: bool
+    mercado_pago_public_key_configured: bool
+    mercado_pago_webhook_secret_configured: bool
+    mercado_pago_success_url: str | None = None
+    mercado_pago_pending_url: str | None = None
+    mercado_pago_failure_url: str | None = None
+
+
+class BillingConfigUpdateRequest(BaseModel):
+    billing_webhooks_enabled: bool | None = None
+    billing_webhook_secret: str | None = Field(default=None, max_length=256)
+    mercado_pago_access_token: str | None = Field(default=None, max_length=512)
+    mercado_pago_public_key: str | None = Field(default=None, max_length=512)
+    mercado_pago_webhook_secret: str | None = Field(default=None, max_length=256)
+    mercado_pago_success_url: str | None = Field(default=None, max_length=500)
+    mercado_pago_pending_url: str | None = Field(default=None, max_length=500)
+    mercado_pago_failure_url: str | None = Field(default=None, max_length=500)
+
+    @model_validator(mode="before")
+    @classmethod
+    def normalize_payload(cls, data: Any) -> Any:
+        if not isinstance(data, dict):
+            return data
+        normalized = dict(data)
+        for key in (
+            "billing_webhook_secret",
+            "mercado_pago_access_token",
+            "mercado_pago_public_key",
+            "mercado_pago_webhook_secret",
+            "mercado_pago_success_url",
+            "mercado_pago_pending_url",
+            "mercado_pago_failure_url",
+        ):
+            if key in normalized and isinstance(normalized[key], str):
+                value = normalized[key].strip()
+                normalized[key] = value or None
+        return normalized
 
 
 class BillingWebhookMonitorResponse(BaseModel):
@@ -177,12 +243,51 @@ class EmailConfigResponse(BaseModel):
     smtp_use_tls: bool
     smtp_port: int
     admin_alert_recipient_configured: bool
+    smtp_host: str | None = None
+    smtp_username: str | None = None
+    smtp_from_email: str | None = None
+    admin_alert_email: str | None = None
+    password_reset_url: str | None = None
     billing_pending_alerts_auto_enabled: bool
     billing_pending_alerts_auto_days: int
     billing_pending_alerts_auto_interval_hours: int
     billing_pending_alerts_auto_limit: int
     password_reset_url_configured: bool
     required_env_names: list[str]
+
+
+class EmailConfigUpdateRequest(BaseModel):
+    smtp_host: str | None = Field(default=None, max_length=255)
+    smtp_port: int | None = Field(default=None, ge=1, le=65535)
+    smtp_username: str | None = Field(default=None, max_length=255)
+    smtp_password: str | None = Field(default=None, max_length=256)
+    smtp_from_email: str | None = Field(default=None, max_length=255)
+    smtp_use_tls: bool | None = None
+    admin_alert_email: str | None = Field(default=None, max_length=255)
+    password_reset_url: str | None = Field(default=None, max_length=500)
+    billing_pending_alerts_auto_enabled: bool | None = None
+    billing_pending_alerts_auto_days: int | None = Field(default=None, ge=0, le=365)
+    billing_pending_alerts_auto_interval_hours: int | None = Field(default=None, ge=1, le=168)
+    billing_pending_alerts_auto_limit: int | None = Field(default=None, ge=1, le=500)
+
+    @model_validator(mode="before")
+    @classmethod
+    def normalize_payload(cls, data: Any) -> Any:
+        if not isinstance(data, dict):
+            return data
+        normalized = dict(data)
+        for key in (
+            "smtp_host",
+            "smtp_username",
+            "smtp_password",
+            "smtp_from_email",
+            "admin_alert_email",
+            "password_reset_url",
+        ):
+            if key in normalized and isinstance(normalized[key], str):
+                value = normalized[key].strip()
+                normalized[key] = value or None
+        return normalized
 
 
 class AdminOperationsSummaryResponse(BaseModel):

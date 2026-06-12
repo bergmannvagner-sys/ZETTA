@@ -7,7 +7,6 @@ from sqlalchemy import String, cast, or_
 from sqlalchemy.orm import Session
 
 from app.api.deps import require_roles
-from app.core.config import get_settings
 from app.db.session import get_db
 from app.models.user import AccountStatus, SubscriptionStatus, User, UserRole
 from app.models.privacy import AuditAction, AuditLog
@@ -16,12 +15,15 @@ from app.schemas.user import (
     AdminAlertResponse,
     AuditLogResponse,
     BillingConfigResponse,
+    BillingConfigUpdateRequest,
     BillingPendingAlertResponse,
     BillingPendingAlertStatusResponse,
     BillingReferenceUpdateRequest,
     BillingWebhookMonitorResponse,
     CommercialPlanResponse,
+    CommercialPlanUpdateRequest,
     EmailConfigResponse,
+    EmailConfigUpdateRequest,
     MercadoPagoCheckoutRequest,
     MercadoPagoCheckoutResponse,
     ModerationAccountRequest,
@@ -30,9 +32,17 @@ from app.schemas.user import (
     SubscriptionStatusUpdateRequest,
 )
 from app.services.audit import write_audit_log
+from app.services.admin_config import (
+    delete_commercial_plan_override_by_role,
+    effective_commercial_plan,
+    effective_settings,
+    commercial_plan_override,
+    list_effective_commercial_plans,
+    save_commercial_plan_override,
+    set_admin_config_value,
+)
 from app.services.billing import approval_subscription_status_for_role
 from app.services.billing_webhooks import STATUS_MAP
-from app.services.commercial_plans import commercial_plan_for_role, list_commercial_plans
 from app.services.email import send_admin_alert_email
 from app.services.mercado_pago import MercadoPagoIntegrationError, create_mercado_pago_checkout_preference
 from app.services.payment_adapters import list_payment_adapter_capabilities, validate_billing_reference
@@ -340,17 +350,110 @@ def subscription_account_response(
     )
 
 
-def provider_configured(provider: str) -> bool:
-    settings = get_settings()
+def provider_configured(provider: str, *, settings=None) -> bool:
+    settings = settings or effective_settings()
     if provider == "MERCADO_PAGO":
         return settings.mercado_pago_configured
     return False
 
 
-def provider_production_enabled(provider: str) -> bool:
+def provider_production_enabled(provider: str, *, settings=None) -> bool:
+    settings = settings or effective_settings()
     if provider == "MERCADO_PAGO":
-        return provider_configured(provider)
+        return provider_configured(provider, settings=settings)
     return False
+
+
+def commercial_plan_response(plan, *, is_overridden: bool) -> CommercialPlanResponse:
+    return CommercialPlanResponse(
+        role=plan.role,
+        plan=plan.plan,
+        title=plan.title,
+        description=plan.description,
+        admin_price_placeholder=plan.admin_price_placeholder,
+        price_brl=plan.price_brl,
+        billing_interval_placeholder=plan.billing_interval_placeholder,
+        included_features=list(plan.included_features),
+        checkout_public_enabled=plan.checkout_public_enabled,
+        admin_only_pricing=plan.admin_only_pricing,
+        is_overridden=is_overridden,
+    )
+
+
+def billing_config_response(settings) -> BillingConfigResponse:
+    return BillingConfigResponse(
+        webhooks_enabled=settings.billing_webhooks_enabled,
+        webhook_secret_configured=bool(settings.mercado_pago_webhook_secret),
+        webhook_path="/billing/mercado-pago/webhook",
+        signature_header="x-signature, x-request-id",
+        supported_providers=["MERCADO_PAGO"],
+        status_mapping={external: internal.value for external, internal in sorted(STATUS_MAP.items())},
+        secret_env_name="MERCADO_PAGO_WEBHOOK_SECRET",
+        enabled_env_name="BILLING_WEBHOOKS_ENABLED",
+        provider_capabilities=[
+            {
+                "provider": capability.provider,
+                "checkout_enabled": capability.provider == "MERCADO_PAGO" and provider_configured(capability.provider, settings=settings),
+                "provider_configured": provider_configured(capability.provider, settings=settings),
+                "production_enabled": provider_production_enabled(capability.provider, settings=settings),
+                "webhook_signature_headers": list(capability.webhook_signature_headers),
+                "customer_reference_fields": list(capability.customer_reference_fields),
+                "event_reference_fields": list(capability.event_reference_fields),
+                "required_env_names": list(capability.required_env_names),
+                "activation_checkpoints": list(capability.activation_checkpoints),
+            }
+            for capability in list_payment_adapter_capabilities()
+        ],
+        billing_webhook_secret_configured=bool(settings.billing_webhook_secret),
+        mercado_pago_access_token_configured=bool(settings.mercado_pago_access_token),
+        mercado_pago_public_key_configured=bool(settings.mercado_pago_public_key),
+        mercado_pago_webhook_secret_configured=bool(settings.mercado_pago_webhook_secret),
+        mercado_pago_success_url=settings.mercado_pago_success_url,
+        mercado_pago_pending_url=settings.mercado_pago_pending_url,
+        mercado_pago_failure_url=settings.mercado_pago_failure_url,
+    )
+
+
+def email_config_response(settings) -> EmailConfigResponse:
+    return EmailConfigResponse(
+        smtp_configured=settings.smtp_configured,
+        smtp_host_configured=bool(settings.smtp_host),
+        smtp_username_configured=bool(settings.smtp_username),
+        smtp_password_configured=bool(settings.smtp_password),
+        smtp_from_email_configured=bool(settings.smtp_from_email),
+        smtp_use_tls=settings.smtp_use_tls,
+        smtp_port=settings.smtp_port,
+        admin_alert_recipient_configured=bool(settings.admin_alert_recipient),
+        smtp_host=settings.smtp_host,
+        smtp_username=settings.smtp_username,
+        smtp_from_email=settings.smtp_from_email,
+        admin_alert_email=settings.admin_alert_email,
+        password_reset_url=settings.password_reset_url,
+        billing_pending_alerts_auto_enabled=settings.billing_pending_alerts_auto_enabled,
+        billing_pending_alerts_auto_days=settings.billing_pending_alerts_auto_days,
+        billing_pending_alerts_auto_interval_hours=settings.billing_pending_alerts_auto_interval_hours,
+        billing_pending_alerts_auto_limit=settings.billing_pending_alerts_auto_limit,
+        password_reset_url_configured=bool(settings.password_reset_url),
+        required_env_names=[
+            "SMTP_HOST",
+            "SMTP_PORT",
+            "SMTP_USERNAME",
+            "SMTP_PASSWORD",
+            "SMTP_FROM_EMAIL",
+            "SMTP_USE_TLS",
+            "ADMIN_ALERT_EMAIL",
+            "BILLING_PENDING_ALERTS_AUTO_ENABLED",
+            "BILLING_PENDING_ALERTS_AUTO_DAYS",
+            "BILLING_PENDING_ALERTS_AUTO_INTERVAL_HOURS",
+            "BILLING_PENDING_ALERTS_AUTO_LIMIT",
+            "PASSWORD_RESET_URL",
+        ],
+    )
+
+
+def update_admin_config_fields(payload: object, field_names: tuple[str, ...]) -> list[str]:
+    model_fields_set = getattr(payload, "model_fields_set", set())
+    return [field for field in field_names if field in model_fields_set]
 
 
 def current_billing_pending_accounts(db: Session) -> list[SubscriptionAccountResponse]:
@@ -547,7 +650,7 @@ def run_billing_pending_alert(
             old_pending.append(response)
 
     alert_accounts = old_pending[:limit]
-    settings = get_settings()
+    settings = effective_settings(db)
     email_sent = False
     if alert_accounts:
         email_sent = send_admin_alert_email(
@@ -644,7 +747,7 @@ def billing_pending_alert_status(
     _: Annotated[User, Depends(require_roles(UserRole.SUPER_ADMIN))],
     db: Session = Depends(get_db),
 ) -> BillingPendingAlertStatusResponse:
-    settings = get_settings()
+    settings = effective_settings(db)
     latest_alert = latest_scheduled_billing_pending_alert(db)
     metadata = parse_audit_metadata(latest_alert.metadata_json if latest_alert else None)
     last_scheduled_alert_at = latest_alert.created_at.isoformat() if latest_alert else None
@@ -679,7 +782,7 @@ def operations_summary(
     _: Annotated[User, Depends(require_roles(UserRole.SUPER_ADMIN))],
     db: Session = Depends(get_db),
 ) -> AdminOperationsSummaryResponse:
-    settings = get_settings()
+    settings = effective_settings(db)
     pending_accounts = current_billing_pending_accounts(db)
 
     webhook_logs = (
@@ -720,7 +823,7 @@ def operations_summary(
         last_alert_error_at=alert_errors[0].created_at if alert_errors else None,
         billing_alert_auto_enabled=settings.billing_pending_alerts_auto_enabled,
         billing_last_scheduled_alert_at=latest_alert.created_at.isoformat() if latest_alert else None,
-        mercado_pago_ready=provider_configured("MERCADO_PAGO"),
+        mercado_pago_ready=provider_configured("MERCADO_PAGO", settings=settings),
         billing_webhooks_enabled=settings.billing_webhooks_enabled,
         smtp_configured=settings.smtp_configured,
         admin_alert_recipient_configured=bool(settings.admin_alert_recipient),
@@ -794,53 +897,104 @@ def moderated_accounts(
 @router.get("/commercial-plans", response_model=list[CommercialPlanResponse])
 def commercial_plans(
     _: Annotated[User, Depends(require_roles(UserRole.SUPER_ADMIN))],
+    db: Session = Depends(get_db),
 ) -> list[CommercialPlanResponse]:
-    return [
-        CommercialPlanResponse(
-            role=plan.role,
-            plan=plan.plan,
-            title=plan.title,
-            description=plan.description,
-            admin_price_placeholder=plan.admin_price_placeholder,
-            price_brl=plan.price_brl,
-            billing_interval_placeholder=plan.billing_interval_placeholder,
-            included_features=list(plan.included_features),
-            checkout_public_enabled=plan.checkout_public_enabled,
-            admin_only_pricing=plan.admin_only_pricing,
+    return [commercial_plan_response(plan, is_overridden=is_overridden) for plan, is_overridden in list_effective_commercial_plans(db)]
+
+
+@router.patch("/commercial-plans/{role}", response_model=CommercialPlanResponse)
+def update_commercial_plan(
+    role: UserRole,
+    payload: CommercialPlanUpdateRequest,
+    admin: Annotated[User, Depends(require_roles(UserRole.SUPER_ADMIN))],
+    db: Session = Depends(get_db),
+) -> CommercialPlanResponse:
+    plan = effective_commercial_plan(role, db=db)
+    if plan is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Commercial plan not found")
+
+    current_override = commercial_plan_override(role, db=db) or {}
+    updated_override = dict(current_override)
+    updated_fields: list[str] = []
+    for field in ("title", "description", "admin_price_placeholder", "price_brl", "billing_interval_placeholder", "included_features", "checkout_public_enabled", "admin_only_pricing"):
+        if field not in payload.model_fields_set:
+            continue
+        value = getattr(payload, field)
+        updated_fields.append(field)
+        if value is None:
+            updated_override.pop(field, None)
+        else:
+            updated_override[field] = value
+
+    if updated_fields:
+        if updated_override:
+            save_commercial_plan_override(db, role, updated_override)
+        else:
+            delete_commercial_plan_override_by_role(db, role)
+
+        write_audit_log(
+            db,
+            action=AuditAction.ADMIN_CONFIG_UPDATED,
+            actor_user_id=admin.id,
+            resource_type="commercial_plan",
+            resource_id=role.value,
+            metadata={
+                "role": role.value,
+                "updated_fields": updated_fields,
+                "override_enabled": bool(updated_override),
+            },
         )
-        for plan in list_commercial_plans()
-    ]
+        db.commit()
+        plan = effective_commercial_plan(role, db=db) or plan
+
+    return commercial_plan_response(plan, is_overridden=bool(updated_override))
 
 
 @router.get("/billing-config", response_model=BillingConfigResponse)
 def billing_config(
     _: Annotated[User, Depends(require_roles(UserRole.SUPER_ADMIN))],
+    db: Session = Depends(get_db),
 ) -> BillingConfigResponse:
-    settings = get_settings()
-    return BillingConfigResponse(
-        webhooks_enabled=settings.billing_webhooks_enabled,
-        webhook_secret_configured=bool(settings.mercado_pago_webhook_secret),
-        webhook_path="/billing/mercado-pago/webhook",
-        signature_header="x-signature, x-request-id",
-        supported_providers=["MERCADO_PAGO"],
-        status_mapping={external: internal.value for external, internal in sorted(STATUS_MAP.items())},
-        secret_env_name="MERCADO_PAGO_WEBHOOK_SECRET",
-        enabled_env_name="BILLING_WEBHOOKS_ENABLED",
-        provider_capabilities=[
-            {
-                "provider": capability.provider,
-                "checkout_enabled": capability.provider == "MERCADO_PAGO" and provider_configured(capability.provider),
-                "provider_configured": provider_configured(capability.provider),
-                "production_enabled": provider_production_enabled(capability.provider),
-                "webhook_signature_headers": list(capability.webhook_signature_headers),
-                "customer_reference_fields": list(capability.customer_reference_fields),
-                "event_reference_fields": list(capability.event_reference_fields),
-                "required_env_names": list(capability.required_env_names),
-                "activation_checkpoints": list(capability.activation_checkpoints),
-            }
-            for capability in list_payment_adapter_capabilities()
-        ],
+    return billing_config_response(effective_settings(db))
+
+
+@router.patch("/billing-config", response_model=BillingConfigResponse)
+def update_billing_config(
+    payload: BillingConfigUpdateRequest,
+    admin: Annotated[User, Depends(require_roles(UserRole.SUPER_ADMIN))],
+    db: Session = Depends(get_db),
+) -> BillingConfigResponse:
+    updated_fields = update_admin_config_fields(
+        payload,
+        (
+            "billing_webhooks_enabled",
+            "billing_webhook_secret",
+            "mercado_pago_access_token",
+            "mercado_pago_public_key",
+            "mercado_pago_webhook_secret",
+            "mercado_pago_success_url",
+            "mercado_pago_pending_url",
+            "mercado_pago_failure_url",
+        ),
     )
+    if updated_fields:
+        for field in updated_fields:
+            set_admin_config_value(db, field, getattr(payload, field))
+        write_audit_log(
+            db,
+            action=AuditAction.ADMIN_CONFIG_UPDATED,
+            actor_user_id=admin.id,
+            resource_type="billing_config",
+            resource_id="billing_config",
+            metadata={
+                "updated_fields": updated_fields,
+                "billing_webhooks_enabled": payload.billing_webhooks_enabled,
+                "mercado_pago_public_key_configured": payload.mercado_pago_public_key is not None,
+                "mercado_pago_webhook_secret_configured": payload.mercado_pago_webhook_secret is not None,
+            },
+        )
+        db.commit()
+    return billing_config_response(effective_settings(db))
 
 
 @router.get("/billing-webhooks", response_model=list[BillingWebhookMonitorResponse])
@@ -885,37 +1039,54 @@ def billing_webhooks(
 @router.get("/email-config", response_model=EmailConfigResponse)
 def email_config(
     _: Annotated[User, Depends(require_roles(UserRole.SUPER_ADMIN))],
+    db: Session = Depends(get_db),
 ) -> EmailConfigResponse:
-    settings = get_settings()
-    return EmailConfigResponse(
-        smtp_configured=settings.smtp_configured,
-        smtp_host_configured=bool(settings.smtp_host),
-        smtp_username_configured=bool(settings.smtp_username),
-        smtp_password_configured=bool(settings.smtp_password),
-        smtp_from_email_configured=bool(settings.smtp_from_email),
-        smtp_use_tls=settings.smtp_use_tls,
-        smtp_port=settings.smtp_port,
-        admin_alert_recipient_configured=bool(settings.admin_alert_recipient),
-        billing_pending_alerts_auto_enabled=settings.billing_pending_alerts_auto_enabled,
-        billing_pending_alerts_auto_days=settings.billing_pending_alerts_auto_days,
-        billing_pending_alerts_auto_interval_hours=settings.billing_pending_alerts_auto_interval_hours,
-        billing_pending_alerts_auto_limit=settings.billing_pending_alerts_auto_limit,
-        password_reset_url_configured=bool(settings.password_reset_url),
-        required_env_names=[
-            "SMTP_HOST",
-            "SMTP_PORT",
-            "SMTP_USERNAME",
-            "SMTP_PASSWORD",
-            "SMTP_FROM_EMAIL",
-            "SMTP_USE_TLS",
-            "ADMIN_ALERT_EMAIL",
-            "BILLING_PENDING_ALERTS_AUTO_ENABLED",
-            "BILLING_PENDING_ALERTS_AUTO_DAYS",
-            "BILLING_PENDING_ALERTS_AUTO_INTERVAL_HOURS",
-            "BILLING_PENDING_ALERTS_AUTO_LIMIT",
-            "PASSWORD_RESET_URL",
-        ],
+    return email_config_response(effective_settings(db))
+
+
+@router.patch("/email-config", response_model=EmailConfigResponse)
+def update_email_config(
+    payload: EmailConfigUpdateRequest,
+    admin: Annotated[User, Depends(require_roles(UserRole.SUPER_ADMIN))],
+    db: Session = Depends(get_db),
+) -> EmailConfigResponse:
+    updated_fields = update_admin_config_fields(
+        payload,
+        (
+            "smtp_host",
+            "smtp_port",
+            "smtp_username",
+            "smtp_password",
+            "smtp_from_email",
+            "smtp_use_tls",
+            "admin_alert_email",
+            "password_reset_url",
+            "billing_pending_alerts_auto_enabled",
+            "billing_pending_alerts_auto_days",
+            "billing_pending_alerts_auto_interval_hours",
+            "billing_pending_alerts_auto_limit",
+        ),
     )
+    if updated_fields:
+        for field in updated_fields:
+            set_admin_config_value(db, field, getattr(payload, field))
+        write_audit_log(
+            db,
+            action=AuditAction.ADMIN_CONFIG_UPDATED,
+            actor_user_id=admin.id,
+            resource_type="email_config",
+            resource_id="email_config",
+            metadata={
+                "updated_fields": updated_fields,
+                "smtp_host_configured": payload.smtp_host is not None,
+                "smtp_username_configured": payload.smtp_username is not None,
+                "smtp_password_configured": payload.smtp_password is not None,
+                "smtp_from_email_configured": payload.smtp_from_email is not None,
+                "admin_alert_email_configured": payload.admin_alert_email is not None,
+            },
+        )
+        db.commit()
+    return email_config_response(effective_settings(db))
 
 
 @router.get("/audit-logs", response_model=list[AuditLogResponse])
@@ -1066,13 +1237,14 @@ def create_mercado_pago_checkout(
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Account cannot receive checkout")
     if user.status != AccountStatus.ACTIVE:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Account must be approved before checkout")
-    plan = commercial_plan_for_role(user.role)
+    settings = effective_settings(db)
+    plan = effective_commercial_plan(user.role, db=db)
     if not plan:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="No commercial plan for role")
 
     try:
         checkout = create_mercado_pago_checkout_preference(
-            settings=get_settings(),
+            settings=settings,
             user=user,
         )
     except MercadoPagoIntegrationError as exc:
@@ -1095,7 +1267,7 @@ def create_mercado_pago_checkout(
             "provider": "MERCADO_PAGO",
             "preference_id": checkout["preference_id"],
             "price_brl": checkout["price_brl"],
-            "production": provider_production_enabled("MERCADO_PAGO"),
+            "production": provider_production_enabled("MERCADO_PAGO", settings=settings),
             "checkout_created": True,
         },
     )

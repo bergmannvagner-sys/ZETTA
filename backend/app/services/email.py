@@ -3,19 +3,19 @@ import smtplib
 from email.message import EmailMessage
 from urllib.parse import urlencode
 
-from app.core.config import get_settings
+from app.services.admin_config import effective_settings
 
 logger = logging.getLogger(__name__)
 
 
 def build_password_reset_link(token: str) -> str:
-    settings = get_settings()
+    settings = effective_settings()
     separator = "&" if "?" in settings.password_reset_url else "?"
     return f"{settings.password_reset_url}{separator}{urlencode({'token': token})}"
 
 
 def send_email(to_email: str, *, subject: str, body: str, context: str) -> bool:
-    settings = get_settings()
+    settings = effective_settings()
     if not settings.smtp_configured:
         logger.warning("%s email not sent: SMTP is not configured", context)
         return False
@@ -58,7 +58,7 @@ def send_password_reset_email(to_email: str, token: str) -> bool:
 
 
 def send_admin_alert_email(*, subject: str, body: str) -> bool:
-    settings = get_settings()
+    settings = effective_settings()
     recipient = settings.admin_alert_recipient
     if not recipient:
         logger.warning("Admin alert email not sent: admin alert recipient is not configured")
