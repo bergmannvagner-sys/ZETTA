@@ -34,8 +34,11 @@ function isLocalIpHttpUrl(value: string): boolean {
   );
 }
 
+// Keep module import safe. We validate the configured URL when a request is made.
+export const API_URL = normalizeApiUrl(process.env.EXPO_PUBLIC_API_URL ?? extra?.apiUrl);
+
 function resolveApiUrl(): string {
-  const apiUrl = normalizeApiUrl(process.env.EXPO_PUBLIC_API_URL ?? extra?.apiUrl);
+  const apiUrl = API_URL;
 
   if (!apiUrl) {
     throw new Error(MISSING_API_URL_MESSAGE);
@@ -55,8 +58,6 @@ function resolveApiUrl(): string {
 
   return apiUrl;
 }
-
-export const API_URL = resolveApiUrl();
 
 export function getWebSocketUrl(path: string): string {
   const baseUrl = resolveApiUrl();
@@ -167,6 +168,40 @@ function isMissingTokenMessage(data: unknown): boolean {
   return detail === "Missing token" || detail === "Not authenticated";
 }
 
+async function handleApiResponse<T>(
+  response: Response,
+  endpoint: string,
+  shouldUseAuth: boolean,
+  token: string | null
+): Promise<T> {
+  const text = await response.text();
+  const data = parseResponseBody(text);
+  if (!response.ok) {
+    const validation = getValidationIssues(data);
+    if (__DEV__) {
+      console.warn("[api] response error", {
+        endpoint,
+        status: response.status,
+        validation
+      });
+    }
+    if (response.status === 401 && shouldUseAuth) {
+      if (token && isInvalidTokenMessage(data)) {
+        await useAuthStore.getState().clearSession();
+        throw new ApiError(EXPIRED_SESSION_MESSAGE, response.status, validation);
+      }
+      if (!token || isMissingTokenMessage(data)) {
+        throw new ApiError(AUTH_REQUIRED_MESSAGE, response.status, validation);
+      }
+    }
+    if (response.status === 402) {
+      throw new ApiError(PAID_PLAN_REQUIRED_MESSAGE, response.status, validation);
+    }
+    throw new ApiError(getApiErrorMessage(data), response.status, validation);
+  }
+  return data as T;
+}
+
 export async function apiRequest<T>(path: string, options: ApiOptions = {}): Promise<T> {
   const baseUrl = resolveApiUrl();
   const endpoint = `${baseUrl}${path.startsWith("/") ? path : `/${path}`}`;
@@ -186,35 +221,49 @@ export async function apiRequest<T>(path: string, options: ApiOptions = {}): Pro
 
   try {
     const response = await fetch(endpoint, { ...options, headers });
-    const text = await response.text();
-    const data = parseResponseBody(text);
-    if (!response.ok) {
-      const validation = getValidationIssues(data);
-      if (__DEV__) {
-        console.warn("[api] response error", {
-          endpoint,
-          status: response.status,
-          validation
-        });
-      }
-      if (response.status === 401 && shouldUseAuth) {
-        if (token && isInvalidTokenMessage(data)) {
-          await useAuthStore.getState().clearSession();
-          throw new ApiError(EXPIRED_SESSION_MESSAGE, response.status, validation);
-        }
-        if (!token || isMissingTokenMessage(data)) {
-          throw new ApiError(AUTH_REQUIRED_MESSAGE, response.status, validation);
-        }
-      }
-      if (response.status === 402) {
-        throw new ApiError(PAID_PLAN_REQUIRED_MESSAGE, response.status, validation);
-      }
-      throw new ApiError(getApiErrorMessage(data), response.status, validation);
-    }
-    return data as T;
+    return await handleApiResponse<T>(response, endpoint, shouldUseAuth, token);
   } catch (error) {
     if (__DEV__) {
       console.warn("[api] request failed", {
+        apiUrl: baseUrl,
+        endpoint,
+        error: error instanceof Error ? error.message : "Unknown error"
+      });
+    }
+    const isNetworkFailure =
+      error instanceof Error && (error.message === "Network request failed" || /failed to fetch/i.test(error.message));
+    if (error instanceof Error && !isNetworkFailure) {
+      throw error;
+    }
+    throw new ApiError(NETWORK_ERROR_MESSAGE, 0);
+  }
+}
+
+export async function apiUploadRequest<T>(path: string, body: FormData, options: ApiOptions = {}): Promise<T> {
+  const baseUrl = resolveApiUrl();
+  const endpoint = `${baseUrl}${path.startsWith("/") ? path : `/${path}`}`;
+  const headers = new Headers(options.headers);
+  const shouldUseAuth = options.auth !== false;
+  const token = useAuthStore.getState().accessToken;
+  if (shouldUseAuth && token) {
+    headers.set("Authorization", `Bearer ${token}`);
+  }
+
+  if (__DEV__) {
+    console.info("[api] upload request", { apiUrl: baseUrl, endpoint, method: options.method ?? "POST" });
+  }
+
+  try {
+    const response = await fetch(endpoint, {
+      ...options,
+      method: options.method ?? "POST",
+      body,
+      headers
+    });
+    return await handleApiResponse<T>(response, endpoint, shouldUseAuth, token);
+  } catch (error) {
+    if (__DEV__) {
+      console.warn("[api] upload request failed", {
         apiUrl: baseUrl,
         endpoint,
         error: error instanceof Error ? error.message : "Unknown error"
