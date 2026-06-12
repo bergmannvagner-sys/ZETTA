@@ -10,6 +10,7 @@ import { requestPasswordReset } from "@/lib/auth";
 
 export default function ForgotPassword() {
   const [email, setEmail] = useState("");
+  const showDevResetToken = __DEV__;
 
   const mutation = useMutation({
     mutationFn: requestPasswordReset
@@ -34,7 +35,7 @@ export default function ForgotPassword() {
                 <Text className="text-xs leading-5 text-muted dark:text-[#D1D5DB]">
                   Verifique também spam ou lixo eletrônico. O código expira em 30 minutos.
                 </Text>
-                {mutation.data.reset_token ? (
+                {showDevResetToken && mutation.data.reset_token ? (
                   <View className="gap-3">
                     <Text selectable className="text-xs leading-5 text-muted dark:text-[#D1D5DB]">
                       Código de desenvolvimento: {mutation.data.reset_token}
@@ -50,7 +51,12 @@ export default function ForgotPassword() {
                       }
                     />
                   </View>
-                ) : null}
+                ) : (
+                  <Text className="text-xs leading-5 text-muted dark:text-[#D1D5DB]">
+                    Em build normal, siga as instruções enviadas por e-mail. O token de desenvolvimento aparece
+                    apenas em ambiente local.
+                  </Text>
+                )}
               </View>
             ) : null}
             <Button
