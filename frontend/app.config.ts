@@ -37,16 +37,16 @@ if (isProduction && !apiUrl) {
 }
 
 const config: ExpoConfig = {
-  name: "Bergmann",
+  name: "ZETTA",
   slug: "zetta-bergmann",
   scheme: "meuapp",
   version: "0.1.0",
   orientation: "portrait",
   icon: "./assets/icon.png",
-  userInterfaceStyle: "light",
-  newArchEnabled: true,
+  userInterfaceStyle: "dark",
+  newArchEnabled: false,
   splash: {
-    backgroundColor: "#1A1030",
+    backgroundColor: "#020204",
     image: "./assets/splash-icon.png",
     resizeMode: "contain"
   },
@@ -66,7 +66,7 @@ const config: ExpoConfig = {
     package: "com.zetta.bergmann",
     permissions: ["android.permission.CAMERA", "android.permission.RECORD_AUDIO"],
     adaptiveIcon: {
-      backgroundColor: "#1A1030",
+      backgroundColor: "#020204",
       foregroundImage: "./assets/adaptive-icon.png"
     },
     config: googleMapsApiKey
@@ -80,6 +80,7 @@ const config: ExpoConfig = {
   plugins: [
     "expo-router",
     "expo-secure-store",
+    "expo-font",
     "expo-audio",
     "expo-asset",
     "expo-localization",
