@@ -92,6 +92,18 @@ export default function Telecare() {
           orbSize={orbSize}
         />
 
+        <Card>
+          <View className="flex-row flex-wrap gap-2">
+            <Badge label="Depende de backend" tone="info" />
+            <Badge label="Vídeo via Daily" tone="warning" />
+            <Badge label="Sessão rastreável" tone="success" />
+          </View>
+          <Text className="text-base leading-6 text-muted dark:text-[#D1D5DB]">
+            A consulta nasce no backend, usa Daily para o vídeo e mantém o repasse e o status da sessão visíveis.
+            Não é um fluxo final isolado do restante do produto.
+          </Text>
+        </Card>
+
         {isClinicalProvider && !paidAccess ? (
           <View style={{ maxWidth: 760, width: "100%" }}>
             <PaidAccessGate user={user} resourceLabel={t("telecare.paidGate")} />
@@ -226,6 +238,7 @@ function UserTelecarePanel({
               />
               <Button
                 label="telecare.request"
+                icon="send-outline"
                 loading={requesting}
                 onPress={() => requestProvider(provider)}
               />
@@ -275,21 +288,42 @@ function ProfessionalTelecarePanel({
           <SessionSummary session={session} />
           <View className="gap-2">
             {session.status === "ACCEPTED" || session.status === "IN_SESSION" ? (
-              <Button label="telecare.joinRoom" onPress={() => openSession(session.id)} />
-            ) : null}
-            {session.status === "REQUESTED" ? (
-              <Button label="telecare.accept" loading={updating} onPress={() => updateStatus(session.id, "ACCEPTED")} />
-            ) : null}
-            {session.status === "ACCEPTED" ? (
-              <Button label="telecare.start" loading={updating} onPress={() => updateStatus(session.id, "IN_SESSION")} />
-            ) : null}
-            {session.status === "IN_SESSION" ? (
-              <Button label="telecare.finish" loading={updating} onPress={() => updateStatus(session.id, "COMPLETED")} />
-            ) : null}
-            {session.status !== "COMPLETED" && session.status !== "CANCELED" ? (
-              <Button label="telecare.cancel" tone="soft" loading={updating} onPress={() => updateStatus(session.id, "CANCELED")} />
-            ) : null}
-          </View>
+              <Button label="telecare.joinRoom" icon="videocam-outline" onPress={() => openSession(session.id)} />
+              ) : null}
+              {session.status === "REQUESTED" ? (
+              <Button
+                label="telecare.accept"
+                icon="checkmark-circle-outline"
+                loading={updating}
+                onPress={() => updateStatus(session.id, "ACCEPTED")}
+              />
+              ) : null}
+              {session.status === "ACCEPTED" ? (
+              <Button
+                label="telecare.start"
+                icon="play-circle-outline"
+                loading={updating}
+                onPress={() => updateStatus(session.id, "IN_SESSION")}
+              />
+              ) : null}
+              {session.status === "IN_SESSION" ? (
+              <Button
+                label="telecare.finish"
+                icon="checkmark-done-outline"
+                loading={updating}
+                onPress={() => updateStatus(session.id, "COMPLETED")}
+              />
+              ) : null}
+              {session.status !== "COMPLETED" && session.status !== "CANCELED" ? (
+              <Button
+                label="telecare.cancel"
+                icon="close-outline"
+                tone="soft"
+                loading={updating}
+                onPress={() => updateStatus(session.id, "CANCELED")}
+              />
+              ) : null}
+            </View>
         </Card>
       ))}
       {sessions.length === 0 ? (
@@ -323,12 +357,18 @@ function SessionList({
         <Card key={session.id}>
           <SessionSummary session={session} />
           {session.status === "ACCEPTED" || session.status === "IN_SESSION" ? (
-            <Button label="telecare.joinRoom" onPress={() => onOpen(session.id)} />
-          ) : null}
-          {session.status !== "COMPLETED" && session.status !== "CANCELED" ? (
-            <Button label="telecare.cancel" tone="soft" loading={canceling} onPress={() => onCancel(session.id)} />
-          ) : null}
-        </Card>
+            <Button label="telecare.joinRoom" icon="videocam-outline" onPress={() => onOpen(session.id)} />
+            ) : null}
+            {session.status !== "COMPLETED" && session.status !== "CANCELED" ? (
+            <Button
+              label="telecare.cancel"
+              icon="close-outline"
+              tone="soft"
+              loading={canceling}
+              onPress={() => onCancel(session.id)}
+            />
+            ) : null}
+          </Card>
       ))}
       {sessions.length === 0 ? <EmptyState title="telecare.noSessionsTitle" body={emptyBody} /> : null}
     </View>
