@@ -50,6 +50,13 @@ def test_public_openapi_contract_matches_mobile_mvp() -> None:
     assert "/telecare/sessions/{session_id}/join" in paths
     assert "/telecare/sessions/{session_id}/status" in paths
     assert "/nr1/report" in paths
+    assert "/nr1/workspace" in paths
+    assert "/nr1/risks" in paths
+    assert "/nr1/risks/{risk_id}" in paths
+    assert "/nr1/actions" in paths
+    assert "/nr1/actions/{action_id}" in paths
+    assert "/nr1/trainings" in paths
+    assert "/nr1/trainings/{training_id}" in paths
     assert "/institution/dashboard" in paths
     assert "/assistant/reminders" in paths
     assert "/connections/me" in paths

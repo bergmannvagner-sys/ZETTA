@@ -5,7 +5,19 @@ from sqlalchemy import engine_from_config, pool
 
 from app.core.config import get_settings
 from app.db.base import Base
-from app.models import AuditLog, ChatMessage, ChatSession, ConsentRecord, RefreshToken, SOSEvent, User
+from app.models import (
+    AuditLog,
+    ChatMessage,
+    ChatSession,
+    ConsentRecord,
+    NR1ActionItem,
+    NR1RiskItem,
+    NR1TrainingItem,
+    NR1Workspace,
+    RefreshToken,
+    SOSEvent,
+    User,
+)
 
 config = context.config
 if config.config_file_name is not None:

@@ -11,6 +11,18 @@ from app.models.emotional import (
     SharingCategory,
     UserSharingConsent,
 )
+from app.models.nr1 import (
+    NR1ActionItem,
+    NR1ActionStatus,
+    NR1RiskCategory,
+    NR1RiskItem,
+    NR1RiskSource,
+    NR1RiskStatus,
+    NR1TrainingItem,
+    NR1TrainingStatus,
+    NR1Workspace,
+    NR1WorkspaceStatus,
+)
 from app.models.privacy import AuditAction, AuditLog, ConsentRecord, ConsentType
 from app.models.sos import SOSEvent
 from app.models.telecare import TelecareSession
@@ -33,6 +45,16 @@ __all__ = [
     "EmotionalReport",
     "JournalEntry",
     "NR1Report",
+    "NR1ActionItem",
+    "NR1ActionStatus",
+    "NR1RiskCategory",
+    "NR1RiskItem",
+    "NR1RiskSource",
+    "NR1RiskStatus",
+    "NR1TrainingItem",
+    "NR1TrainingStatus",
+    "NR1Workspace",
+    "NR1WorkspaceStatus",
     "ReportAudience",
     "RefreshToken",
     "PasswordResetToken",

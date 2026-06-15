@@ -89,4 +89,5 @@ class User(Base):
         back_populates="owner",
         cascade="all, delete-orphan",
     )
+    nr1_workspace = relationship("NR1Workspace", back_populates="company", cascade="all, delete-orphan", uselist=False)
     care_reminders = relationship("CareReminder", back_populates="user", cascade="all, delete-orphan")
