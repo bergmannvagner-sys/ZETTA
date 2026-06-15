@@ -1,6 +1,6 @@
 import "../global.css";
 
-import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { QueryClientProvider } from "@tanstack/react-query";
 import { StatusBar } from "expo-status-bar";
 import { Stack } from "expo-router";
 import { useEffect } from "react";
@@ -10,9 +10,8 @@ import { SafeAreaProvider } from "react-native-safe-area-context";
 
 import { useAppTheme } from "@/design-system/theme";
 import { I18nProvider, useI18n } from "@/i18n/i18n";
+import { queryClient } from "@/lib/query-client";
 import { useAuthStore } from "@/store/auth-store";
-
-const queryClient = new QueryClient();
 
 function AppShell() {
   const { colors } = useAppTheme();

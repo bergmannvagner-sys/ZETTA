@@ -22,8 +22,9 @@ function Indicator({ label, value }: { label: string; value: unknown }) {
 export default function NR1() {
   const user = useAuthStore((state) => state.user);
   const paidAccess = hasPaidAccess(user);
+  const sessionKey = user?.id ?? "anonymous";
   const report = useQuery({
-    queryKey: ["nr1-report"],
+    queryKey: ["nr1-report", sessionKey],
     queryFn: getNR1Report,
     enabled: user?.role === "COMPANY" && paidAccess
   });

@@ -2,6 +2,7 @@ import * as SecureStore from "expo-secure-store";
 import { create } from "zustand";
 
 import { normalizeAuthUser } from "@/lib/auth-user";
+import { queryClient } from "@/lib/query-client";
 import { AuthUser } from "@/types/auth";
 import { getWebStorage } from "@/lib/web-storage";
 
@@ -57,6 +58,7 @@ export const useAuthStore = create<AuthState>((set) => ({
   user: null,
   hydrated: false,
   setSession: async (accessToken, refreshToken, user) => {
+    queryClient.clear();
     await setStoredItem(ACCESS_KEY, accessToken);
     await setStoredItem(REFRESH_KEY, refreshToken);
     await setStoredItem(USER_KEY, JSON.stringify(user));
@@ -67,6 +69,7 @@ export const useAuthStore = create<AuthState>((set) => ({
     set({ user });
   },
   clearSession: async () => {
+    queryClient.clear();
     await deleteStoredItem(ACCESS_KEY);
     await deleteStoredItem(REFRESH_KEY);
     await deleteStoredItem(USER_KEY);
@@ -81,6 +84,7 @@ export const useAuthStore = create<AuthState>((set) => ({
       ]);
       const user = rawUser ? coerceStoredUser(JSON.parse(rawUser)) : null;
       if (rawUser && !user) {
+        queryClient.clear();
         await deleteStoredItem(ACCESS_KEY);
         await deleteStoredItem(REFRESH_KEY);
         await deleteStoredItem(USER_KEY);
@@ -92,6 +96,7 @@ export const useAuthStore = create<AuthState>((set) => ({
         hydrated: true
       });
     } catch {
+      queryClient.clear();
       await deleteStoredItem(ACCESS_KEY);
       await deleteStoredItem(REFRESH_KEY);
       await deleteStoredItem(USER_KEY);
