@@ -8,6 +8,7 @@ import { AuthHero } from "@/components/auth/AuthHero";
 import { Screen } from "@/components/screen";
 import { Badge, Button, Card, EmptyState, ErrorText, Loading } from "@/components/ui";
 import {
+  archiveAccount,
   exportPrivacyData,
   getConsentStatus,
   getPrivacyAudit,
@@ -108,6 +109,7 @@ export default function Privacy() {
   const hydrated = useAuthStore((state) => state.hydrated);
   const accessToken = useAuthStore((state) => state.accessToken);
   const user = useAuthStore((state) => state.user);
+  const clearSession = useAuthStore((state) => state.clearSession);
   const [lastExport, setLastExport] = useState<PrivacyExport | null>(null);
   const isWide = width >= 900;
   const orbSize = Math.min(236, Math.max(176, width * 0.44));
@@ -146,15 +148,29 @@ export default function Privacy() {
       void queryClient.invalidateQueries({ queryKey: ["privacy-audit", sessionKey] });
     }
   });
+  const archive = useMutation({
+    mutationFn: archiveAccount,
+    onSuccess: async () => {
+      setLastExport(null);
+      await clearSession();
+    }
+  });
 
   const authError =
     isAuthError(consent.error?.message) ||
     isAuthError(audit.error?.message) ||
     isAuthError(exportData.error?.message) ||
-    isAuthError(revoke.error?.message);
+    isAuthError(revoke.error?.message) ||
+    isAuthError(archive.error?.message);
   const showAuthGate = !hasSession || authError;
   const nonAuthError =
-    [consent.error?.message, audit.error?.message, exportData.error?.message, revoke.error?.message].find(isNonAuthError) ??
+    [
+      consent.error?.message,
+      audit.error?.message,
+      exportData.error?.message,
+      revoke.error?.message,
+      archive.error?.message
+    ].find(isNonAuthError) ??
     undefined;
   const accepted = consent.data?.accepted === true;
   const consentTone = accepted ? "success" : "warning";
@@ -264,6 +280,10 @@ export default function Privacy() {
           <Text className="text-xs text-muted dark:text-[#D1D5DB]">
             A revogação suspende recursos sensíveis até um novo aceite.
           </Text>
+          <Text className="text-xs text-muted dark:text-[#D1D5DB]">
+            Arquivar a conta encerra o acesso, revoga consentimentos ativos e preserva apenas o necessário para
+            auditoria e obrigações legais.
+          </Text>
         </View>
 
         <ErrorText message={nonAuthError} />
@@ -294,6 +314,14 @@ export default function Privacy() {
             loading={revoke.isPending}
             disabled={!accepted}
             onPress={() => revoke.mutate()}
+          />
+
+          <Button
+            label="Arquivar conta"
+            icon="archive-outline"
+            tone="danger"
+            loading={archive.isPending}
+            onPress={() => archive.mutate()}
           />
         </View>
       </View>

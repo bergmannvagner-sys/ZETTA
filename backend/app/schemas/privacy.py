@@ -24,6 +24,14 @@ class RevokeConsentResponse(BaseModel):
     revoked_at: str
 
 
+class ArchiveAccountResponse(BaseModel):
+    archived: bool
+    archived_at: str
+    revoked_refresh_tokens: int
+    revoked_sharing_consents: int
+    consent_revoked: bool
+
+
 class PrivacyExportResponse(BaseModel):
     exported_at: str
     user: dict[str, object]

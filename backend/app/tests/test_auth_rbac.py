@@ -2,6 +2,7 @@ import os
 import json
 import hmac
 from hashlib import sha256
+from uuid import uuid4
 
 import pytest
 from sqlalchemy import text
@@ -20,7 +21,7 @@ from app.main import app
 from app.models.privacy import AuditAction, AuditLog
 from app.core.security import hash_password
 from app.core.config import get_settings
-from app.models.user import AccountStatus, SubscriptionStatus, User, UserRole
+from app.models.user import AccountStatus, SubscriptionPlan, SubscriptionStatus, User, UserRole
 from app.api.admin import recent_scheduled_billing_pending_alert_exists, run_billing_pending_alert
 from app.services.billing_webhooks import build_signature
 from app.services.payment_adapters import (
@@ -31,6 +32,7 @@ from app.services.payment_adapters import (
 from app.services.risk import classify_risk, normalize_text
 from app.services.rate_limit import clear_rate_limits
 from app.services.scope import is_in_emotional_scope
+from app.services.tokens import issue_token_pair
 
 Base.metadata.create_all(bind=engine)
 client = TestClient(app)
@@ -2060,3 +2062,75 @@ def test_mercado_pago_webhook_validates_signature_and_updates_subscription(monke
         settings.billing_webhooks_enabled = previous_enabled
         settings.mercado_pago_webhook_secret = previous_webhook_secret
         settings.mercado_pago_access_token = previous_access_token
+
+
+def test_user_can_archive_account_and_block_future_access() -> None:
+    email = f"archive-user-{uuid4().hex[:10]}@example.com"
+    password = "strongpass123"
+
+    db = SessionLocal()
+    try:
+        user = User(
+            email=email,
+            full_name="Pessoa Arquivada",
+            password_hash=hash_password(password),
+            role=UserRole.USER,
+            status=AccountStatus.ACTIVE,
+            document_type="CPF",
+            document_value_hash=sha256(email.encode("utf-8")).hexdigest(),
+            document_last4="7735",
+            subscription_plan=SubscriptionPlan.FREE_USER,
+            subscription_status=SubscriptionStatus.FREE,
+        )
+        db.add(user)
+        db.commit()
+        db.refresh(user)
+        access_token, refresh_token = issue_token_pair(db, user)
+    finally:
+        db.close()
+
+    headers = {"Authorization": f"Bearer {access_token}"}
+
+    consent_status = client.get("/privacy/consent", headers=headers)
+    assert consent_status.status_code == 200
+    accept_consent = client.post(
+        "/privacy/consent",
+        headers=headers,
+        json={"policy_version": consent_status.json()["policy_version"]},
+    )
+    assert accept_consent.status_code == 200
+
+    archive = client.post("/privacy/account/archive", headers=headers)
+    assert archive.status_code == 200
+    archive_payload = archive.json()
+    assert archive_payload["archived"] is True
+    assert archive_payload["revoked_refresh_tokens"] == 1
+    assert archive_payload["consent_revoked"] is True
+
+    refresh = client.post("/auth/refresh", json={"refresh_token": refresh_token})
+    assert refresh.status_code == 401
+
+    login = client.post(
+        "/auth/login",
+        json={
+            "email": email,
+            "password": password,
+        },
+    )
+    assert login.status_code == 403
+    assert login.json()["detail"] == "Account archived"
+
+    db = SessionLocal()
+    try:
+        user = db.query(User).filter(User.email == email).first()
+        assert user is not None
+        assert user.status == AccountStatus.ARCHIVED
+        assert user.subscription_status == SubscriptionStatus.CANCELED
+        assert (
+            db.query(AuditLog)
+            .filter(AuditLog.target_user_id == user.id, AuditLog.action == AuditAction.ACCOUNT_ARCHIVED)
+            .count()
+            == 1
+        )
+    finally:
+        db.close()

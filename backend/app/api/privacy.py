@@ -12,9 +12,11 @@ from app.models.assistant import CareReminder
 from app.models.chat import ChatMessage, ChatSession
 from app.models.emotional import EmotionalReport, EmotionLog, JournalEntry, UserSharingConsent
 from app.models.privacy import AuditAction, AuditLog, ConsentRecord, ConsentType
+from app.models.token import RefreshToken
+from app.models.user import AccountStatus, SubscriptionStatus, User
 from app.models.sos import SOSEvent
-from app.models.user import User
 from app.schemas.privacy import (
+    ArchiveAccountResponse,
     AcceptConsentRequest,
     AcceptConsentResponse,
     ConsentStatusResponse,
@@ -113,6 +115,78 @@ def revoke_consent(
         accepted=False,
         policy_version=record.policy_version,
         revoked_at=record.revoked_at.isoformat() if record.revoked_at else datetime.now(UTC).isoformat(),
+    )
+
+
+@router.post("/account/archive", response_model=ArchiveAccountResponse)
+def archive_account(
+    user: Annotated[User, Depends(require_active_user)],
+    db: Session = Depends(get_db),
+) -> ArchiveAccountResponse:
+    if user.status == AccountStatus.ARCHIVED:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Account already archived")
+
+    now = datetime.now(UTC)
+    consent_record = get_active_lgpd_consent(db, user.id)
+    consent_revoked = False
+    if consent_record:
+        revoked_record = revoke_lgpd_consent(db, user.id)
+        consent_revoked = revoked_record is not None
+        if revoked_record:
+            write_audit_log(
+                db,
+                action=AuditAction.CONSENT_REVOKED,
+                actor_user_id=user.id,
+                target_user_id=user.id,
+                resource_type="consent_record",
+                resource_id=revoked_record.id,
+                metadata={"policy_version": revoked_record.policy_version, "source": "account_archive"},
+            )
+
+    sharing_consents = (
+        db.query(UserSharingConsent)
+        .filter(UserSharingConsent.owner_user_id == user.id, UserSharingConsent.revoked_at.is_(None))
+        .all()
+    )
+    revoked_sharing_consents = 0
+    for consent in sharing_consents:
+        consent.revoked_at = now
+        revoked_sharing_consents += 1
+
+    revoked_refresh_tokens = (
+        db.query(RefreshToken)
+        .filter(RefreshToken.user_id == user.id, RefreshToken.revoked_at.is_(None))
+        .update({"revoked_at": now})
+    )
+
+    previous_status = user.status
+    previous_subscription_status = user.subscription_status
+    user.status = AccountStatus.ARCHIVED
+    user.subscription_status = SubscriptionStatus.CANCELED
+
+    write_audit_log(
+        db,
+        action=AuditAction.ACCOUNT_ARCHIVED,
+        actor_user_id=user.id,
+        target_user_id=user.id,
+        resource_type="user",
+        resource_id=user.id,
+        metadata={
+            "previous_status": previous_status.value,
+            "previous_subscription_status": previous_subscription_status.value,
+            "subscription_status": user.subscription_status.value,
+            "revoked_refresh_tokens": revoked_refresh_tokens,
+            "revoked_sharing_consents": revoked_sharing_consents,
+            "consent_revoked": consent_revoked,
+        },
+    )
+    db.commit()
+    return ArchiveAccountResponse(
+        archived=True,
+        archived_at=now.isoformat(),
+        revoked_refresh_tokens=revoked_refresh_tokens,
+        revoked_sharing_consents=revoked_sharing_consents,
+        consent_revoked=consent_revoked,
     )
 
 

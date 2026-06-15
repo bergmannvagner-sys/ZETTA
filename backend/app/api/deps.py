@@ -32,6 +32,11 @@ def get_current_user(
 
 
 def require_active_user(user: Annotated[User, Depends(get_current_user)]) -> User:
+    if user.status == AccountStatus.ARCHIVED:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Account archived",
+        )
     if user.status != AccountStatus.ACTIVE:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,

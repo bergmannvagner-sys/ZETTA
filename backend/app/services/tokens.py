@@ -6,6 +6,7 @@ from sqlalchemy.orm import Session
 
 from app.core.config import get_settings
 from app.core.security import create_access_token, hash_password
+from app.models.user import AccountStatus
 from app.models.token import PasswordResetToken, RefreshToken
 from app.models.user import User
 
@@ -43,7 +44,11 @@ def rotate_refresh_token(db: Session, refresh_token: str) -> tuple[User, str, st
     token_hash = _hash_refresh_token(refresh_token)
     stored = db.query(RefreshToken).filter(RefreshToken.token_hash == token_hash).first()
     now = datetime.now(UTC)
-    if not stored or stored.revoked_at or stored.expires_at <= now:
+    if not stored or stored.revoked_at or stored.expires_at <= now or stored.user.status != AccountStatus.ACTIVE:
+        if stored and not stored.revoked_at:
+            stored.revoked_at = now
+            db.add(stored)
+            db.commit()
         return None
 
     stored.revoked_at = now

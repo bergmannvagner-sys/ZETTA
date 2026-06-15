@@ -194,6 +194,12 @@ async function handleApiResponse<T>(
         throw new ApiError(AUTH_REQUIRED_MESSAGE, response.status, validation);
       }
     }
+    if (response.status === 403 && shouldUseAuth) {
+      if (token && data && typeof data === "object" && "detail" in data && (data as { detail?: unknown }).detail === "Account archived") {
+        await useAuthStore.getState().clearSession();
+        throw new ApiError(EXPIRED_SESSION_MESSAGE, response.status, validation);
+      }
+    }
     if (response.status === 402) {
       throw new ApiError(PAID_PLAN_REQUIRED_MESSAGE, response.status, validation);
     }

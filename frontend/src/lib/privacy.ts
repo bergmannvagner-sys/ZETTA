@@ -19,6 +19,14 @@ export type RevokeConsentResponse = {
   revoked_at: string;
 };
 
+export type ArchiveAccountResponse = {
+  archived: boolean;
+  archived_at: string;
+  revoked_refresh_tokens: number;
+  revoked_sharing_consents: number;
+  consent_revoked: boolean;
+};
+
 export type PrivacyExport = {
   exported_at: string;
   user: Record<string, unknown>;
@@ -61,6 +69,12 @@ export async function acceptConsent(policyVersion: string) {
 
 export async function revokeConsent() {
   return apiRequest<RevokeConsentResponse>("/privacy/consent/revoke", {
+    method: "POST"
+  });
+}
+
+export async function archiveAccount() {
+  return apiRequest<ArchiveAccountResponse>("/privacy/account/archive", {
     method: "POST"
   });
 }

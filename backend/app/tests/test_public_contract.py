@@ -33,6 +33,7 @@ def test_public_openapi_contract_matches_mobile_mvp() -> None:
     assert "/privacy/consent/revoke" in paths
     assert "/privacy/audit" in paths
     assert "/privacy/export" in paths
+    assert "/privacy/account/archive" in paths
     assert "/chat/message" in paths
     assert "/chat/history" in paths
     assert "/chat/messages/{message_id}" in paths
