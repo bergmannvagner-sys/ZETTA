@@ -77,14 +77,6 @@ export type AuthorizedUserDetail = AuthorizedUserSummary & {
   journal_entries: JournalEntry[];
 };
 
-export type NR1Report = {
-  participant_count: number;
-  suppressed: boolean;
-  summary: string;
-  indicators: Record<string, unknown>;
-  generated_at: string;
-};
-
 export async function createJournalEntry(input: {
   content: string;
   entry_type?: string;
@@ -177,8 +169,4 @@ export async function listAuthorizedUsers(): Promise<AuthorizedUserSummary[]> {
 
 export async function getAuthorizedUserDetail(userId: string): Promise<AuthorizedUserDetail> {
   return apiRequest<AuthorizedUserDetail>(`/professional/authorized-users/${userId}`);
-}
-
-export async function getNR1Report(): Promise<NR1Report> {
-  return apiRequest<NR1Report>("/nr1/report");
 }

@@ -25,7 +25,6 @@ from app.schemas.nr1 import (
     NR1ActionItemCreate,
     NR1ActionItemResponse,
     NR1ActionItemUpdate,
-    NR1ReportResponse,
     NR1RiskItemCreate,
     NR1RiskItemResponse,
     NR1RiskItemUpdate,
@@ -45,15 +44,6 @@ NR1_DEFAULT_SCOPE = (
     "Estruturar PGR/GRO com foco em riscos psicossociais, comunicacao, carga de trabalho, pausas e apoio humano."
 )
 NR1_PRIVACY_NOTE = "Amostras individuais nunca sao exibidas; somente indicadores agregados e itens operacionais do workspace."
-
-
-@dataclass(frozen=True)
-class NR1ReportSnapshot:
-    participant_count: int
-    suppressed: bool
-    summary: str
-    indicators: dict[str, object]
-    generated_at: datetime
 
 
 @dataclass(frozen=True)
@@ -533,34 +523,6 @@ def build_nr1_summary(db: Session, company: User, workspace: NR1Workspace | None
     )
 
 
-def build_nr1_report_snapshot(db: Session, company: User, workspace: NR1Workspace | None = None) -> NR1ReportSnapshot:
-    summary = build_nr1_summary(db, company, workspace)
-    indicators: dict[str, object] = {
-        "minimum_participants": summary.minimum_participants,
-        "signal_count": summary.signal_count,
-        "average_intensity": summary.average_intensity,
-        "average_anxiety": summary.average_anxiety,
-        "average_stress": summary.average_stress,
-        "high_risk_signal_count": summary.high_risk_signal_count,
-        "open_risk_count": summary.open_risk_count,
-        "mitigating_risk_count": summary.mitigating_risk_count,
-        "controlled_risk_count": summary.controlled_risk_count,
-        "open_action_count": summary.open_action_count,
-        "overdue_action_count": summary.overdue_action_count,
-        "training_count": summary.training_count,
-        "overdue_training_count": summary.overdue_training_count,
-        "template_count": summary.template_count,
-        "current_state": summary.current_state,
-    }
-    return NR1ReportSnapshot(
-        participant_count=summary.participant_count,
-        suppressed=summary.suppressed,
-        summary=summary.summary,
-        indicators=indicators,
-        generated_at=summary.generated_at,
-    )
-
-
 def build_nr1_workspace_overview(db: Session, company: User) -> NR1WorkspaceOverviewResponse:
     workspace = ensure_nr1_workspace(db, company)
     summary = build_nr1_summary(db, company, workspace)
@@ -826,13 +788,3 @@ def record_nr1_audit(
         metadata=metadata,
     )
 
-
-def nr1_report_response(db: Session, company: User, workspace: NR1Workspace | None = None) -> NR1ReportResponse:
-    snapshot = build_nr1_report_snapshot(db, company, workspace)
-    return NR1ReportResponse(
-        participant_count=snapshot.participant_count,
-        suppressed=snapshot.suppressed,
-        summary=snapshot.summary,
-        indicators=snapshot.indicators,
-        generated_at=snapshot.generated_at,
-    )

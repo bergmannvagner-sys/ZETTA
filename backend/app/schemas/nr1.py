@@ -200,11 +200,3 @@ class NR1WorkspaceOverviewResponse(BaseModel):
     risks: list[NR1RiskItemResponse]
     actions: list[NR1ActionItemResponse]
     trainings: list[NR1TrainingItemResponse]
-
-
-class NR1ReportResponse(BaseModel):
-    participant_count: int
-    suppressed: bool
-    summary: str
-    indicators: dict[str, object]
-    generated_at: datetime
