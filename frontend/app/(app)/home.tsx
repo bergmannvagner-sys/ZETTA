@@ -5,6 +5,7 @@ import { Ionicons } from "@expo/vector-icons";
 import { AnimatedOrb } from "@/components/orb/AnimatedOrb";
 import { Screen } from "@/components/screen";
 import { Badge, Button, Card, SectionTitle } from "@/components/ui";
+import { shadowStyle } from "@/design-system/shadows";
 import { useAppTheme, useResponsiveLayout, radii } from "@/design-system/theme";
 import { useI18n } from "@/i18n/i18n";
 import {
@@ -70,6 +71,7 @@ function ActionChip({
   const isDanger = tone === "danger";
   const labelColor = colors.textPrimary;
   const chipBasis = width < 520 ? "100%" : width < 900 ? "48%" : "31.5%";
+  const chipShadow = shadowStyle({ color: colors.shadow, opacity: 0.22, radius: 12, offsetY: 6, elevation: 3 });
   const icon = ROUTE_ICONS[route] ?? "arrow-forward";
   return (
     <Pressable
@@ -84,7 +86,9 @@ function ActionChip({
         borderCurve: "continuous",
         borderRadius: radii.pill,
         borderWidth: 1.5,
-        boxShadow: `0 10px 24px ${isDanger ? colors.shadowStrong : colors.shadow}`,
+        ...(isDanger
+          ? shadowStyle({ color: colors.shadowStrong, opacity: 0.26, radius: 14, offsetY: 8, elevation: 4 })
+          : chipShadow),
         flexBasis: chipBasis,
         flexGrow: 0,
         flexShrink: 0,

@@ -4,6 +4,7 @@ import { Pressable, Text, View, useWindowDimensions } from "react-native";
 
 import { Screen } from "@/components/screen";
 import { Button, Card, Header, SectionTitle } from "@/components/ui";
+import { shadowStyle } from "@/design-system/shadows";
 import { radii, useAppTheme } from "@/design-system/theme";
 import { useI18n } from "@/i18n/i18n";
 import { hasPaidAccess, planLabel, subscriptionStatusLabel } from "@/lib/billing";
@@ -17,6 +18,7 @@ export default function Profile() {
   const user = useAuthStore((state) => state.user);
   const clearSession = useAuthStore((state) => state.clearSession);
   const languageChipBasis = width < 420 ? "31.5%" : "31.5%";
+  const languageChipShadow = shadowStyle({ color: colors.shadowStrong, opacity: 0.28, radius: 12, offsetY: 6, elevation: 3 });
   const canShareCode =
     user?.status === "ACTIVE" && (user.role === "PSYCHOLOGIST" || user.role === "COMPANY") && hasPaidAccess(user);
 
@@ -78,7 +80,15 @@ export default function Profile() {
                       borderCurve: "continuous",
                       borderRadius: radii.pill,
                       borderWidth: 1.5,
-                      boxShadow: selected ? `0 8px 18px ${colors.shadowStrong}` : "none",
+                      ...(selected
+                        ? languageChipShadow
+                        : shadowStyle({
+                            color: colors.shadow,
+                            opacity: 0.18,
+                            radius: 8,
+                            offsetY: 4,
+                            elevation: 1
+                          })),
                       justifyContent: "center",
                       flexBasis: languageChipBasis,
                       flexGrow: 0,

@@ -1,6 +1,7 @@
 import { ReactNode } from "react";
 import { Pressable, Text, View, useWindowDimensions } from "react-native";
 
+import { shadowStyle } from "@/design-system/shadows";
 import { radii, useAppTheme } from "@/design-system/theme";
 
 export function EmotionalHeader({
@@ -56,6 +57,13 @@ export function ChoicePill({
   onPress: () => void;
 }) {
   const { colors } = useAppTheme();
+  const chipShadow = shadowStyle({
+    color: selected ? colors.shadowStrong : colors.shadow,
+    opacity: selected ? 0.3 : 0.22,
+    radius: selected ? 14 : 10,
+    offsetY: selected ? 8 : 4,
+    elevation: selected ? 4 : 2
+  });
   return (
     <Pressable
       accessibilityRole="button"
@@ -66,7 +74,7 @@ export function ChoicePill({
         borderColor: selected ? colors.primaryLight : colors.border,
         borderRadius: radii.pill,
         borderWidth: 1.25,
-        boxShadow: selected ? `0 10px 24px ${colors.shadowStrong}` : `0 8px 18px ${colors.shadow}`,
+        ...chipShadow,
         justifyContent: "center",
         minHeight: 46,
         minWidth: 0,
@@ -103,6 +111,8 @@ export function ScalePicker({
   const availableWidth = Math.max(280, width - (width <= 360 ? 32 : width < 768 ? 48 : 64));
   const buttonSize = Math.max(26, Math.min(42, Math.floor((availableWidth - gap * (max - 1)) / max)));
   const numberSize = Math.max(12, Math.min(15, Math.floor(buttonSize * 0.38)));
+  const numberShadow = shadowStyle({ color: colors.shadowStrong, opacity: 0.28, radius: 10, offsetY: 5, elevation: 2 });
+  const numberShadowInactive = shadowStyle({ color: colors.shadow, opacity: 0.18, radius: 8, offsetY: 4, elevation: 1 });
   return (
     <View style={{ gap: 12 }}>
       <Text style={{ color: colors.textSecondary, fontSize: 13, fontWeight: "600", lineHeight: 18 }}>
@@ -120,7 +130,7 @@ export function ScalePicker({
               borderColor: value === number ? colors.primaryLight : colors.border,
               borderRadius: 999,
               borderWidth: 1.25,
-              boxShadow: value === number ? `0 8px 20px ${colors.shadowStrong}` : `0 6px 16px ${colors.shadow}`,
+              ...(value === number ? numberShadow : numberShadowInactive),
               height: buttonSize,
               justifyContent: "center",
               minWidth: buttonSize,
@@ -151,6 +161,7 @@ export function ScalePicker({
 
 export function QuietPanel({ children }: { children: ReactNode }) {
   const { colors } = useAppTheme();
+  const panelShadow = shadowStyle({ color: colors.shadow, opacity: 0.24, radius: 16, offsetY: 8, elevation: 3 });
   return (
     <View
       style={{
@@ -160,7 +171,7 @@ export function QuietPanel({ children }: { children: ReactNode }) {
         borderWidth: 1,
         gap: 12,
         padding: 18,
-        boxShadow: `0 12px 26px ${colors.shadow}`
+        ...panelShadow
       }}
     >
       {children}

@@ -4,6 +4,7 @@ import { useQuery } from "@tanstack/react-query";
 import { View } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 
+import { shadowStyle } from "@/design-system/shadows";
 import { useAppTheme, useResponsiveLayout } from "@/design-system/theme";
 import { useI18n } from "@/i18n/i18n";
 import { normalizeAuthUser } from "@/lib/auth-user";
@@ -14,6 +15,7 @@ import { useAuthStore } from "@/store/auth-store";
 
 function TabMark({ name, focused, color }: { name: keyof typeof Ionicons.glyphMap; focused: boolean; color: string }) {
   const { isMobile } = useResponsiveLayout();
+  const focusedShadow = shadowStyle({ color, opacity: 0.3, radius: 12, offsetY: 6, elevation: 2 });
   return (
     <View
       style={{
@@ -23,7 +25,7 @@ function TabMark({ name, focused, color }: { name: keyof typeof Ionicons.glyphMa
         borderCurve: "continuous",
         borderRadius: 999,
         borderWidth: 1,
-        boxShadow: focused ? `0 0 18px ${color}33` : "none",
+        ...(focused ? focusedShadow : {}),
         height: isMobile ? 38 : 40,
         justifyContent: "center",
         minWidth: isMobile ? 38 : 40,
@@ -141,6 +143,7 @@ export default function AppLayout() {
 
   const hiddenScreenOptions = { href: null };
   const tabBarRadius = isMobile ? 22 : isDesktop ? 30 : 26;
+  const tabBarShadow = shadowStyle({ color: colors.shadowStrong, opacity: 0.34, radius: 22, offsetY: 12, elevation: 8 });
 
   return (
     <Tabs
@@ -161,7 +164,7 @@ export default function AppLayout() {
           borderColor: colors.border,
           borderTopWidth: 1,
           borderRadius: tabBarRadius,
-          boxShadow: `0 18px 34px ${colors.shadowStrong}`,
+          ...tabBarShadow,
           marginBottom: isDesktop ? 16 : 8,
           marginHorizontal: isDesktop ? 20 : isMobile ? 0 : 10,
           minHeight: isMobile ? 78 : 74,

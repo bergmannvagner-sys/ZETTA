@@ -5,6 +5,7 @@ import { DimensionValue, Pressable, Text, View, useWindowDimensions } from "reac
 import { AnimatedOrb } from "@/components/orb/AnimatedOrb";
 import { Screen } from "@/components/screen";
 import { Button, Card, ErrorText, Field, Header } from "@/components/ui";
+import { shadowStyle } from "@/design-system/shadows";
 import { radii, useAppTheme } from "@/design-system/theme";
 import { useI18n } from "@/i18n/i18n";
 import { createEmotionLog } from "@/lib/emotional";
@@ -33,6 +34,8 @@ function Scale({
   const availableWidth = Math.max(280, width - (width <= 360 ? 32 : width < 768 ? 48 : 64));
   const buttonSize = Math.max(26, Math.min(42, Math.floor((availableWidth - gap * 9) / 10)));
   const numberSize = Math.max(12, Math.min(15, Math.floor(buttonSize * 0.38)));
+  const numberShadow = shadowStyle({ color: colors.shadowStrong, opacity: 0.28, radius: 10, offsetY: 5, elevation: 2 });
+  const numberShadowInactive = shadowStyle({ color: colors.shadow, opacity: 0.18, radius: 8, offsetY: 4, elevation: 1 });
   return (
     <View style={{ gap: 12 }}>
       <Text style={{ color: colors.textSecondary, fontSize: 14, fontWeight: "800", lineHeight: 20 }}>
@@ -52,7 +55,7 @@ function Scale({
               borderCurve: "continuous",
               borderRadius: radii.pill,
               borderWidth: 1.5,
-              boxShadow: value === number ? `0 8px 18px ${colors.shadowStrong}` : "none",
+              ...(value === number ? numberShadow : numberShadowInactive),
               justifyContent: "center",
               flexShrink: 0,
               minHeight: buttonSize,
@@ -96,6 +99,7 @@ export default function Mood() {
   const mutation = useMutation({ mutationFn: createEmotionLog });
   const orbSize = wideMood ? Math.min(248, Math.max(188, width * 0.3)) : Math.min(180, Math.max(168, width * 0.52));
   const moodChipBasis: DimensionValue = width < 420 ? "100%" : width < 760 ? "48%" : "31.5%";
+  const moodChipShadow = shadowStyle({ color: colors.shadowStrong, opacity: 0.26, radius: 14, offsetY: 8, elevation: 4 });
 
   return (
     <Screen>
@@ -125,7 +129,15 @@ export default function Mood() {
                       borderCurve: "continuous",
                       borderRadius: radii.pill,
                       borderWidth: 1.5,
-                      boxShadow: mood === item.value ? `0 10px 22px ${colors.shadowStrong}` : "none",
+                      ...(mood === item.value
+                        ? moodChipShadow
+                        : shadowStyle({
+                            color: colors.shadow,
+                            opacity: 0.18,
+                            radius: 10,
+                            offsetY: 4,
+                            elevation: 1
+                          })),
                       flexBasis: moodChipBasis,
                       justifyContent: "center",
                       minHeight: 52,

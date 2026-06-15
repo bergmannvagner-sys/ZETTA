@@ -12,6 +12,7 @@ import {
 import { Ionicons } from "@expo/vector-icons";
 
 import { touchTarget, useAppTheme, useResponsiveLayout, radii } from "@/design-system/theme";
+import { shadowStyle } from "@/design-system/shadows";
 import { useI18n } from "@/i18n/i18n";
 import { getSurfaceRadii } from "@/design-system/theme";
 export { ScreenContainer } from "./screen";
@@ -66,6 +67,13 @@ export function Button({
   const shineColor = tone === "primary" ? "rgba(255,255,255,0.16)" : "rgba(255,255,255,0.06)";
   const shadowColor = tone === "primary" ? colors.info : tone === "danger" ? colors.error : colors.shadowStrong;
   const iconSize = compact ? 16 : 17;
+  const buttonShadow = tone === "ghost" ? {} : shadowStyle({
+    color: shadowColor,
+    opacity: tone === "primary" ? 0.3 : 0.24,
+    radius: tone === "primary" ? 18 : 14,
+    offsetY: 8,
+    elevation: tone === "primary" ? 6 : 4
+  });
 
   return (
     <Pressable
@@ -84,7 +92,7 @@ export function Button({
         borderTopLeftRadius: radii.topLeft,
         borderTopRightRadius: radii.topRight,
         borderWidth: 1.25,
-        boxShadow: tone === "ghost" ? "none" : `0 14px 34px ${shadowColor}40`,
+        ...buttonShadow,
         justifyContent: "center",
         minHeight,
         minWidth: 48,
@@ -208,6 +216,7 @@ export function Card({ children }: { children: ReactNode }) {
   const { colors } = useAppTheme();
   const { width } = useResponsiveLayout();
   const radii = getSurfaceRadii(width, "card");
+  const cardShadow = shadowStyle({ color: colors.shadowStrong, opacity: 0.28, radius: 18, offsetY: 10, elevation: 5 });
   return (
     <View
       style={{
@@ -219,7 +228,7 @@ export function Card({ children }: { children: ReactNode }) {
         borderTopLeftRadius: radii.topLeft,
         borderTopRightRadius: radii.topRight,
         borderWidth: 1,
-        boxShadow: `0 12px 28px ${colors.shadowStrong}`,
+        ...cardShadow,
         overflow: "hidden"
       }}
     >
@@ -239,6 +248,7 @@ export function Modal({ visible, title, children, onClose }: AppModalProps) {
   const { colors } = useAppTheme();
   const { width } = useResponsiveLayout();
   const radii = getSurfaceRadii(width, "card");
+  const modalShadow = shadowStyle({ color: colors.shadowStrong, opacity: 0.36, radius: 24, offsetY: 12, elevation: 10 });
 
   return (
     <NativeModal transparent animationType="fade" visible={visible} onRequestClose={onClose}>
@@ -265,7 +275,7 @@ export function Modal({ visible, title, children, onClose }: AppModalProps) {
             maxWidth: 520,
             padding: 24,
             width: "100%",
-            boxShadow: `0 20px 42px ${colors.shadowStrong}`
+            ...modalShadow
           }}
         >
           {title ? (
@@ -291,6 +301,7 @@ export function Badge({ label, tone = "soft" }: { label: string; tone?: "soft" |
     info: colors.info
   };
   const color = palette[tone];
+  const badgeShadow = shadowStyle({ color: colors.shadow, opacity: 0.22, radius: 10, offsetY: 4, elevation: 2 });
 
   return (
     <View
@@ -300,7 +311,7 @@ export function Badge({ label, tone = "soft" }: { label: string; tone?: "soft" |
         borderColor: `${color}55`,
         borderRadius: radii.pill,
         borderWidth: 1,
-        boxShadow: `0 8px 20px ${colors.shadow}`,
+        ...badgeShadow,
         paddingHorizontal: 12,
         paddingVertical: 7
       }}
@@ -357,6 +368,7 @@ export function Header({
   const { isMobile, width } = useResponsiveLayout();
   const centered = align === "center";
   const titleSize = isMobile ? (width <= 360 ? 30 : 34) : 42;
+  const titleShadow = shadowStyle({ color: colors.primary, opacity: 0.34, radius: 10, offsetY: 0, elevation: 1 });
   return (
     <View style={{ gap: 10, alignItems: centered ? "center" : "flex-start" }}>
       <View style={{ alignItems: "center", flexDirection: "row", gap: 10, justifyContent: centered ? "center" : "flex-start" }}>
@@ -364,7 +376,7 @@ export function Header({
           style={{
             backgroundColor: colors.primary,
             borderRadius: 999,
-            boxShadow: `0 0 18px ${colors.primary}55`,
+            ...titleShadow,
             height: 4,
             opacity: 0.92,
             width: isMobile ? 42 : 60
@@ -423,13 +435,14 @@ export function SectionTitle({
   const { colors } = useAppTheme();
   const { isMobile } = useResponsiveLayout();
   const centered = align === "center";
+  const sectionShadow = shadowStyle({ color: colors.primary, opacity: 0.3, radius: 10, offsetY: 0, elevation: 1 });
   return (
     <View style={{ gap: 6, alignItems: centered ? "center" : "flex-start" }}>
       <View
         style={{
           backgroundColor: colors.primary,
           borderRadius: 999,
-          boxShadow: `0 0 14px ${colors.primary}44`,
+          ...sectionShadow,
           height: 3,
           opacity: 0.9,
           width: isMobile ? 38 : 52
@@ -468,17 +481,18 @@ export function ErrorText({ message }: { message?: string }) {
   if (!message) return null;
   const isNetworkError = message === "Network request failed" || /failed to fetch/i.test(message);
   const friendlyMessage = isNetworkError ? t("error.network") : t(message);
+  const errorShadow = shadowStyle({ color: colors.shadow, opacity: 0.24, radius: 12, offsetY: 6, elevation: 2 });
   return (
-      <View
-        style={{
-          backgroundColor: `${colors.error}12`,
-          borderColor: `${colors.error}35`,
-          borderRadius: radii.md,
-          borderWidth: 1,
-          boxShadow: `0 10px 24px ${colors.shadow}`,
-          paddingHorizontal: 16,
-          paddingVertical: 14
-        }}
+    <View
+      style={{
+        backgroundColor: `${colors.error}12`,
+        borderColor: `${colors.error}35`,
+        borderRadius: radii.md,
+        borderWidth: 1,
+        ...errorShadow,
+        paddingHorizontal: 16,
+        paddingVertical: 14
+      }}
     >
       <Text selectable style={{ color: colors.error, fontSize: 14, lineHeight: 21 }}>
         {friendlyMessage}

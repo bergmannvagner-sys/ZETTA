@@ -10,6 +10,7 @@ import { AnimatedOrb } from "@/components/orb/AnimatedOrb";
 import { OrbState } from "@/components/orb/orbTypes";
 import { Screen } from "@/components/screen";
 import { Button, Card, ErrorText } from "@/components/ui";
+import { shadowStyle } from "@/design-system/shadows";
 import { radii, useAppTheme } from "@/design-system/theme";
 import { useMicrophoneLevel } from "@/hooks/useMicrophoneLevel";
 import { useI18n } from "@/i18n/i18n";
@@ -747,6 +748,7 @@ export default function Chat() {
   const compactComposer = width < 560;
   const compactPrompts = width >= 360 && width < 820;
   const bottomSpacer = width < 560 ? 96 : 72;
+  const sendButtonShadow = shadowStyle({ color: colors.shadowStrong, opacity: 0.3, radius: 14, offsetY: 8, elevation: 4 });
   const chatPrompts = CHAT_PROMPTS[language] ?? CHAT_PROMPTS["pt-BR"];
   const errorMessage =
     normalizeChatError(mutation.error, messages.length > 0) ??
@@ -965,11 +967,11 @@ export default function Chat() {
               accessibilityState={{ disabled: pending }}
               onPress={send}
               disabled={pending}
-            style={({ pressed }) => ({
-              alignItems: "center",
-              backgroundColor: colors.gradientEnd,
-              borderColor: colors.primaryLight,
-              boxShadow: `0 12px 26px ${colors.shadowStrong}`,
+              style={({ pressed }) => ({
+                alignItems: "center",
+                backgroundColor: colors.gradientEnd,
+                borderColor: colors.primaryLight,
+                ...sendButtonShadow,
                 borderWidth: 1.5,
                 borderRadius: radii.lg,
                 justifyContent: "center",
