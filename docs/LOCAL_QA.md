@@ -132,6 +132,17 @@ Remove-Item Env:\ZETTA_ADMIN_PASSWORD
 
 The script creates unique USER, PSYCHOLOGIST, and COMPANY accounts in production, validates RBAC, then archives those QA accounts without physical deletion.
 
+validate production auth registration/login with duplicate-document protection:
+
+```powershell
+$env:ZETTA_AUTH_SMOKE_EMAIL="qa-auth@example.com"
+$env:ZETTA_AUTH_SMOKE_PASSWORD="use-a-real-strong-password-locally"
+powershell -ExecutionPolicy Bypass -File .\scripts\prod-auth-smoke.ps1
+Remove-Item Env:\ZETTA_AUTH_SMOKE_PASSWORD
+```
+
+The script archives the smoke account after the login check and then confirms the archived account cannot log in again.
+
 validate production SMTP/password reset without printing secrets:
 
 ```powershell
