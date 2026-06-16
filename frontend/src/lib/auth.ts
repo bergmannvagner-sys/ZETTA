@@ -1,4 +1,4 @@
-import { getApiUrl } from "./api-url";
+import { getApiRequestBaseUrl } from "./api-url";
 
 export type AuthUser = {
   id: string;
@@ -47,7 +47,7 @@ export async function register(payload: RegisterPayload): Promise<AuthResponse> 
 }
 
 async function postAuth<T>(path: string, payload: unknown, fallbackMessage: string): Promise<T> {
-  const apiUrl = getApiUrl();
+  const apiUrl = getApiRequestBaseUrl();
   if (!apiUrl) {
     throw new Error("Defina EXPO_PUBLIC_API_URL para conectar ao Render.");
   }

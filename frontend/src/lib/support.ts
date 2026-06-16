@@ -1,4 +1,4 @@
-import { getApiUrl } from "./api-url";
+import { getApiRequestBaseUrl } from "./api-url";
 
 export type SupportChatMessage = {
   sender: "USER" | "BERGMANN";
@@ -23,7 +23,7 @@ type ApiError = {
 };
 
 export async function sendSupportMessage(payload: SupportMessagePayload): Promise<SupportChatResponse> {
-  const apiUrl = getApiUrl();
+  const apiUrl = getApiRequestBaseUrl();
   if (!apiUrl) {
     throw new Error("Defina EXPO_PUBLIC_API_URL para conectar ao Render.");
   }
