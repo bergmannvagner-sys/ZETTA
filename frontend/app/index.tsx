@@ -1,4 +1,3 @@
-import * as SecureStore from "expo-secure-store";
 import { useEffect, useMemo, useState } from "react";
 import {
   ActivityIndicator,
@@ -15,7 +14,7 @@ import {
 import { useRouter } from "expo-router";
 
 import { getApiUrl } from "../src/lib/api-url";
-import { login, register, type AuthUser, type RegisterRole } from "../src/lib/auth";
+import { login, register, type RegisterRole } from "../src/lib/auth";
 import {
   documentExample,
   documentKindForRole,
@@ -24,12 +23,7 @@ import {
   normalizeDocumentInput,
   validateDocument
 } from "../src/lib/document";
-
-type SessionState = {
-  accessToken: string;
-  refreshToken: string;
-  user: AuthUser;
-};
+import { clearSession, loadSession, saveSession, type SessionState } from "../src/lib/session";
 
 type AuthMode = "login" | "register";
 
@@ -42,7 +36,6 @@ const PRIMARY_SOFT = "#C4B5FD";
 const TEXT = "#F5F7FF";
 const MUTED = "#A7B0C6";
 const ERROR = "#FB7185";
-const STORAGE_KEY = "bergmann_minimal_session";
 
 function trimValue(value: string): string {
   return value.trim();
@@ -105,24 +98,14 @@ export default function IndexScreen() {
 
     async function hydrate() {
       try {
-        const raw = await SecureStore.getItemAsync(STORAGE_KEY);
-        if (!active) {
-          return;
-        }
-        if (!raw) {
-          setHydrated(true);
-          return;
-        }
-        const parsed = JSON.parse(raw) as Partial<SessionState> | null;
-        if (parsed?.accessToken && parsed?.refreshToken && parsed.user?.email) {
-          setSession({
-            accessToken: parsed.accessToken,
-            refreshToken: parsed.refreshToken,
-            user: parsed.user
-          });
+        const storedSession = await loadSession();
+        if (active) {
+          setSession(storedSession);
         }
       } catch {
-        await SecureStore.deleteItemAsync(STORAGE_KEY);
+        if (active) {
+          setSession(null);
+        }
       } finally {
         if (active) {
           setHydrated(true);
@@ -139,12 +122,12 @@ export default function IndexScreen() {
 
   async function persistSession(nextSession: SessionState | null) {
     if (!nextSession) {
-      await SecureStore.deleteItemAsync(STORAGE_KEY);
+      await clearSession();
       setSession(null);
       return;
     }
 
-    await SecureStore.setItemAsync(STORAGE_KEY, JSON.stringify(nextSession));
+    await saveSession(nextSession);
     setSession(nextSession);
   }
 
@@ -255,14 +238,6 @@ export default function IndexScreen() {
             </Text>
           </View>
 
-          <Pressable
-            accessibilityRole="button"
-            onPress={() => router.push("/support")}
-            style={({ pressed }) => [styles.supportButton, pressed && styles.pressed]}
-          >
-            <Text style={styles.supportButtonText}>Abrir chat de suporte com IA</Text>
-          </Pressable>
-
           {session ? (
             <View style={styles.card}>
               <View style={{ gap: 14 }}>
@@ -276,6 +251,16 @@ export default function IndexScreen() {
                   <Text style={styles.infoValue}>{session.user.status}</Text>
                   <Text style={styles.infoMeta}>{session.user.role}</Text>
                 </View>
+                <View style={{ gap: 8 }}>
+                  <Pressable
+                    accessibilityRole="button"
+                    onPress={() => router.push("/support")}
+                    style={({ pressed }) => [styles.supportButton, pressed && styles.pressed]}
+                  >
+                    <Text style={styles.supportButtonText}>Abrir chat de suporte com IA</Text>
+                  </Pressable>
+                  <Text style={styles.helper}>O suporte salva o historico por conta neste aparelho.</Text>
+                </View>
                 <Pressable
                   accessibilityRole="button"
                   onPress={() => void handleLogout()}
@@ -287,6 +272,7 @@ export default function IndexScreen() {
             </View>
           ) : (
             <View style={styles.card}>
+              <Text style={styles.helper}>Faca login para abrir o suporte com historico.</Text>
               <View style={styles.segmentRow}>
                 <SegmentButton active={mode === "login"} label="Entrar" onPress={() => setMode("login")} />
                 <SegmentButton active={mode === "register"} label="Criar conta" onPress={() => setMode("register")} />
