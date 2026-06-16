@@ -38,6 +38,7 @@ def test_public_openapi_contract_matches_mobile_mvp() -> None:
     assert "/chat/history" in paths
     assert "/chat/messages/{message_id}" in paths
     assert "/support/message" in paths
+    assert "/support/history" in paths
     assert "/sos/event" in paths
     assert "/journal/entries" in paths
     assert "/emotions/logs" in paths

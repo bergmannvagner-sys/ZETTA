@@ -54,6 +54,7 @@ export default function SupportScreen() {
   const [hydrated, setHydrated] = useState(false);
   const [historyReady, setHistoryReady] = useState(false);
   const [session, setSession] = useState<SessionState | null>(null);
+  const [sessionId, setSessionId] = useState<string | null>(null);
   const [messages, setMessages] = useState<SupportChatMessage[]>([]);
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
@@ -102,6 +103,7 @@ export default function SupportScreen() {
       }
 
       setHistoryReady(false);
+      setSessionId(null);
 
       if (!session?.user?.id) {
         setMessages([]);
@@ -113,18 +115,20 @@ export default function SupportScreen() {
       }
 
       try {
-        const storedHistory = await loadSupportHistory(session.user.id);
+        const storedHistory = await loadSupportHistory(session.user.id, session.accessToken);
         if (!active) {
           return;
         }
 
+        setSessionId(storedHistory.session_id);
+
         const nextMessages: SupportChatMessage[] =
-          storedHistory.length > 0 ? storedHistory : [buildWelcomeMessage(session.user.full_name)];
+          storedHistory.messages.length > 0 ? storedHistory.messages : [buildWelcomeMessage(session.user.full_name)];
 
         setMessages(nextMessages);
         setError(null);
 
-        if (storedHistory.length === 0) {
+        if (storedHistory.messages.length === 0) {
           void saveSupportHistory(session.user.id, nextMessages).catch(() => undefined);
         }
       } catch {
@@ -174,10 +178,13 @@ export default function SupportScreen() {
 
     try {
       const response = await sendSupportMessage({
+        accessToken: currentSession.accessToken,
         message: trimmed,
         language: "pt-BR",
-        contextMessages
+        contextMessages,
+        sessionId
       });
+      setSessionId(response.session_id);
       const finalMessages: SupportChatMessage[] = [...nextMessages, { sender: "BERGMANN", content: response.answer }];
       setMessages(finalMessages);
       void saveSupportHistory(currentSession.user.id, finalMessages).catch(() => undefined);
@@ -319,8 +326,8 @@ export default function SupportScreen() {
           <Text style={styles.footerText}>
             {apiUrl ? `Conectado ao Render em ${apiUrl}` : "API nao configurada. Defina EXPO_PUBLIC_API_URL."}
           </Text>
-          {supportEmail ? <Text style={styles.footerText}>Contato humano: {supportEmail}</Text> : null}
-          <Text style={styles.footerText}>Historico salvo neste aparelho por conta autenticada.</Text>
+            {supportEmail ? <Text style={styles.footerText}>Contato humano: {supportEmail}</Text> : null}
+          <Text style={styles.footerText}>Historico sincronizado na sua conta autenticada.</Text>
           {error ? (
             <Text style={styles.error}>{error}</Text>
           ) : (

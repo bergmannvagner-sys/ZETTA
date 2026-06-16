@@ -1,7 +1,7 @@
 from typing import Annotated
 
 from fastapi import APIRouter, Depends, File, Form, HTTPException, Request, UploadFile, WebSocket, WebSocketDisconnect, status
-from sqlalchemy import case, or_
+from sqlalchemy import or_
 from sqlalchemy.orm import Session
 
 from app.api.deps import require_lgpd_consent
@@ -19,6 +19,7 @@ from app.schemas.chat import (
     ChatMessageResponse,
     VoiceChatResponse,
 )
+from app.services.chat_sessions import get_latest_session, get_or_create_session, recent_context, turn_order_expression
 from app.services.audit import write_audit_log
 from app.services.consent import get_active_lgpd_consent
 from app.services.groq import ask_bergmann
@@ -40,33 +41,6 @@ ALLOWED_VOICE_CONTENT_TYPES = {
     "audio/aac",
     "application/octet-stream",
 }
-
-
-def _get_or_create_session(db: Session, user: User, session_id: str | None) -> ChatSession:
-    session = None
-    if session_id:
-        session = (
-            db.query(ChatSession)
-            .filter(ChatSession.id == session_id, ChatSession.user_id == user.id)
-            .first()
-        )
-    if session:
-        return session
-    session = ChatSession(user_id=user.id)
-    db.add(session)
-    db.flush()
-    return session
-
-
-def _get_latest_session(db: Session, user: User) -> ChatSession | None:
-    return (
-        db.query(ChatSession)
-        .filter(ChatSession.user_id == user.id)
-        .order_by(ChatSession.created_at.desc())
-        .first()
-    )
-
-
 def _require_common_chat_user(user: User) -> None:
     if user.role not in {UserRole.USER, UserRole.SUPER_ADMIN}:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Only common area allowed")
@@ -80,27 +54,6 @@ def _serialize_message(message: ChatMessage) -> ChatHistoryMessage:
         risk_level=message.risk_level,
         created_at=message.created_at.isoformat(),
     )
-
-
-def _turn_order_expression():
-    return case((ChatMessage.sender == "USER", 0), else_=1)
-
-
-def _recent_context(
-    db: Session,
-    session: ChatSession,
-    *,
-    before_message: ChatMessage | None = None,
-    limit: int = 10,
-) -> list[dict[str, str]]:
-    query = db.query(ChatMessage).filter(ChatMessage.session_id == session.id)
-    if before_message:
-        query = query.filter(ChatMessage.created_at < before_message.created_at)
-    messages = query.order_by(ChatMessage.created_at.desc(), _turn_order_expression().desc()).limit(limit).all()
-    messages.reverse()
-    return [{"sender": item.sender, "content": item.content} for item in messages]
-
-
 def _require_realtime_user(db: Session, token: str | None) -> User:
     if not token:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Missing token")
@@ -129,8 +82,8 @@ async def _store_chat_turn(
     session_id: str | None,
     language: str | None,
 ) -> ChatMessageResponse:
-    session = _get_or_create_session(db, user, session_id)
-    context_messages = _recent_context(db, session)
+    session = get_or_create_session(db, user, session_id)
+    context_messages = recent_context(db, session)
 
     user_message = ChatMessage(session_id=session.id, sender="USER", content=message_text)
     db.add(user_message)
@@ -231,7 +184,7 @@ def history(
     limit: int = 80,
 ) -> ChatHistoryResponse:
     _require_common_chat_user(user)
-    session = _get_latest_session(db, user)
+    session = get_latest_session(db, user)
     if not session:
         return ChatHistoryResponse(session_id=None, messages=[])
 
@@ -239,7 +192,7 @@ def history(
     messages = (
         db.query(ChatMessage)
         .filter(ChatMessage.session_id == session.id)
-        .order_by(ChatMessage.created_at.desc(), _turn_order_expression().desc())
+        .order_by(ChatMessage.created_at.desc(), turn_order_expression().desc())
         .limit(safe_limit)
         .all()
     )
@@ -295,10 +248,10 @@ async def edit_message(
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="User message not found")
 
     session = db.get(ChatSession, target.session_id)
-    if not session or session.user_id != user.id:
+    if not session or session.user_id != user.id or session.channel != "CHAT":
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="User message not found")
 
-    context_messages = _recent_context(db, session, before_message=target)
+    context_messages = recent_context(db, session, before_message=target)
     discarded_count = (
         db.query(ChatMessage)
         .filter(
