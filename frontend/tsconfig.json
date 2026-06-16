@@ -3,28 +3,18 @@
   "compilerOptions": {
     "strict": true,
     "module": "esnext",
-    "baseUrl": ".",
-    "paths": {
-      "@/*": [
-        "src/*"
-      ]
-    },
-    "types": [
-      "nativewind/types"
-    ]
+    "baseUrl": "."
   },
   "include": [
     "**/*.ts",
     "**/*.tsx",
     ".expo/types/**/*.ts",
-    "expo-env.d.ts",
-    "nativewind-env.d.ts"
+    "expo-env.d.ts"
   ],
   "exclude": [
     "android",
     "build-artifacts",
     "dist",
-    "native-packages",
     ".gradle-short",
     ".gradle-user-home"
   ]

@@ -2,7 +2,6 @@ import { ExpoConfig } from "expo/config";
 
 const isProduction = process.env.APP_ENV === "production";
 const rawApiUrl = process.env.EXPO_PUBLIC_API_URL?.trim();
-const googleMapsApiKey = process.env.EXPO_PUBLIC_GOOGLE_MAPS_API_KEY?.trim();
 
 function normalizeApiUrl(value: string | undefined): string | undefined {
   return value?.replace(/\/+$/u, "");
@@ -55,29 +54,17 @@ const config: ExpoConfig = {
     supportsTablet: true,
     bundleIdentifier: "com.zetta.bergmann",
     infoPlist: {
-      ITSAppUsesNonExemptEncryption: false,
-      NSCameraUsageDescription:
-        "Bergmann usa a camera apenas durante teleatendimentos autorizados dentro do app.",
-      NSMicrophoneUsageDescription:
-        "Bergmann usa o microfone apenas durante teleatendimentos autorizados dentro do app."
+      ITSAppUsesNonExemptEncryption: false
     }
   },
   android: {
     package: "com.zetta.bergmann",
-    permissions: ["android.permission.CAMERA", "android.permission.RECORD_AUDIO"],
     adaptiveIcon: {
       backgroundColor: "#020204",
       foregroundImage: "./assets/adaptive-icon.png"
-    },
-    config: googleMapsApiKey
-      ? {
-          googleMaps: {
-            apiKey: googleMapsApiKey
-          }
-        }
-      : undefined
+    }
   },
-  plugins: ["expo-router", "expo-secure-store", "expo-font", "expo-audio", "expo-asset", "expo-localization"],
+  plugins: ["expo-router", "expo-secure-store"],
   web: {
     favicon: "./assets/favicon.png"
   },
