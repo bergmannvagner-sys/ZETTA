@@ -6,7 +6,7 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI, Request, Response
 from fastapi.middleware.cors import CORSMiddleware
 
-from app.api import admin, assistant, auth, billing, chat, connections, emotional, privacy, sos, telecare, users
+from app.api import admin, assistant, auth, billing, chat, connections, emotional, privacy, sos, support, telecare, users
 from app.core.config import get_settings
 from app.db.session import SessionLocal
 from app.services.admin_config import effective_settings
@@ -121,5 +121,6 @@ app.include_router(connections.router)
 app.include_router(emotional.router)
 app.include_router(telecare.router)
 app.include_router(sos.router)
+app.include_router(support.router)
 app.include_router(privacy.router)
 app.include_router(admin.router)

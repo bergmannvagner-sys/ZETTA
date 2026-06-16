@@ -37,6 +37,7 @@ def test_public_openapi_contract_matches_mobile_mvp() -> None:
     assert "/chat/message" in paths
     assert "/chat/history" in paths
     assert "/chat/messages/{message_id}" in paths
+    assert "/support/message" in paths
     assert "/sos/event" in paths
     assert "/journal/entries" in paths
     assert "/emotions/logs" in paths
@@ -49,7 +50,7 @@ def test_public_openapi_contract_matches_mobile_mvp() -> None:
     assert "/telecare/sessions/{session_id}" in paths
     assert "/telecare/sessions/{session_id}/join" in paths
     assert "/telecare/sessions/{session_id}/status" in paths
-    assert "/nr1/report" in paths
+    assert "/support/message" in paths
     assert "/institution/dashboard" in paths
     assert "/assistant/reminders" in paths
     assert "/connections/me" in paths
