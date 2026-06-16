@@ -143,6 +143,16 @@ Remove-Item Env:\ZETTA_AUTH_SMOKE_PASSWORD
 
 The script archives the smoke account after the login check and then confirms the archived account cannot log in again.
 
+validate production chat contract, AI routing, and history persistence:
+
+```powershell
+$env:ZETTA_CHAT_SMOKE_MESSAGE="Nao consigo abrir o app"
+powershell -ExecutionPolicy Bypass -File .\scripts\prod-chat-smoke.ps1
+Remove-Item Env:\ZETTA_CHAT_SMOKE_MESSAGE
+```
+
+The script checks `/health`, creates a fresh USER account, confirms consent, calls `/chat/message` with a safe prompt, validates `answer`, `risk_level`, `fallback`, `in_scope`, checks persisted history, and archives the QA account at the end.
+
 validate production SMTP/password reset without printing secrets:
 
 ```powershell

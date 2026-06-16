@@ -107,6 +107,7 @@ Smokes de producao no PowerShell:
 $env:ZETTA_ADMIN_EMAIL="admin@example.com"
 $env:ZETTA_ADMIN_PASSWORD="use-your-real-secret-locally"
 powershell -ExecutionPolicy Bypass -File .\scripts\prod-admin-smoke.ps1
+powershell -ExecutionPolicy Bypass -File .\scripts\prod-chat-smoke.ps1
 powershell -ExecutionPolicy Bypass -File .\scripts\prod-password-reset-smoke.ps1
 powershell -ExecutionPolicy Bypass -File .\scripts\prod-mercado-pago-config-smoke.ps1
 Remove-Item Env:\ZETTA_ADMIN_PASSWORD
