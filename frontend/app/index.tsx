@@ -12,6 +12,7 @@ import {
   TextInput,
   View
 } from "react-native";
+import { useRouter } from "expo-router";
 
 import { getApiUrl } from "../src/lib/api-url";
 import { login, register, type AuthUser, type RegisterRole } from "../src/lib/auth";
@@ -68,6 +69,7 @@ function SegmentButton({
 }
 
 export default function IndexScreen() {
+  const router = useRouter();
   const [hydrated, setHydrated] = useState(false);
   const [session, setSession] = useState<SessionState | null>(null);
   const [mode, setMode] = useState<AuthMode>("login");
@@ -252,6 +254,14 @@ export default function IndexScreen() {
               Login, cadastro minimo e contrato com o Render sem reabrir a arvore antiga.
             </Text>
           </View>
+
+          <Pressable
+            accessibilityRole="button"
+            onPress={() => router.push("/support")}
+            style={({ pressed }) => [styles.supportButton, pressed && styles.pressed]}
+          >
+            <Text style={styles.supportButtonText}>Abrir chat de suporte com IA</Text>
+          </Pressable>
 
           {session ? (
             <View style={styles.card}>
@@ -482,6 +492,25 @@ const styles = StyleSheet.create({
     maxWidth: 520,
     paddingBottom: 18,
     width: "100%"
+  },
+  supportButton: {
+    alignSelf: "center",
+    backgroundColor: CARD_STRONG,
+    borderColor: BORDER,
+    borderRadius: 16,
+    borderWidth: 1,
+    marginBottom: 18,
+    maxWidth: 520,
+    minHeight: 50,
+    justifyContent: "center",
+    paddingHorizontal: 16,
+    width: "100%"
+  },
+  supportButtonText: {
+    color: TEXT,
+    fontSize: 15,
+    fontWeight: "800",
+    textAlign: "center"
   },
   kicker: {
     color: PRIMARY_SOFT,
