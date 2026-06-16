@@ -57,7 +57,7 @@ const config: ExpoConfig = {
     infoPlist: {
       ITSAppUsesNonExemptEncryption: false,
       NSCameraUsageDescription:
-        "Bergmann usa a câmera apenas durante teleatendimentos autorizados dentro do app.",
+        "Bergmann usa a camera apenas durante teleatendimentos autorizados dentro do app.",
       NSMicrophoneUsageDescription:
         "Bergmann usa o microfone apenas durante teleatendimentos autorizados dentro do app."
     }
@@ -77,21 +77,7 @@ const config: ExpoConfig = {
         }
       : undefined
   },
-  plugins: [
-    "expo-router",
-    "expo-secure-store",
-    "expo-font",
-    "expo-audio",
-    "expo-asset",
-    "expo-localization",
-    [
-      "expo-location",
-      {
-        locationWhenInUsePermission:
-          "Bergmann usa sua localização apenas para mostrar apoio próximo em situações de cuidado e SOS."
-      }
-    ]
-  ],
+  plugins: ["expo-router", "expo-secure-store", "expo-font", "expo-audio", "expo-asset", "expo-localization"],
   web: {
     favicon: "./assets/favicon.png"
   },
