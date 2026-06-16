@@ -1,4 +1,5 @@
 import { getApiRequestBaseUrl } from "./api-url";
+import { withRequestTimeout } from "./request-timeout";
 
 export type AuthUser = {
   id: string;
@@ -38,6 +39,8 @@ type ApiError = {
   detail?: unknown;
 };
 
+const AUTH_REQUEST_TIMEOUT_MS = 10000;
+
 export async function login(payload: LoginPayload): Promise<AuthResponse> {
   return postAuth<AuthResponse>("/auth/login", payload, "Nao foi possivel autenticar.");
 }
@@ -52,13 +55,19 @@ async function postAuth<T>(path: string, payload: unknown, fallbackMessage: stri
     throw new Error("Defina EXPO_PUBLIC_API_URL para conectar ao Render.");
   }
 
-  const response = await fetch(`${apiUrl}${path}`, {
-    body: JSON.stringify(payload),
-    headers: {
-      "Content-Type": "application/json"
-    },
-    method: "POST"
-  });
+  const response = await withRequestTimeout(
+    (signal) =>
+      fetch(`${apiUrl}${path}`, {
+        body: JSON.stringify(payload),
+        headers: {
+          "Content-Type": "application/json"
+        },
+        method: "POST",
+        signal
+      }),
+    AUTH_REQUEST_TIMEOUT_MS,
+    "Tempo esgotado ao autenticar no Render."
+  );
 
   const data = await readJsonResponse<T & ApiError>(response);
   if (!response.ok) {
