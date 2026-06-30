@@ -1,6 +1,6 @@
-import { useMutation } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { Alert, Platform, DimensionValue, Pressable, Text, View, useWindowDimensions } from "react-native";
 import { useState } from "react";
-import { DimensionValue, Pressable, Text, View, useWindowDimensions } from "react-native";
 
 import { AnimatedOrb } from "@/components/orb/AnimatedOrb";
 import { Screen } from "@/components/screen";
@@ -8,7 +8,7 @@ import { Button, Card, ErrorText, Field, Header } from "@/components/ui";
 import { shadowStyle } from "@/design-system/shadows";
 import { radii, useAppTheme } from "@/design-system/theme";
 import { useI18n } from "@/i18n/i18n";
-import { createEmotionLog } from "@/lib/emotional";
+import { createEmotionLog, deleteEmotionLog, EmotionLog, listEmotionLogs, updateEmotionLog } from "@/lib/emotional";
 
 const moods = [
   { value: "calmo", labelKey: "mood.calm" },
@@ -86,9 +86,10 @@ function Scale({
 }
 
 export default function Mood() {
-  const { t } = useI18n();
+  const { language, t } = useI18n();
   const { colors } = useAppTheme();
   const { width } = useWindowDimensions();
+  const queryClient = useQueryClient();
   const wideMood = width >= 820;
   const [mood, setMood] = useState("calmo");
   const [intensity, setIntensity] = useState(5);
@@ -96,10 +97,90 @@ export default function Mood() {
   const [anxiety, setAnxiety] = useState(5);
   const [stress, setStress] = useState(5);
   const [note, setNote] = useState("");
-  const mutation = useMutation({ mutationFn: createEmotionLog });
+  const [editingLogId, setEditingLogId] = useState<string | null>(null);
+  const logs = useQuery<EmotionLog[]>({ queryKey: ["emotion-logs"], queryFn: listEmotionLogs });
+  const createMutation = useMutation({
+    mutationFn: createEmotionLog,
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({ queryKey: ["emotion-logs"] });
+    }
+  });
+  const updateMutation = useMutation({
+    mutationFn: ({ logId, input }: { logId: string; input: Parameters<typeof updateEmotionLog>[1] }) =>
+      updateEmotionLog(logId, input),
+    onSuccess: async () => {
+      createMutation.reset();
+      setEditingLogId(null);
+      setMood("calmo");
+      setIntensity(5);
+      setEnergy(5);
+      setAnxiety(5);
+      setStress(5);
+      setNote("");
+      await queryClient.invalidateQueries({ queryKey: ["emotion-logs"] });
+    }
+  });
+  const deleteMutation = useMutation({
+    mutationFn: deleteEmotionLog,
+    onSuccess: async (_, logId) => {
+      createMutation.reset();
+      if (editingLogId === logId) {
+        setEditingLogId(null);
+        setMood("calmo");
+        setIntensity(5);
+        setEnergy(5);
+        setAnxiety(5);
+        setStress(5);
+        setNote("");
+      }
+      await queryClient.invalidateQueries({ queryKey: ["emotion-logs"] });
+    }
+  });
   const orbSize = wideMood ? Math.min(248, Math.max(188, width * 0.3)) : Math.min(180, Math.max(168, width * 0.52));
   const moodChipBasis: DimensionValue = width < 420 ? "100%" : width < 760 ? "48%" : "31.5%";
   const moodChipShadow = shadowStyle({ color: colors.shadowStrong, opacity: 0.26, radius: 14, offsetY: 8, elevation: 4 });
+  const recentLogs: EmotionLog[] = logs.data?.slice(0, 4) ?? [];
+  const isEditing = editingLogId !== null;
+  const isSaving = createMutation.isPending || updateMutation.isPending;
+
+  function startEditing(log: EmotionLog) {
+    setEditingLogId(log.id);
+    setMood(log.mood);
+    setIntensity(log.intensity);
+    setEnergy(log.energy ?? 5);
+    setAnxiety(log.anxiety ?? 5);
+    setStress(log.stress ?? 5);
+    setNote(log.note ?? "");
+  }
+
+  function cancelEditing() {
+    setEditingLogId(null);
+    setMood("calmo");
+    setIntensity(5);
+    setEnergy(5);
+    setAnxiety(5);
+    setStress(5);
+    setNote("");
+  }
+
+  function confirmDelete(log: EmotionLog) {
+    const message = "Este registro será excluído do humor. Esta ação não pode ser desfeita.";
+    if (Platform.OS === "web") {
+      if (typeof window !== "undefined" && !window.confirm(message)) {
+        return;
+      }
+      deleteMutation.mutate(log.id);
+      return;
+    }
+    Alert.alert("Excluir registro", message, [
+      { text: t("common.cancel"), style: "cancel" },
+      {
+        text: "Excluir",
+        style: "destructive",
+        onPress: () => deleteMutation.mutate(log.id)
+      }
+    ]);
+  }
 
   return (
     <Screen>
@@ -180,18 +261,27 @@ export default function Mood() {
             maxLength={2000}
           />
 
-          {mutation.data ? (
+          {isEditing ? (
+            <Card>
+              <Text className="text-sm font-semibold text-primaryDark">Editando registro</Text>
+              <Text className="text-base leading-6 text-ink dark:text-white">
+                Este humor está em edição. Salve para atualizar o registro ou cancele para criar um novo.
+              </Text>
+              <Button label={t("common.cancel")} tone="soft" onPress={cancelEditing} />
+            </Card>
+          ) : null}
+          {createMutation.data && !isEditing ? (
             <Card>
               <Text className="text-base leading-6 text-ink dark:text-white">{t("mood.saved")}</Text>
             </Card>
           ) : null}
-          <ErrorText message={mutation.error?.message} />
+          <ErrorText message={createMutation.error?.message ?? updateMutation.error?.message ?? deleteMutation.error?.message} />
           <Button
-            label={t("mood.submit")}
+            label={editingLogId ? t("common.save") : t("mood.submit")}
             icon="checkmark-circle-outline"
-            loading={mutation.isPending}
-            onPress={() =>
-              mutation.mutate({
+            loading={isSaving}
+            onPress={() => {
+              const payload = {
                 mood,
                 emotions: [mood],
                 intensity,
@@ -199,9 +289,57 @@ export default function Mood() {
                 anxiety,
                 stress,
                 note: note.trim() || null
-              })
-            }
+              };
+              if (editingLogId) {
+                updateMutation.mutate({ logId: editingLogId, input: payload });
+                return;
+              }
+              createMutation.mutate(payload);
+            }}
           />
+
+          <View className="gap-3">
+            <Text className="text-base font-semibold text-ink dark:text-white">Registros recentes</Text>
+            {logs.isLoading ? <Text className="text-muted dark:text-[#D1D5DB]">{t("common.loading")}</Text> : null}
+            <ErrorText message={logs.error?.message} />
+            {recentLogs.length ? (
+              <View style={{ gap: 12 }}>
+                {recentLogs.map((log) => (
+                  <Card key={log.id}>
+                    <View className="gap-1">
+                      <Text className="text-xs font-semibold uppercase tracking-[0.2em] text-primary">{log.mood}</Text>
+                      <Text selectable className="text-xs text-muted dark:text-[#D1D5DB]">
+                        {new Intl.DateTimeFormat(language, { dateStyle: "medium", timeStyle: "short" }).format(
+                          new Date(log.created_at)
+                        )}
+                      </Text>
+                    </View>
+                    <Text className="text-sm leading-6 text-muted dark:text-[#D1D5DB]">
+                      Intensidade {log.intensity} · Energia {log.energy ?? "-"} · Ansiedade {log.anxiety ?? "-"} · Estresse{" "}
+                      {log.stress ?? "-"}
+                    </Text>
+                    {log.note ? <Text className="text-base leading-6 text-ink dark:text-white">{log.note}</Text> : null}
+                    <View style={{ flexDirection: "row", gap: 10 }}>
+                      <View style={{ flex: 1 }}>
+                        <Button label="Editar" tone="soft" compact onPress={() => startEditing(log)} />
+                      </View>
+                      <View style={{ flex: 1 }}>
+                        <Button
+                          label="Excluir"
+                          tone="danger"
+                          compact
+                          loading={deleteMutation.isPending && deleteMutation.variables === log.id}
+                          onPress={() => confirmDelete(log)}
+                        />
+                      </View>
+                    </View>
+                  </Card>
+                ))}
+              </View>
+            ) : logs.isLoading ? null : (
+              <Text className="text-muted dark:text-[#D1D5DB]">Nenhum registro recente ainda.</Text>
+            )}
+          </View>
         </View>
       </View>
     </Screen>

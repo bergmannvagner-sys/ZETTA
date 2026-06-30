@@ -10,6 +10,12 @@ export type JournalEntry = {
   created_at: string;
 };
 
+export type JournalEntryUpdate = {
+  content?: string;
+  entry_type?: string;
+  tags?: string[];
+};
+
 export type EmotionLog = {
   id: string;
   mood: string;
@@ -22,6 +28,18 @@ export type EmotionLog = {
   motivation: number | null;
   note: string | null;
   created_at: string;
+};
+
+export type EmotionLogUpdate = {
+  mood?: string;
+  emotions?: string[];
+  intensity?: number;
+  energy?: number | null;
+  anxiety?: number | null;
+  stress?: number | null;
+  sleep_quality?: number | null;
+  motivation?: number | null;
+  note?: string | null;
 };
 
 export type SharingCategory = "JOURNAL" | "AI_SUMMARY" | "TRENDS" | "MOOD" | "CRISIS";
@@ -96,6 +114,19 @@ export async function listJournalEntries(): Promise<JournalEntry[]> {
   return apiRequest<JournalEntry[]>("/journal/entries");
 }
 
+export async function updateJournalEntry(entryId: string, input: JournalEntryUpdate): Promise<JournalEntry> {
+  return apiRequest<JournalEntry>(`/journal/entries/${entryId}`, {
+    method: "PATCH",
+    body: JSON.stringify(input)
+  });
+}
+
+export async function deleteJournalEntry(entryId: string): Promise<void> {
+  await apiRequest<void>(`/journal/entries/${entryId}`, {
+    method: "DELETE"
+  });
+}
+
 export async function createEmotionLog(input: {
   mood: string;
   emotions?: string[];
@@ -125,6 +156,19 @@ export async function createEmotionLog(input: {
 
 export async function listEmotionLogs(): Promise<EmotionLog[]> {
   return apiRequest<EmotionLog[]>("/emotions/logs");
+}
+
+export async function updateEmotionLog(logId: string, input: EmotionLogUpdate): Promise<EmotionLog> {
+  return apiRequest<EmotionLog>(`/emotions/logs/${logId}`, {
+    method: "PATCH",
+    body: JSON.stringify(input)
+  });
+}
+
+export async function deleteEmotionLog(logId: string): Promise<void> {
+  await apiRequest<void>(`/emotions/logs/${logId}`, {
+    method: "DELETE"
+  });
 }
 
 export async function createSharingConsent(input: {

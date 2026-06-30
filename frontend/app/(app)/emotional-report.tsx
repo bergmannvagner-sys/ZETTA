@@ -4,9 +4,11 @@ import { Share, Text, useWindowDimensions, View } from "react-native";
 import { AnimatedOrb } from "@/components/orb/AnimatedOrb";
 import { Screen } from "@/components/screen";
 import { Badge, Button, Card, ErrorText, Header, SectionTitle } from "@/components/ui";
+import { ZettaMindPanel } from "@/components/zetta-metrics";
 import { useAppTheme, radii } from "@/design-system/theme";
 import { useI18n } from "@/i18n/i18n";
 import { EmotionalReport as EmotionalReportData, createMyEmotionalReport } from "@/lib/emotional";
+import { buildZettaMindSnapshot } from "@/lib/zetta-intelligence";
 
 function metadataList(metadata: Record<string, unknown>, key: string) {
   const value = metadata[key];
@@ -74,6 +76,7 @@ export default function EmotionalReport() {
   const { width } = useWindowDimensions();
   const report = useMutation({ mutationFn: createMyEmotionalReport });
   const metadata = report.data?.metadata ?? {};
+  const mindSnapshot = buildZettaMindSnapshot([], [], report.data ?? null);
   const triggers = metadataList(metadata, "triggers");
   const importantMoments = metadataList(metadata, "important_moments");
   const nextQuestions = metadataList(metadata, "next_session_questions");
@@ -135,6 +138,8 @@ export default function EmotionalReport() {
               <SectionTitle title={t("tab.progress")} subtitle={t("report.empty")} />
             </Card>
           )}
+
+          {report.data ? <ZettaMindPanel snapshot={mindSnapshot} /> : null}
 
           <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 12 }}>
             {[
@@ -229,7 +234,7 @@ export default function EmotionalReport() {
               <ReportList title={t("report.importantMoments")} items={importantMoments} />
               <ReportList title={t("report.nextQuestions")} items={nextQuestions} />
               <View style={{ paddingTop: 8 }}>
-                <Button label="report.share" icon="share-social-outline" tone="soft" onPress={shareReport} />
+                <Button label={t("report.share")} icon="share-social-outline" tone="soft" onPress={shareReport} />
               </View>
             </Card>
           ) : null}

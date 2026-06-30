@@ -1,4 +1,3 @@
-import * as Localization from "expo-localization";
 import * as SecureStore from "expo-secure-store";
 import { ReactNode, createContext, useCallback, useContext, useEffect, useMemo, useState } from "react";
 
@@ -17,13 +16,6 @@ const LANGUAGE_KEY = "bergmann_language";
 const DEFAULT_LANGUAGE: LanguageCode = "pt-BR";
 const I18nContext = createContext<I18nContextValue | null>(null);
 const languageStorage = getWebStorage("local");
-
-function normalizeLanguage(languageCode?: string | null): LanguageCode {
-  const normalized = languageCode?.toLowerCase();
-  if (normalized?.startsWith("en")) return "en";
-  if (normalized?.startsWith("es")) return "es";
-  return DEFAULT_LANGUAGE;
-}
 
 async function getStoredLanguage(): Promise<LanguageCode | null> {
   const value = typeof window !== "undefined" ? languageStorage.getItem(LANGUAGE_KEY) : await SecureStore.getItemAsync(LANGUAGE_KEY);
@@ -52,9 +44,8 @@ export function I18nProvider({ children }: { children: ReactNode }) {
 
     async function hydrateLanguage() {
       const stored = await getStoredLanguage();
-      const detected = normalizeLanguage(Localization.getLocales()[0]?.languageCode);
       if (mounted) {
-        setLanguageState(stored ?? detected);
+        setLanguageState(stored ?? DEFAULT_LANGUAGE);
         setReady(true);
       }
     }

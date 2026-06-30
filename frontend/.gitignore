@@ -4,3 +4,16 @@
 
 expo-env.d.ts
 # @end expo-cli
+
+node_modules/
+.expo/
+/.expo/
+.expo/*
+.npm-cache/
+.gradle-home/
+build-artifacts/
+
+android/.gradle/
+android/.gradle-user-home/
+android/build/
+android/app/build/

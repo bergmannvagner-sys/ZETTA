@@ -16,6 +16,19 @@ class JournalEntryCreate(BaseModel):
         return [tag.strip().lower()[:32] for tag in tags if tag.strip()]
 
 
+class JournalEntryUpdate(BaseModel):
+    content: str | None = Field(default=None, min_length=2, max_length=6000)
+    entry_type: str | None = Field(default=None, max_length=32)
+    tags: list[str] | None = Field(default=None, max_length=12)
+
+    @field_validator("tags")
+    @classmethod
+    def normalize_tags(cls, tags: list[str] | None) -> list[str] | None:
+        if tags is None:
+            return None
+        return [tag.strip().lower()[:32] for tag in tags if tag.strip()]
+
+
 class JournalEntryResponse(BaseModel):
     id: str
     content: str
@@ -39,6 +52,25 @@ class EmotionLogCreate(BaseModel):
     @field_validator("emotions")
     @classmethod
     def normalize_emotions(cls, emotions: list[str]) -> list[str]:
+        return [emotion.strip().lower()[:48] for emotion in emotions if emotion.strip()]
+
+
+class EmotionLogUpdate(BaseModel):
+    mood: str | None = Field(default=None, min_length=2, max_length=48)
+    emotions: list[str] | None = Field(default=None, max_length=12)
+    intensity: int | None = Field(default=None, ge=1, le=10)
+    energy: int | None = Field(default=None, ge=1, le=10)
+    anxiety: int | None = Field(default=None, ge=1, le=10)
+    stress: int | None = Field(default=None, ge=1, le=10)
+    sleep_quality: int | None = Field(default=None, ge=1, le=10)
+    motivation: int | None = Field(default=None, ge=1, le=10)
+    note: str | None = Field(default=None, max_length=2000)
+
+    @field_validator("emotions")
+    @classmethod
+    def normalize_emotions(cls, emotions: list[str] | None) -> list[str] | None:
+        if emotions is None:
+            return None
         return [emotion.strip().lower()[:48] for emotion in emotions if emotion.strip()]
 
 

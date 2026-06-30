@@ -90,6 +90,22 @@ export const orbMotionProfiles: Record<OrbState, OrbMotionProfile> = {
     drift: 0.3,
     glowOpacity: 0.12,
     audioInfluence: 0
+  },
+  journaling: {
+    breathScale: 0.026,
+    pulseScale: 0.012,
+    durationMs: 4200,
+    drift: 1.4,
+    glowOpacity: 0.24,
+    audioInfluence: 0.01
+  },
+  assistant: {
+    breathScale: 0.038,
+    pulseScale: 0.02,
+    durationMs: 3100,
+    drift: 2,
+    glowOpacity: 0.32,
+    audioInfluence: 0.04
   }
 };
 

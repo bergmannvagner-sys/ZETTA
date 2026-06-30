@@ -149,6 +149,7 @@ def request_telecare_session(
         scheduled_for=payload.scheduled_for,
     )
     db.add(session)
+    db.flush()
     write_audit_log(
         db,
         action=AuditAction.TELECARE_SESSION_REQUESTED,

@@ -23,6 +23,15 @@ export class ApiError extends Error {
   }
 }
 
+class RetryableAuthError extends ApiError {}
+
+type RefreshOutcome =
+  | { kind: "success"; accessToken: string; refreshToken: string }
+  | { kind: "invalid" }
+  | { kind: "network" };
+
+let refreshSessionPromise: Promise<RefreshOutcome> | null = null;
+
 function normalizeApiUrl(value?: string): string | undefined {
   const trimmed = value?.trim();
   return trimmed ? trimmed.replace(/\/+$/, "") : undefined;
@@ -127,6 +136,57 @@ function getFriendlyFieldName(field: string): string {
   return names[field] ?? field;
 }
 
+async function refreshAuthSession(): Promise<RefreshOutcome> {
+  const refreshToken = useAuthStore.getState().refreshToken;
+  if (!refreshToken) {
+    return { kind: "invalid" };
+  }
+
+  if (refreshSessionPromise) {
+    return refreshSessionPromise;
+  }
+
+  refreshSessionPromise = (async () => {
+    const requestedRefreshToken = refreshToken;
+    const endpoint = `${resolveApiUrl()}/auth/refresh`;
+    try {
+      const response = await fetch(endpoint, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify({ refresh_token: refreshToken })
+      });
+      const data = parseResponseBody(await response.text());
+      if (!response.ok) {
+        if (response.status === 400 || response.status === 401) {
+          return { kind: "invalid" };
+        }
+        return { kind: "network" };
+      }
+
+      const accessToken = (data as { access_token?: unknown; accessToken?: unknown }).access_token ??
+        (data as { access_token?: unknown; accessToken?: unknown }).accessToken;
+      const nextRefreshToken = (data as { refresh_token?: unknown; refreshToken?: unknown }).refresh_token ??
+        (data as { refresh_token?: unknown; refreshToken?: unknown }).refreshToken;
+      if (typeof accessToken !== "string" || typeof nextRefreshToken !== "string") {
+        return { kind: "invalid" };
+      }
+      if (useAuthStore.getState().refreshToken !== requestedRefreshToken) {
+        return { kind: "invalid" };
+      }
+      await useAuthStore.getState().setTokens(accessToken, nextRefreshToken);
+      return { kind: "success", accessToken, refreshToken: nextRefreshToken };
+    } catch {
+      return { kind: "network" };
+    } finally {
+      refreshSessionPromise = null;
+    }
+  })();
+
+  return refreshSessionPromise;
+}
+
 function getApiErrorMessage(data: unknown): string {
   const validationIssues = getValidationIssues(data);
   if (validationIssues.length > 0) {
@@ -187,8 +247,7 @@ async function handleApiResponse<T>(
     }
     if (response.status === 401 && shouldUseAuth) {
       if (token && isInvalidTokenMessage(data)) {
-        await useAuthStore.getState().clearSession();
-        throw new ApiError(EXPIRED_SESSION_MESSAGE, response.status, validation);
+        throw new RetryableAuthError(EXPIRED_SESSION_MESSAGE, response.status, validation);
       }
       if (!token || isMissingTokenMessage(data)) {
         throw new ApiError(AUTH_REQUIRED_MESSAGE, response.status, validation);
@@ -208,78 +267,78 @@ async function handleApiResponse<T>(
   return data as T;
 }
 
+async function requestWithAutoRefresh<T>(
+  endpoint: string,
+  options: ApiOptions,
+  body: BodyInit | null | undefined,
+  contentType: string | null
+): Promise<T> {
+  const shouldUseAuth = options.auth !== false;
+  let token = shouldUseAuth ? useAuthStore.getState().accessToken : null;
+  let retriedAfterRefresh = false;
+
+  for (;;) {
+    const headers = new Headers(options.headers);
+    if (contentType) {
+      headers.set("Content-Type", contentType);
+    }
+    if (shouldUseAuth && token) {
+      headers.set("Authorization", `Bearer ${token}`);
+    }
+
+    if (__DEV__) {
+      const kind = contentType ? "request" : "upload request";
+      console.info("[api]", kind, { apiUrl: resolveApiUrl(), endpoint, method: options.method ?? "GET" });
+    }
+
+    try {
+      const response = await fetch(endpoint, { ...options, headers, body });
+      return await handleApiResponse<T>(response, endpoint, shouldUseAuth, token);
+    } catch (error) {
+      if (error instanceof RetryableAuthError && shouldUseAuth) {
+        if (retriedAfterRefresh) {
+          await useAuthStore.getState().clearSession();
+          throw error;
+        }
+        const outcome = await refreshAuthSession();
+        if (outcome.kind === "success") {
+          token = outcome.accessToken;
+          retriedAfterRefresh = true;
+          continue;
+        }
+        if (outcome.kind === "invalid") {
+          await useAuthStore.getState().clearSession();
+        }
+        throw error;
+      }
+      if (error instanceof ApiError) {
+        throw error;
+      }
+      const isNetworkFailure =
+        error instanceof Error && (error.message === "Network request failed" || /failed to fetch/i.test(error.message));
+      if (__DEV__ && isNetworkFailure) {
+        console.warn("[api] request failed", {
+          apiUrl: resolveApiUrl(),
+          endpoint,
+          error: error instanceof Error ? error.message : "Unknown error"
+        });
+      }
+      if (error instanceof Error && !isNetworkFailure) {
+        throw error;
+      }
+      throw new ApiError(NETWORK_ERROR_MESSAGE, 0);
+    }
+  }
+}
+
 export async function apiRequest<T>(path: string, options: ApiOptions = {}): Promise<T> {
   const baseUrl = resolveApiUrl();
   const endpoint = `${baseUrl}${path.startsWith("/") ? path : `/${path}`}`;
-  const headers = new Headers(options.headers);
-  headers.set("Content-Type", "application/json");
-  const shouldUseAuth = options.auth !== false;
-  const token = useAuthStore.getState().accessToken;
-  if (shouldUseAuth) {
-    if (token) {
-      headers.set("Authorization", `Bearer ${token}`);
-    }
-  }
-
-  if (__DEV__) {
-    console.info("[api] request", { apiUrl: baseUrl, endpoint, method: options.method ?? "GET" });
-  }
-
-  try {
-    const response = await fetch(endpoint, { ...options, headers });
-    return await handleApiResponse<T>(response, endpoint, shouldUseAuth, token);
-  } catch (error) {
-    if (__DEV__) {
-      console.warn("[api] request failed", {
-        apiUrl: baseUrl,
-        endpoint,
-        error: error instanceof Error ? error.message : "Unknown error"
-      });
-    }
-    const isNetworkFailure =
-      error instanceof Error && (error.message === "Network request failed" || /failed to fetch/i.test(error.message));
-    if (error instanceof Error && !isNetworkFailure) {
-      throw error;
-    }
-    throw new ApiError(NETWORK_ERROR_MESSAGE, 0);
-  }
+  return requestWithAutoRefresh<T>(endpoint, options, options.body ?? null, "application/json");
 }
 
 export async function apiUploadRequest<T>(path: string, body: FormData, options: ApiOptions = {}): Promise<T> {
   const baseUrl = resolveApiUrl();
   const endpoint = `${baseUrl}${path.startsWith("/") ? path : `/${path}`}`;
-  const headers = new Headers(options.headers);
-  const shouldUseAuth = options.auth !== false;
-  const token = useAuthStore.getState().accessToken;
-  if (shouldUseAuth && token) {
-    headers.set("Authorization", `Bearer ${token}`);
-  }
-
-  if (__DEV__) {
-    console.info("[api] upload request", { apiUrl: baseUrl, endpoint, method: options.method ?? "POST" });
-  }
-
-  try {
-    const response = await fetch(endpoint, {
-      ...options,
-      method: options.method ?? "POST",
-      body,
-      headers
-    });
-    return await handleApiResponse<T>(response, endpoint, shouldUseAuth, token);
-  } catch (error) {
-    if (__DEV__) {
-      console.warn("[api] upload request failed", {
-        apiUrl: baseUrl,
-        endpoint,
-        error: error instanceof Error ? error.message : "Unknown error"
-      });
-    }
-    const isNetworkFailure =
-      error instanceof Error && (error.message === "Network request failed" || /failed to fetch/i.test(error.message));
-    if (error instanceof Error && !isNetworkFailure) {
-      throw error;
-    }
-    throw new ApiError(NETWORK_ERROR_MESSAGE, 0);
-  }
+  return requestWithAutoRefresh<T>(endpoint, { ...options, method: options.method ?? "POST" }, body, null);
 }

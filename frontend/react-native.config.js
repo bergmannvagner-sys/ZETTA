@@ -1,10 +1,12 @@
 const path = require("path");
+const fs = require("fs");
 
 const shortRoot = path.resolve(__dirname, "native-packages");
 
 const androidSourceDir = (packageName) => path.join(shortRoot, packageName, "android");
 
-module.exports = {
+module.exports = fs.existsSync(shortRoot)
+  ? {
   dependencies: {
     "expo-modules-core": {
       platforms: {
@@ -35,4 +37,5 @@ module.exports = {
       },
     },
   },
-};
+}
+  : {};

@@ -1,8 +1,7 @@
 import { useMutation } from "@tanstack/react-query";
 import { router } from "expo-router";
 import { useState } from "react";
-import { Pressable, Text, View } from "react-native";
-import { Ionicons } from "@expo/vector-icons";
+import { View } from "react-native";
 
 import { AuthHero } from "@/components/auth/AuthHero";
 import { Screen } from "@/components/screen";
@@ -53,34 +52,33 @@ export default function Login() {
           <Card>
             <View style={{ gap: 18 }}>
               <View style={{ gap: 14 }}>
-                <Field label="E-mail" value={email} onChangeText={setEmail} keyboardType="email-address" />
-                <Field label="Senha" value={password} onChangeText={setPassword} secureTextEntry />
+                <Field label="common.email" value={email} onChangeText={setEmail} keyboardType="email-address" />
+                <Field label="common.password" value={password} onChangeText={setPassword} secureTextEntry />
               </View>
               <ErrorText message={mutation.error?.message} />
               <Button
-                label="Entrar"
+                label="auth.login.submit"
                 icon="log-in-outline"
                 loading={mutation.isPending}
                 onPress={() => mutation.mutate({ email, password })}
               />
-              <View style={{ alignItems: "center", flexDirection: "row", gap: 14, justifyContent: "center" }}>
-                <Pressable accessibilityRole="button" onPress={() => router.push("/(auth)/select-role" as never)}>
-                  <View style={{ alignItems: "center", flexDirection: "row", gap: 6 }}>
-                    <Ionicons color={colors.primary} name="person-add-outline" size={16} />
-                    <Text style={{ color: colors.primary, fontSize: 15, fontWeight: "800", lineHeight: 20 }}>
-                      {t("auth.login.create")}
-                    </Text>
-                  </View>
-                </Pressable>
-                <View style={{ backgroundColor: colors.border, height: 14, width: 1 }} />
-                <Pressable accessibilityRole="button" onPress={() => router.push("/(auth)/forgot-password" as never)}>
-                  <View style={{ alignItems: "center", flexDirection: "row", gap: 6 }}>
-                    <Ionicons color={colors.textSecondary} name="key-outline" size={15} />
-                    <Text style={{ color: colors.textSecondary, fontSize: 14, fontWeight: "700", lineHeight: 18 }}>
-                      {t("auth.login.forgot")}
-                    </Text>
-                  </View>
-                </Pressable>
+              <View style={{ flexDirection: isMobile && width <= 420 ? "column" : "row", gap: 10, width: "100%" }}>
+                <View style={{ flex: 1 }}>
+                  <Button
+                    label="auth.login.create"
+                    icon="person-add-outline"
+                    tone="soft"
+                    onPress={() => router.push("/(auth)/select-role" as never)}
+                  />
+                </View>
+                <View style={{ flex: 1 }}>
+                  <Button
+                    label="auth.login.forgot"
+                    icon="key-outline"
+                    tone="ghost"
+                    onPress={() => router.push("/(auth)/forgot-password" as never)}
+                  />
+                </View>
               </View>
             </View>
           </Card>

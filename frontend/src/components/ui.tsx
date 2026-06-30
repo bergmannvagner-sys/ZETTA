@@ -47,32 +47,32 @@ export function Button({
   const radii = getSurfaceRadii(width, "control");
   const backgroundColor =
     tone === "primary"
-      ? colors.gradientEnd
+      ? colors.primary
       : tone === "danger"
         ? colors.error
         : tone === "soft"
-          ? colors.surfaceStrong
-          : "transparent";
+          ? "#5B35A8"
+          : "rgba(124, 92, 203, 0.28)";
   const borderColor =
     tone === "primary"
-      ? "rgba(255,255,255,0.18)"
+      ? "#DCCBFF"
       : tone === "danger"
-        ? colors.error
+        ? "#FCA5A5"
         : tone === "soft"
-          ? colors.primaryLight
-          : colors.primaryLight;
-  const textColor = tone === "ghost" ? colors.primaryLight : colors.textPrimary;
+          ? "#8B6CDA"
+          : "#7C5CCB";
+  const textColor = colors.textPrimary;
   const loadingColor = textColor;
   const minHeight = compact ? touchTarget.comfortable : Math.max(touchTarget.comfortable, Platform.OS === "ios" ? touchTarget.ios : touchTarget.android);
-  const shineColor = tone === "primary" ? "rgba(255,255,255,0.16)" : "rgba(255,255,255,0.06)";
-  const shadowColor = tone === "primary" ? colors.info : tone === "danger" ? colors.error : colors.shadowStrong;
+  const shineColor = tone === "primary" ? "rgba(255,255,255,0.18)" : "rgba(255,255,255,0.08)";
+  const shadowColor = tone === "primary" ? colors.primary : tone === "danger" ? colors.error : "#2A145A";
   const iconSize = compact ? 16 : 17;
-  const buttonShadow = tone === "ghost" ? {} : shadowStyle({
+  const buttonShadow = shadowStyle({
     color: shadowColor,
-    opacity: tone === "primary" ? 0.3 : 0.24,
-    radius: tone === "primary" ? 18 : 14,
+    opacity: tone === "ghost" ? 0.18 : tone === "primary" ? 0.32 : 0.24,
+    radius: tone === "primary" ? 18 : 13,
     offsetY: 8,
-    elevation: tone === "primary" ? 6 : 4
+    elevation: tone === "primary" ? 6 : 3
   });
 
   return (
@@ -91,7 +91,7 @@ export function Button({
         borderBottomRightRadius: radii.bottomRight,
         borderTopLeftRadius: radii.topLeft,
         borderTopRightRadius: radii.topRight,
-        borderWidth: 1.25,
+        borderWidth: 1.15,
         ...buttonShadow,
         justifyContent: "center",
         minHeight,

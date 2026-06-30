@@ -1,6 +1,8 @@
 # Voice Orb
 
-`AnimatedOrb` representa o estado emocional do Bergmann sem voz real nesta versão.
+`AnimatedOrb` representa o estado emocional do Bergmann. A orb e visual; o fluxo
+de voz real vive no chat e usa `useMicrophoneLevel` + `sendVoiceChatAudio` quando
+o usuario ativa o microfone explicitamente.
 
 Uso:
 
@@ -14,16 +16,24 @@ Estados:
 - `listening`
 - `thinking`
 - `speaking`
+- `breathing`
+- `calm`
+- `sos`
 - `crisis`
 - `low_energy`
 - `error`
 - `silent_presence`
+- `journaling`
+- `assistant`
 
-## Microfone futuro
+## Microfone
 
-A prop `audioLevel` aceita valores de `0` a `1`. O hook `useMicrophoneLevel` usa `expo-audio`, pede permissão somente quando o usuário toca em ativar e normaliza `metering` para essa faixa.
+A prop `audioLevel` aceita valores de `0` a `1`. O hook `useMicrophoneLevel`
+usa `expo-audio`, pede permissao somente quando o usuario toca em ativar e
+normaliza `metering` para essa faixa.
 
-Não peça permissão de microfone ao abrir a Home. Solicite apenas quando o usuário ativar explicitamente um modo de voz.
+Nao pegue permissao de microfone ao abrir a Home. Solicite apenas quando o
+usuario ativar explicitamente um modo de voz.
 
 ```tsx
 const microphone = useMicrophoneLevel();
@@ -34,4 +44,5 @@ const microphone = useMicrophoneLevel();
 />
 ```
 
-Esta versão mede amplitude visual. Ela não transcreve, não envia áudio e não grava conteúdo para o backend.
+O hook mede a amplitude visual. A transcricao e o envio de audio acontecem no
+fluxo de chat, nao dentro da orb.

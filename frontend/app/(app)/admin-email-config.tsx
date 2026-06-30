@@ -238,30 +238,30 @@ export default function AdminEmailConfig() {
 
           <Card>
             <Text className="text-lg font-semibold text-ink dark:text-white">Editor operacional</Text>
-            <Field label="SMTP host" value={smtpHost} onChangeText={setSmtpHost} autoCapitalize="none" />
-            <Field label="SMTP port" value={smtpPort} onChangeText={setSmtpPort} keyboardType="number-pad" />
-            <Field label="SMTP username" value={smtpUsername} onChangeText={setSmtpUsername} autoCapitalize="none" />
+            <Field label="Servidor SMTP" value={smtpHost} onChangeText={setSmtpHost} autoCapitalize="none" />
+            <Field label="Porta SMTP" value={smtpPort} onChangeText={setSmtpPort} keyboardType="number-pad" />
+            <Field label="Usuário SMTP" value={smtpUsername} onChangeText={setSmtpUsername} autoCapitalize="none" />
             <Field
-              label="SMTP password"
+              label="Senha SMTP"
               value={smtpPassword}
               onChangeText={setSmtpPassword}
               secureTextEntry
               placeholder="Deixe em branco para manter"
             />
             <Field
-              label="SMTP from e-mail"
+              label="E-mail remetente SMTP"
               value={smtpFromEmail}
               onChangeText={setSmtpFromEmail}
               autoCapitalize="none"
             />
             <Field
-              label="Admin alert e-mail"
+              label="E-mail de alerta administrativo"
               value={adminAlertEmail}
               onChangeText={setAdminAlertEmail}
               autoCapitalize="none"
             />
             <Field
-              label="Password reset URL"
+              label="URL de recuperação de senha"
               value={passwordResetUrl}
               onChangeText={setPasswordResetUrl}
               autoCapitalize="none"
@@ -280,19 +280,19 @@ export default function AdminEmailConfig() {
               />
             </View>
             <Field
-              label="Alert days threshold"
+              label="Prazo mínimo para alerta em dias"
               value={billingPendingAlertsAutoDays}
               onChangeText={setBillingPendingAlertsAutoDays}
               keyboardType="number-pad"
             />
             <Field
-              label="Alert interval hours"
+              label="Intervalo entre alertas em horas"
               value={billingPendingAlertsAutoIntervalHours}
               onChangeText={setBillingPendingAlertsAutoIntervalHours}
               keyboardType="number-pad"
             />
             <Field
-              label="Alert limit"
+              label="Limite de alertas por execução"
               value={billingPendingAlertsAutoLimit}
               onChangeText={setBillingPendingAlertsAutoLimit}
               keyboardType="number-pad"
@@ -319,13 +319,13 @@ export default function AdminEmailConfig() {
                 <Text className="text-sm leading-5 text-muted dark:text-[#D1D5DB]">
                   Porta configurada: {data.smtp_port}. TLS: {data.smtp_use_tls ? "ativo" : "desativado"}.
                 </Text>
-                <StatusLine label="SMTP_HOST" ok={data.smtp_host_configured} />
-                <StatusLine label="SMTP_USERNAME" ok={data.smtp_username_configured} />
-                <StatusLine label="SMTP_PASSWORD" ok={data.smtp_password_configured} />
-                <StatusLine label="SMTP_FROM_EMAIL" ok={data.smtp_from_email_configured} />
+                <StatusLine label="Servidor SMTP" ok={data.smtp_host_configured} />
+                <StatusLine label="Usuário SMTP" ok={data.smtp_username_configured} />
+                <StatusLine label="Senha SMTP" ok={data.smtp_password_configured} />
+                <StatusLine label="E-mail remetente SMTP" ok={data.smtp_from_email_configured} />
                 <StatusLine label="E-mail de alerta administrativo" ok={data.admin_alert_recipient_configured} />
-                <StatusLine label="PASSWORD_RESET_URL" ok={data.password_reset_url_configured} />
-                <StatusLine label="BILLING_PENDING_ALERTS_AUTO_ENABLED" ok={data.billing_pending_alerts_auto_enabled} />
+                <StatusLine label="URL de recuperação de senha" ok={data.password_reset_url_configured} />
+                <StatusLine label="Alertas financeiros automáticos" ok={data.billing_pending_alerts_auto_enabled} />
                 <Text className="text-xs leading-5 text-muted dark:text-[#D1D5DB]">
                   Alertas financeiros: {data.billing_pending_alerts_auto_days} dia(s), intervalo de{" "}
                   {data.billing_pending_alerts_auto_interval_hours}h, limite {data.billing_pending_alerts_auto_limit}.

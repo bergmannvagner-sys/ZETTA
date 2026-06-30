@@ -24,9 +24,11 @@ from app.schemas.emotional import (
     AuthorizedUserSummary,
     EmotionLogCreate,
     EmotionLogResponse,
+    EmotionLogUpdate,
     EmotionalReportResponse,
     JournalEntryCreate,
     JournalEntryResponse,
+    JournalEntryUpdate,
     NR1ReportResponse,
     SharingConsentCreate,
     SharingConsentResponse,
@@ -37,6 +39,7 @@ from app.services.billing import has_paid_access
 from app.services.connection_codes import generate_connection_code, normalize_connection_code
 from app.services.consent import get_active_lgpd_consent
 from app.services.institution_dashboard import build_institution_dashboard
+from app.services.risk import build_emotional_indices
 
 router = APIRouter(tags=["emotional"])
 
@@ -172,6 +175,20 @@ def _active_consent_for_target_owner(db: Session, target: User, owner_user_id: s
     )
 
 
+def _get_owned_journal_entry_or_404(db: Session, user: User, entry_id: str) -> JournalEntry:
+    entry = db.query(JournalEntry).filter(JournalEntry.id == entry_id, JournalEntry.user_id == user.id).first()
+    if not entry:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Journal entry not found")
+    return entry
+
+
+def _get_owned_emotion_log_or_404(db: Session, user: User, log_id: str) -> EmotionLog:
+    log = db.query(EmotionLog).filter(EmotionLog.id == log_id, EmotionLog.user_id == user.id).first()
+    if not log:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Emotion log not found")
+    return log
+
+
 @router.post("/journal/entries", response_model=JournalEntryResponse, status_code=status.HTTP_201_CREATED)
 def create_journal_entry(
     payload: JournalEntryCreate,
@@ -187,6 +204,7 @@ def create_journal_entry(
         tags_json=json.dumps(payload.tags, ensure_ascii=True),
     )
     db.add(entry)
+    db.flush()
     write_audit_log(
         db,
         action=AuditAction.JOURNAL_ENTRY_CREATED,
@@ -218,6 +236,60 @@ def list_journal_entries(
     return [_serialize_journal(entry) for entry in entries]
 
 
+@router.patch("/journal/entries/{entry_id}", response_model=JournalEntryResponse)
+def update_journal_entry(
+    entry_id: str,
+    payload: JournalEntryUpdate,
+    user: Annotated[User, Depends(require_lgpd_consent)],
+    db: Session = Depends(get_db),
+) -> JournalEntryResponse:
+    if user.role != UserRole.USER:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Only common users can update journal entries")
+    entry = _get_owned_journal_entry_or_404(db, user, entry_id)
+    if payload.content is not None:
+        entry.content = payload.content.strip()
+    if payload.entry_type is not None:
+        entry.entry_type = payload.entry_type.strip().upper() or entry.entry_type
+    if payload.tags is not None:
+        entry.tags_json = json.dumps(payload.tags, ensure_ascii=True)
+    db.flush()
+    write_audit_log(
+        db,
+        action=AuditAction.JOURNAL_ENTRY_UPDATED,
+        resource_type="journal_entry",
+        actor_user_id=user.id,
+        target_user_id=user.id,
+        resource_id=entry.id,
+        metadata={"entry_type": entry.entry_type, "tags_count": len(_json_list(entry.tags_json))},
+    )
+    db.commit()
+    db.refresh(entry)
+    return _serialize_journal(entry)
+
+
+@router.delete("/journal/entries/{entry_id}", status_code=status.HTTP_204_NO_CONTENT)
+def delete_journal_entry(
+    entry_id: str,
+    user: Annotated[User, Depends(require_lgpd_consent)],
+    db: Session = Depends(get_db),
+) -> None:
+    if user.role != UserRole.USER:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Only common users can delete journal entries")
+    entry = _get_owned_journal_entry_or_404(db, user, entry_id)
+    db.delete(entry)
+    db.flush()
+    write_audit_log(
+        db,
+        action=AuditAction.JOURNAL_ENTRY_DELETED,
+        resource_type="journal_entry",
+        actor_user_id=user.id,
+        target_user_id=user.id,
+        resource_id=entry.id,
+        metadata={"entry_type": entry.entry_type},
+    )
+    db.commit()
+
+
 @router.post("/emotions/logs", response_model=EmotionLogResponse, status_code=status.HTTP_201_CREATED)
 def create_emotion_log(
     payload: EmotionLogCreate,
@@ -239,6 +311,7 @@ def create_emotion_log(
         note=payload.note.strip() if payload.note else None,
     )
     db.add(log)
+    db.flush()
     write_audit_log(
         db,
         action=AuditAction.EMOTION_LOG_CREATED,
@@ -268,6 +341,72 @@ def list_emotion_logs(
         .all()
     )
     return [_serialize_emotion(log) for log in logs]
+
+
+@router.patch("/emotions/logs/{log_id}", response_model=EmotionLogResponse)
+def update_emotion_log(
+    log_id: str,
+    payload: EmotionLogUpdate,
+    user: Annotated[User, Depends(require_lgpd_consent)],
+    db: Session = Depends(get_db),
+) -> EmotionLogResponse:
+    if user.role != UserRole.USER:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Only common users can update emotion logs")
+    log = _get_owned_emotion_log_or_404(db, user, log_id)
+    if payload.mood is not None:
+        log.mood = payload.mood.strip().lower()
+    if payload.emotions is not None:
+        log.emotions_json = json.dumps(payload.emotions, ensure_ascii=True)
+    if payload.intensity is not None:
+        log.intensity = payload.intensity
+    if payload.energy is not None:
+        log.energy = payload.energy
+    if payload.anxiety is not None:
+        log.anxiety = payload.anxiety
+    if payload.stress is not None:
+        log.stress = payload.stress
+    if payload.sleep_quality is not None:
+        log.sleep_quality = payload.sleep_quality
+    if payload.motivation is not None:
+        log.motivation = payload.motivation
+    if payload.note is not None:
+        log.note = payload.note.strip() or None
+    db.flush()
+    write_audit_log(
+        db,
+        action=AuditAction.EMOTION_LOG_UPDATED,
+        resource_type="emotion_log",
+        actor_user_id=user.id,
+        target_user_id=user.id,
+        resource_id=log.id,
+        metadata={"mood": log.mood, "intensity": log.intensity},
+    )
+    db.commit()
+    db.refresh(log)
+    return _serialize_emotion(log)
+
+
+@router.delete("/emotions/logs/{log_id}", status_code=status.HTTP_204_NO_CONTENT)
+def delete_emotion_log(
+    log_id: str,
+    user: Annotated[User, Depends(require_lgpd_consent)],
+    db: Session = Depends(get_db),
+) -> None:
+    if user.role != UserRole.USER:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Only common users can delete emotion logs")
+    log = _get_owned_emotion_log_or_404(db, user, log_id)
+    db.delete(log)
+    db.flush()
+    write_audit_log(
+        db,
+        action=AuditAction.EMOTION_LOG_DELETED,
+        resource_type="emotion_log",
+        actor_user_id=user.id,
+        target_user_id=user.id,
+        resource_id=log.id,
+        metadata={"mood": log.mood, "intensity": log.intensity},
+    )
+    db.commit()
 
 
 @router.post("/sharing/consents", response_model=SharingConsentResponse, status_code=status.HTTP_201_CREATED)
@@ -320,6 +459,7 @@ def grant_sharing_consent(
         )
         db.add(consent)
 
+    db.flush()
     write_audit_log(
         db,
         action=AuditAction.SHARING_CONSENT_GRANTED,
@@ -449,6 +589,14 @@ def create_my_emotional_report(
                 "Que cuidado leve eu consigo manter nos próximos dias?",
             ],
         }
+    indices = build_emotional_indices(logs, entries)
+    metadata.update(indices)
+    if indices.get("risk_label") in {"LOW", "ELEVATED", "CRISIS"}:
+        risk_level = str(indices["risk_label"])
+    metadata["indicator_disclaimer"] = (
+        "Indices are emotional support indicators and do not represent medical or psychological diagnosis."
+    )
+
     report = EmotionalReport(
         user_id=user.id,
         audience=ReportAudience.USER,
@@ -457,6 +605,7 @@ def create_my_emotional_report(
         metadata_json=json.dumps(metadata, ensure_ascii=True, sort_keys=True),
     )
     db.add(report)
+    db.flush()
     write_audit_log(
         db,
         action=AuditAction.EMOTIONAL_REPORT_CREATED,
@@ -632,6 +781,7 @@ def get_nr1_report(
         indicators_json=json.dumps(indicators, ensure_ascii=True, sort_keys=True),
     )
     db.add(report)
+    db.flush()
     write_audit_log(
         db,
         action=AuditAction.NR1_REPORT_VIEWED,

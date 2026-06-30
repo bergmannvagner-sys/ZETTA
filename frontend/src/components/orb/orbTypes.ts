@@ -11,7 +11,9 @@ export type OrbState =
   | "crisis"
   | "low_energy"
   | "error"
-  | "silent_presence";
+  | "silent_presence"
+  | "journaling"
+  | "assistant";
 
 export type AnimatedOrbProps = {
   state: OrbState;

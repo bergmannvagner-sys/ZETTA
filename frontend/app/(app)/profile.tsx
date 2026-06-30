@@ -18,7 +18,7 @@ export default function Profile() {
   const user = useAuthStore((state) => state.user);
   const clearSession = useAuthStore((state) => state.clearSession);
   const languageChipBasis = width < 420 ? "31.5%" : "31.5%";
-  const languageChipShadow = shadowStyle({ color: colors.shadowStrong, opacity: 0.28, radius: 12, offsetY: 6, elevation: 3 });
+  const languageChipShadow = shadowStyle({ color: "#2A145A", opacity: 0.26, radius: 12, offsetY: 6, elevation: 3 });
   const canShareCode =
     user?.status === "ACTIVE" && (user.role === "PSYCHOLOGIST" || user.role === "COMPANY") && hasPaidAccess(user);
 
@@ -75,8 +75,8 @@ export default function Profile() {
                     onPress={() => void setLanguage(option.code)}
                     style={({ pressed }) => ({
                       alignItems: "center",
-                      backgroundColor: selected ? colors.gradientEnd : colors.surfaceStrong,
-                      borderColor: selected ? colors.primaryLight : colors.primary,
+                      backgroundColor: selected ? colors.primary : "#5B35A8",
+                      borderColor: selected ? "#DCCBFF" : "#8B6CDA",
                       borderCurve: "continuous",
                       borderRadius: radii.pill,
                       borderWidth: 1.5,

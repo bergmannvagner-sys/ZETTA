@@ -45,6 +45,17 @@ def reset_rate_limiter():
     clear_rate_limits()
 
 
+def _make_cpf(base_9_digits: str) -> str:
+    digits = [int(digit) for digit in base_9_digits]
+    first_weights = list(range(10, 1, -1))
+    second_weights = list(range(11, 1, -1))
+    first_sum = sum(digits[index] * first_weights[index] for index in range(9))
+    first_digit = 0 if first_sum % 11 < 2 else 11 - (first_sum % 11)
+    second_sum = sum([*digits, first_digit][index] * second_weights[index] for index in range(10))
+    second_digit = 0 if second_sum % 11 < 2 else 11 - (second_sum % 11)
+    return f"{base_9_digits}{first_digit}{second_digit}"
+
+
 def test_chat_scope_allows_general_topics_but_blocks_crime_and_dependency() -> None:
     assert normalize_text("Pânico e não consigo respirar") == "panico e nao consigo respirar"
     assert classify_risk("estou em pânico") == "ELEVATED"
@@ -686,6 +697,89 @@ def test_sensitive_content_is_encrypted_at_rest_and_decrypted_through_api() -> N
     assert export_payload["journal_entries"][0]["content"] == journal_content
     assert export_payload["emotion_logs"][0]["note"] == emotion_note
     assert export_payload["sos_events"][0]["message"] == sos_message
+
+
+def test_journal_and_emotion_entries_support_update_and_delete() -> None:
+    register = client.post(
+        "/auth/register",
+        json={
+            "email": "crud-user@example.com",
+            "full_name": "Pessoa CRUD",
+            "password": "strongpass123",
+            "role": "USER",
+            "document": _make_cpf(f"{uuid4().int % 10**9:09d}"),
+            "lgpdConsent": True,
+        },
+    )
+    assert register.status_code == 201
+    headers = {"Authorization": f"Bearer {register.json()['access_token']}"}
+
+    consent_status = client.get("/privacy/consent", headers=headers)
+    assert consent_status.status_code == 200
+    accept_consent = client.post(
+        "/privacy/consent",
+        json={"policy_version": consent_status.json()["policy_version"]},
+        headers=headers,
+    )
+    assert accept_consent.status_code == 200
+
+    journal = client.post(
+        "/journal/entries",
+        json={"content": "Primeira versão do diário.", "entry_type": "REFLECTION", "tags": ["inicio"]},
+        headers=headers,
+    )
+    assert journal.status_code == 201
+    journal_id = journal.json()["id"]
+
+    journal_update = client.patch(
+        f"/journal/entries/{journal_id}",
+        json={"content": "Versão atualizada do diário.", "tags": ["atualizado", "cuidado"]},
+        headers=headers,
+    )
+    assert journal_update.status_code == 200
+    assert journal_update.json()["content"] == "Versão atualizada do diário."
+    assert journal_update.json()["tags"] == ["atualizado", "cuidado"]
+
+    emotion = client.post(
+        "/emotions/logs",
+        json={
+            "mood": "calmo",
+            "emotions": ["calma"],
+            "intensity": 4,
+            "energy": 6,
+            "anxiety": 2,
+            "stress": 2,
+            "sleep_quality": 7,
+            "motivation": 6,
+            "note": "Primeiro check-in",
+        },
+        headers=headers,
+    )
+    assert emotion.status_code == 201
+    emotion_id = emotion.json()["id"]
+
+    emotion_update = client.patch(
+        f"/emotions/logs/{emotion_id}",
+        json={"mood": "esperançoso", "intensity": 6, "note": "Atualizado no mesmo dia"},
+        headers=headers,
+    )
+    assert emotion_update.status_code == 200
+    assert emotion_update.json()["mood"] == "esperançoso"
+    assert emotion_update.json()["intensity"] == 6
+
+    journal_delete = client.delete(f"/journal/entries/{journal_id}", headers=headers)
+    assert journal_delete.status_code == 204
+
+    emotion_delete = client.delete(f"/emotions/logs/{emotion_id}", headers=headers)
+    assert emotion_delete.status_code == 204
+
+    journal_list = client.get("/journal/entries", headers=headers)
+    assert journal_list.status_code == 200
+    assert journal_list.json() == []
+
+    emotion_list = client.get("/emotions/logs", headers=headers)
+    assert emotion_list.status_code == 200
+    assert emotion_list.json() == []
 
 
 def test_login_rate_limit_returns_429() -> None:

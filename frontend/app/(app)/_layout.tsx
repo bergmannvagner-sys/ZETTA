@@ -44,7 +44,7 @@ export default function AppLayout() {
   const { t } = useI18n();
   const segments = useSegments();
   const { accessToken, hydrated, updateUser, user } = useAuthStore();
-  const routeName = String(segments[1] ?? "");
+  const routeName = String(segments[0] ?? "");
   const me = useQuery({
     queryKey: ["users-me"],
     queryFn: getMe,
@@ -183,17 +183,17 @@ export default function AppLayout() {
         }}
       />
       <Tabs.Screen
-        name="mood"
+        name="chat"
         options={{
-          title: t("tab.checkin"),
-          tabBarIcon: ({ color, focused }) => <TabMark color={color} focused={focused} name="heart-outline" />
+          title: t("route.chat"),
+          tabBarIcon: ({ color, focused }) => <TabMark color={color} focused={focused} name="chatbubble-ellipses-outline" />
         }}
       />
       <Tabs.Screen
-        name="chat"
+        name="journal"
         options={{
-          title: t("tab.ai"),
-          tabBarIcon: ({ color, focused }) => <TabMark color={color} focused={focused} name="chatbubble-ellipses-outline" />
+          title: t("route.journal"),
+          tabBarIcon: ({ color, focused }) => <TabMark color={color} focused={focused} name="book-outline" />
         }}
       />
       <Tabs.Screen
@@ -218,7 +218,7 @@ export default function AppLayout() {
       <Tabs.Screen name="positive-memories" options={{ ...hiddenScreenOptions, title: t("route.positiveMemories") }} />
       <Tabs.Screen name="gratitude" options={{ ...hiddenScreenOptions, title: t("route.gratitude") }} />
       <Tabs.Screen name="memories" options={{ ...hiddenScreenOptions, title: t("route.memories") }} />
-      <Tabs.Screen name="journal" options={{ ...hiddenScreenOptions, title: t("route.journal") }} />
+      <Tabs.Screen name="mood" options={{ ...hiddenScreenOptions, title: t("route.mood") }} />
       <Tabs.Screen name="routine" options={{ ...hiddenScreenOptions, title: t("route.routine") }} />
       <Tabs.Screen name="sharing" options={{ ...hiddenScreenOptions, title: t("route.sharing") }} />
       <Tabs.Screen name="my-connections" options={{ ...hiddenScreenOptions, title: t("route.myConnections") }} />
